@@ -39,8 +39,8 @@ export default function TabletDashboard() {
         const finDelDia = new Date(hoy.setHours(23, 59, 59, 999)).toISOString()
 
         try {
-            const { data, error } = await supabase
-                .from('citas')
+            const { data, error } = await (supabase
+                .from('citas') as any)
                 .select(`
           *,
           servicio:servicios(*)

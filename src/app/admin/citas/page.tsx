@@ -31,7 +31,7 @@ export default function CitasPage() {
     const handleDeleteCita = async (id: string) => {
         if (!confirm('¿Estás seguro de eliminar esta cita?')) return
         try {
-            const { error } = await supabase.from('citas').delete().eq('id', id)
+            const { error } = await (supabase.from('citas') as any).delete().eq('id', id)
             if (error) throw error
             cargarCitas()
         } catch (err: any) {

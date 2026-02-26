@@ -33,8 +33,8 @@ export default function BookingPage() {
         setLoading(true)
         try {
             // Load Services
-            const { data: servicesData } = await supabase
-                .from('servicios')
+            const { data: servicesData } = await (supabase
+                .from('servicios') as any)
                 .select('*')
                 .eq('activo', true)
                 .order('precio')
@@ -43,8 +43,8 @@ export default function BookingPage() {
             else setServicios(getDemoServices())
 
             // Load Barbers
-            const { data: barbersData } = await supabase
-                .from('barberos')
+            const { data: barbersData } = await (supabase
+                .from('barberos') as any)
                 .select('*')
                 .eq('activo', true)
 
