@@ -6,58 +6,82 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // Flag to check if we're in demo mode
+// Stricter check to avoid "Invalid URL" errors during build
 export const isDemoMode = !SUPABASE_URL || !SUPABASE_ANON_KEY ||
-    SUPABASE_URL === 'https://your-project.supabase.co' ||
+    SUPABASE_URL.includes('your-project') ||
     SUPABASE_URL === '' ||
     SUPABASE_URL === 'undefined' ||
     !SUPABASE_URL.startsWith('http')
 
-// Mock Supabase client for demo mode
-const createMockClient = () => {
-    const mockQuery = () => ({
-        select: (...args: any[]) => mockQuery(),
-        insert: (...args: any[]) => mockQuery(),
-        update: (...args: any[]) => mockQuery(),
-        delete: (...args: any[]) => mockQuery(),
-        eq: (...args: any[]) => mockQuery(),
-        neq: (...args: any[]) => mockQuery(),
-        gte: (...args: any[]) => mockQuery(),
-        lte: (...args: any[]) => mockQuery(),
-        or: (...args: any[]) => mockQuery(),
-        order: (...args: any[]) => mockQuery(),
-        single: () => Promise.resolve({ data: null, error: { message: 'Demo mode - no database connected' } }),
-        then: (resolve: (value: { data: null; error: null }) => void) => resolve({ data: null, error: null })
-    })
-
-    return {
-        from: (table: string) => mockQuery(),
-        channel: () => ({
-            on: () => ({ subscribe: () => ({ unsubscribe: () => { } }) }),
-            subscribe: () => ({ unsubscribe: () => { } })
-        }),
-        removeChannel: () => { },
+// Power-mock: A proxy that returns dummy functions for everything
+// This prevents "X is not a function" errors in demo mode
+const createPowerMock = () => {
+    const dummyFn = () => ({
+        data: null,
+        error: null,
+        select: dummyFn,
+        insert: dummyFn,
+        update: dummyFn,
+        delete: dummyFn,
+        eq: dummyFn,
+        neq: dummyFn,
+        gte: dummyFn,
+        lte: dummyFn,
+        or: dummyFn,
+        order: dummyFn,
+        limit: dummyFn,
+        single: () => Promise.resolve({ data: null, error: null }),
+        maybeSingle: () => Promise.resolve({ data: null, error: null }),
+        then: (onfulfilled: any) => onfulfilled({ data: null, error: null }),
+        on: dummyFn,
+        subscribe: dummyFn,
+        unsubscribe: dummyFn,
+        channel: dummyFn,
         auth: {
             getUser: () => Promise.resolve({ data: { user: null }, error: null }),
             signIn: () => Promise.resolve({ data: null, error: null }),
             signOut: () => Promise.resolve({ error: null }),
-            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } }, error: null })
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } }, error: null }),
+            getSession: () => Promise.resolve({ data: { session: null }, error: null })
+        }
+    })
+
+    const handler: ProxyHandler<any> = {
+        get(target, prop) {
+            if (prop === 'auth') return target.auth
+            if (prop === 'from') return () => new Proxy(dummyFn(), handler)
+            if (prop in target) return target[prop]
+            return dummyFn
         }
     }
+
+    return new Proxy(dummyFn(), handler)
 }
 
 export function createClient(): ReturnType<typeof createBrowserClient<Database>> {
+    // During build or if missing, use mock to prevent crash
     if (isDemoMode) {
-        console.log('🎭 BarberCloud running in DEMO MODE - No Supabase configured')
-        return createMockClient() as unknown as ReturnType<typeof createBrowserClient<Database>>
+        if (typeof window !== 'undefined') {
+            console.warn('🎭 BarberCloud: Using Demo Mode (Incomplete/Missing Supabase Config)')
+        }
+        return createPowerMock() as any
     }
 
-    return createBrowserClient<Database>(
-        SUPABASE_URL!,
-        SUPABASE_ANON_KEY!
-    )
+    try {
+        return createBrowserClient<Database>(
+            SUPABASE_URL!,
+            SUPABASE_ANON_KEY!
+        )
+    } catch (e) {
+        console.error('Supabase Init Error:', e)
+        return createPowerMock() as any
+    }
 }
 
 // Server-side client for API routes
 export function createServerClient(supabaseUrl: string, supabaseKey: string) {
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+        return createPowerMock() as any
+    }
     return createBrowserClient<Database>(supabaseUrl, supabaseKey)
 }
