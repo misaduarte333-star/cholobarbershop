@@ -33,7 +33,7 @@ export default function TabletLoginPage() {
 
             if (dbError) throw dbError
 
-            const barbero = barberos?.[0] as any
+            const barbero = barberos?.[0]
 
             if (barbero && barbero.password_hash === passwordHash) {
                 // Success
