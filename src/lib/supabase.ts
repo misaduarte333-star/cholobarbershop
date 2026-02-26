@@ -37,7 +37,8 @@ const createMockClient = () => {
         auth: {
             getUser: () => Promise.resolve({ data: { user: null }, error: null }),
             signIn: () => Promise.resolve({ data: null, error: null }),
-            signOut: () => Promise.resolve({ error: null })
+            signOut: () => Promise.resolve({ error: null }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } }, error: null })
         }
     }
 }

@@ -12,8 +12,13 @@ Agrega los siguientes secretos:
 | Secreto | Descripción | Ejemplo |
 | :--- | :--- | :--- |
 | `EC2_HOST` | IP pública de tu instancia EC2 | `54.123.45.67` |
-| `EC2_USER` | Usuario para SSH | `ubuntu` o `ec2-user` |
-| `EC2_SSH_KEY` | Contenido de tu archivo `.pem` | `-----BEGIN RSA PRIVATE KEY-----...` |
+| `EC2_USER` | Usuario para SSH | `ubuntu` |
+| `EC2_SSH_KEY` | Contenido de tu archivo `.pem` | `-----BEGIN RSA...` |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL de tu proyecto Supabase | `https://xyz.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon Key de Supabase | `eyJhbGci...` |
+
+> [!IMPORTANT]
+> Las variables `NEXT_PUBLIC_` deben estar en GitHub Secrets **antes** de hacer el build, ya que Next.js las inyecta en el código del navegador durante la compilación. Sin ellas, la app arrancará en "Modo Demo".
 
 > [!NOTE]
 > El workflow utiliza `GITHUB_TOKEN` para subir la imagen a **GitHub Container Registry (GHCR)** de forma gratuita.
