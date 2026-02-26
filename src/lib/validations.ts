@@ -183,7 +183,7 @@ export async function validarDisponibilidad(
 
     if (bloqueosActivos && bloqueosActivos.length > 0) {
         const bloqueo = bloqueosActivos[0]
-        const tipoMensaje = {
+        const tipoMensaje: Record<string, string> = {
             almuerzo: 'hora de almuerzo',
             vacaciones: 'vacaciones',
             dia_festivo: 'día festivo',
@@ -192,7 +192,7 @@ export async function validarDisponibilidad(
 
         return {
             valido: false,
-            mensaje: `No disponible por ${tipoMensaje[bloqueo.tipo as any] || bloqueo.tipo}${bloqueo.motivo ? `: ${bloqueo.motivo}` : ''}`
+            mensaje: `No disponible por ${tipoMensaje[bloqueo.tipo] || bloqueo.tipo}${bloqueo.motivo ? `: ${bloqueo.motivo}` : ''}`
         }
     }
 
