@@ -18,8 +18,8 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style }: CitaCardProps
     const actualizarEstado = async (nuevoEstado: EstadoCita) => {
         setLoading(true)
         try {
-            const { error } = await supabase
-                .from('citas' as any)
+            const { error } = await (supabase
+                .from('citas') as any)
                 .update({
                     estado: nuevoEstado,
                     updated_at: new Date().toISOString()

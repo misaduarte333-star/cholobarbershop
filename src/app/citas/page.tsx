@@ -92,7 +92,7 @@ export default function BookingPage() {
                 notas: clientNote
             }
 
-            const { error } = await supabase.from('citas').insert([appointmentData] as any)
+            const { error } = await (supabase.from('citas') as any).insert([appointmentData])
 
             if (error) throw error
 
