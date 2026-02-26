@@ -67,4 +67,13 @@ jobs:
             # Nota: Easypanel gestiona sus propios contenedores. 
             # Si configuraste el servicio en Easypanel para usar esta imagen, 
             # podrías disparar el 'Redeploy' vía su API/Webhook.
-            echo "Imagen subida. Por favor, asegúrate de configurar el Webhook en Easypanel o darle a 'Redeploy'."
+            echo "Imagen subida. Notificando a Easypanel..."
+
+      - name: Trigger Easypanel Webhook
+        if: github.repository_owner == 'misaduarte333-star'
+        run: |
+          if [ -n "${{ secrets.EASYPANEL_WEBHOOK }}" ]; then
+            curl -X POST "${{ secrets.EASYPANEL_WEBHOOK }}"
+          else
+            echo "No EASYPANEL_WEBHOOK secret found. Skipping automatic redeploy."
+          fi

@@ -16,6 +16,7 @@ Agrega los siguientes secretos:
 | `EC2_SSH_KEY` | Contenido de tu archivo `.pem` | `-----BEGIN RSA...` |
 | `NEXT_PUBLIC_SUPABASE_URL` | URL de tu proyecto Supabase | `https://xyz.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon Key de Supabase | `eyJhbGci...` |
+| `EASYPANEL_WEBHOOK` | (Opcional) URL del webhook de la app | `https://panel.tudominio.com/api/hooks/...` |
 
 > [!IMPORTANT]
 > Las variables `NEXT_PUBLIC_` deben estar en GitHub Secrets **antes** de hacer el build, ya que Next.js las inyecta en el código del navegador durante la compilación. Sin ellas, la app arrancará en "Modo Demo".
@@ -37,7 +38,11 @@ Agrega los siguientes secretos:
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `PORT=3000`
    - `HOSTNAME=0.0.0.0`
-7. (Opcional) Activa el **Webhook** de Easypanel y copia la URL. Puedes agregar un paso al `.github/workflows/deploy.yml` para llamar a este webhook y que el despliegue sea 100% automático.
+7. **Configurar el Webhook**:
+   - En Easypanel, ve a la pestaña **General** del servicio.
+   - Busca la sección **Deploy Webhook**.
+   - Copia la URL que aparece.
+   - Agrégala como un secreto llamado `EASYPANEL_WEBHOOK` en GitHub.
 
 ## 3. Flujo de Trabajo
 
