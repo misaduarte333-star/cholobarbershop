@@ -63,8 +63,8 @@ export async function validarDisponibilidad(
     // ========================================================================
     // LEVEL 1: Validate branch hours
     // ========================================================================
-    const { data: sucursal, error: sucursalError } = await supabase
-        .from('sucursales')
+    const { data: sucursal, error: sucursalError } = await (supabase
+        .from('sucursales') as any)
         .select('horario_apertura, activa')
         .eq('id', sucursalId)
         .single()
@@ -94,8 +94,8 @@ export async function validarDisponibilidad(
     // ========================================================================
     // LEVEL 2: Validate barber schedule
     // ========================================================================
-    const { data: barbero, error: barberoError } = await supabase
-        .from('barberos')
+    const { data: barbero, error: barberoError } = await (supabase
+        .from('barberos') as any)
         .select('horario_laboral, bloqueo_almuerzo, activo, nombre')
         .eq('id', barberoId)
         .single()
@@ -140,8 +140,8 @@ export async function validarDisponibilidad(
     const finDelDia = new Date(timestampInicio)
     finDelDia.setHours(23, 59, 59, 999)
 
-    const { data: citasExistentes, error: citasError } = await supabase
-        .from('citas')
+    const { data: citasExistentes, error: citasError } = await (supabase
+        .from('citas') as any)
         .select('timestamp_inicio, timestamp_fin')
         .eq('barbero_id', barberoId)
         .neq('estado', 'cancelada')
@@ -169,8 +169,8 @@ export async function validarDisponibilidad(
     // ========================================================================
     // LEVEL 4: Check for active blocks
     // ========================================================================
-    const { data: bloqueosActivos, error: bloqueosError } = await supabase
-        .from('bloqueos')
+    const { data: bloqueosActivos, error: bloqueosError } = await (supabase
+        .from('bloqueos') as any)
         .select('tipo, motivo')
         .eq('sucursal_id', sucursalId)
         .or(`barbero_id.eq.${barberoId},barbero_id.is.null`)

@@ -20,7 +20,7 @@ export function ConnectionStatus() {
             try {
                 const start = performance.now()
                 // Check basic connection
-                const { data, error } = await supabase.from('sucursales').select('count').single()
+                const { data, error } = await (supabase.from('sucursales') as any).select('count').single()
                 const end = performance.now()
 
                 if (error) {
@@ -35,7 +35,7 @@ export function ConnectionStatus() {
                     }
                 } else {
                     // Connection successful, let's get some stats to help debugging
-                    const { count: citasCount } = await supabase.from('citas').select('*', { count: 'exact', head: true })
+                    const { count: citasCount } = await (supabase.from('citas') as any).select('*', { count: 'exact', head: true })
 
                     setStatus('connected')
                     setMessage(`Conectado (${(end - start).toFixed(0)}ms) • ${citasCount} citas encontradas`)

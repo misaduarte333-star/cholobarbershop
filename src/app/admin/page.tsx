@@ -42,8 +42,8 @@ export default function AdminDashboard() {
             if (errorCitas) throw errorCitas
 
             // 2. Fetch Active Barbers
-            const { data: barberos, error: errorBarberos } = await supabase
-                .from('barberos')
+            const { data: barberos, error: errorBarberos } = await (supabase
+                .from('barberos') as any)
                 .select('*')
                 .eq('activo', true)
                 .order('estacion_id')
