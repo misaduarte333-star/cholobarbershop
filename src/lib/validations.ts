@@ -192,7 +192,7 @@ export async function validarDisponibilidad(
 
         return {
             valido: false,
-            mensaje: `No disponible por ${tipoMensaje[bloqueo.tipo] || bloqueo.tipo}${bloqueo.motivo ? `: ${bloqueo.motivo}` : ''}`
+            mensaje: `No disponible por ${tipoMensaje[bloqueo.tipo as any] || bloqueo.tipo}${bloqueo.motivo ? `: ${bloqueo.motivo}` : ''}`
         }
     }
 
