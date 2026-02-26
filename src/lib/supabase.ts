@@ -8,7 +8,9 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 // Flag to check if we're in demo mode
 export const isDemoMode = !SUPABASE_URL || !SUPABASE_ANON_KEY ||
     SUPABASE_URL === 'https://your-project.supabase.co' ||
-    SUPABASE_URL === ''
+    SUPABASE_URL === '' ||
+    SUPABASE_URL === 'undefined' ||
+    !SUPABASE_URL.startsWith('http')
 
 // Mock Supabase client for demo mode
 const createMockClient = () => {
