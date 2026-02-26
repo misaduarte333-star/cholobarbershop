@@ -1,12 +1,15 @@
 import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from './types'
 
+// ============================================================================
+// VERSION DE DEPURACION: 1.1.0 (2026-02-26 21:55)
+// ============================================================================
+
 // Check if Supabase is configured
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // Flag to check if we're in demo mode
-// Stricter check to avoid "Invalid URL" errors during build
 export const isDemoMode = !SUPABASE_URL || !SUPABASE_ANON_KEY ||
     SUPABASE_URL.includes('your-project') ||
     SUPABASE_URL === '' ||
@@ -15,24 +18,12 @@ export const isDemoMode = !SUPABASE_URL || !SUPABASE_ANON_KEY ||
 
 // Fallback Mock Object (Plain Structure - avoid Proxy issues)
 const createFallbackMock = () => {
-    const mockResponse = { data: null, error: null, count: 0 }
-    const mockPromise = Promise.resolve(mockResponse)
-
-    // Function that returns itself for chaining
+    const mockPromise = Promise.resolve({ data: null, error: null, count: 0 })
     const chainer: any = () => chainer
-    chainer.select = chainer
-    chainer.insert = chainer
-    chainer.update = chainer
-    chainer.delete = chainer
-    chainer.eq = chainer
-    chainer.neq = chainer
-    chainer.gte = chainer
-    chainer.lte = chainer
-    chainer.in = chainer
-    chainer.or = chainer
-    chainer.order = chainer
-    chainer.limit = chainer
-    chainer.range = chainer
+
+    // Setup chainer methods
+    const methods = ['select', 'insert', 'update', 'delete', 'eq', 'neq', 'gte', 'lte', 'in', 'or', 'order', 'limit', 'range']
+    methods.forEach(m => chainer[m] = chainer)
     chainer.single = () => mockPromise
     chainer.maybeSingle = () => mockPromise
     chainer.then = (onfulfilled: any) => mockPromise.then(onfulfilled)
@@ -49,10 +40,12 @@ const createFallbackMock = () => {
             signInWithOAuth: () => mockPromise,
             signOut: () => mockPromise,
             onAuthStateChange: (cb: any) => {
-                // Call callback immediately to avoid hanging loading states
-                // but wrapped in setTimeout to not block during init
+                console.log('🛡️ Fallback: onAuthStateChange called')
                 if (typeof window !== 'undefined') {
-                    setTimeout(() => cb('INITIAL_SESSION', null), 0)
+                    // Force immediate callback to unblock AuthContext
+                    setTimeout(() => {
+                        try { cb('SIGNED_OUT', null) } catch (e) { }
+                    }, 0)
                 }
                 return { data: { subscription: { unsubscribe: () => { } } } }
             }
@@ -65,28 +58,28 @@ export function createClient(): ReturnType<typeof createBrowserClient<Database>>
 
     if (isDemoMode) {
         if (isBrowser) {
-            console.warn('⚠️ PROYECTO EN MODO DEMO: No se detectó configuración de Supabase.')
-            console.log('DEBUG INFO:', {
-                url_present: !!SUPABASE_URL,
-                url_type: typeof SUPABASE_URL,
-                url_starts_with_http: SUPABASE_URL?.startsWith('http')
+            console.warn('🚀 BARBERIA-APP VERSION: 1.1.0')
+            console.warn('🎭 MODO DEMO ACTIVO: Revisar secretos en GitHub.')
+            console.log('DIAGNOSTICO:', {
+                URL: SUPABASE_URL ? `${SUPABASE_URL.substring(0, 10)}...` : 'FALTANTE',
+                KEY: SUPABASE_ANON_KEY ? 'PRESENTE' : 'FALTANTE'
             })
         }
         return createFallbackMock() as any
     }
 
     try {
+        if (isBrowser) console.log('✅ BARBERIA-APP VERSION: 1.1.0 - Usando Supabase Real')
         return createBrowserClient<Database>(
             SUPABASE_URL!,
             SUPABASE_ANON_KEY!
         )
     } catch (e) {
-        if (isBrowser) console.error('❌ Error al inicializar Supabase:', e)
+        if (isBrowser) console.error('❌ Error Supabase Init:', e)
         return createFallbackMock() as any
     }
 }
 
-// Server-side client for API routes
 export function createServerClient(supabaseUrl: string, supabaseKey: string) {
     if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
         return createFallbackMock() as any
