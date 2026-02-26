@@ -13,58 +13,66 @@ export const isDemoMode = !SUPABASE_URL || !SUPABASE_ANON_KEY ||
     SUPABASE_URL === 'undefined' ||
     !SUPABASE_URL.startsWith('http')
 
-// Power-mock: A proxy that returns dummy functions for everything
-// This prevents "X is not a function" errors in demo mode
-const createPowerMock = () => {
-    const dummyFn = () => ({
-        data: null,
-        error: null,
-        select: dummyFn,
-        insert: dummyFn,
-        update: dummyFn,
-        delete: dummyFn,
-        eq: dummyFn,
-        neq: dummyFn,
-        gte: dummyFn,
-        lte: dummyFn,
-        or: dummyFn,
-        order: dummyFn,
-        limit: dummyFn,
-        single: () => Promise.resolve({ data: null, error: null }),
-        maybeSingle: () => Promise.resolve({ data: null, error: null }),
-        then: (onfulfilled: any) => onfulfilled({ data: null, error: null }),
-        on: dummyFn,
-        subscribe: dummyFn,
-        unsubscribe: dummyFn,
-        channel: dummyFn,
-        auth: {
-            getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-            signIn: () => Promise.resolve({ data: null, error: null }),
-            signOut: () => Promise.resolve({ error: null }),
-            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } }, error: null }),
-            getSession: () => Promise.resolve({ data: { session: null }, error: null })
-        }
-    })
+// Fallback Mock Object (Plain Structure - avoid Proxy issues)
+const createFallbackMock = () => {
+    const mockResponse = { data: null, error: null, count: 0 }
+    const mockPromise = Promise.resolve(mockResponse)
 
-    const handler: ProxyHandler<any> = {
-        get(target, prop) {
-            if (prop === 'auth') return target.auth
-            if (prop === 'from') return () => new Proxy(dummyFn(), handler)
-            if (prop in target) return target[prop]
-            return dummyFn
+    // Function that returns itself for chaining
+    const chainer: any = () => chainer
+    chainer.select = chainer
+    chainer.insert = chainer
+    chainer.update = chainer
+    chainer.delete = chainer
+    chainer.eq = chainer
+    chainer.neq = chainer
+    chainer.gte = chainer
+    chainer.lte = chainer
+    chainer.in = chainer
+    chainer.or = chainer
+    chainer.order = chainer
+    chainer.limit = chainer
+    chainer.range = chainer
+    chainer.single = () => mockPromise
+    chainer.maybeSingle = () => mockPromise
+    chainer.then = (onfulfilled: any) => mockPromise.then(onfulfilled)
+
+    return {
+        from: () => chainer,
+        channel: () => ({ on: chainer, subscribe: chainer, unsubscribe: () => { } }),
+        removeChannel: () => { },
+        removeAllChannels: () => { },
+        auth: {
+            getUser: () => mockPromise,
+            getSession: () => mockPromise,
+            signInWithPassword: () => mockPromise,
+            signInWithOAuth: () => mockPromise,
+            signOut: () => mockPromise,
+            onAuthStateChange: (cb: any) => {
+                // Call callback immediately to avoid hanging loading states
+                // but wrapped in setTimeout to not block during init
+                if (typeof window !== 'undefined') {
+                    setTimeout(() => cb('INITIAL_SESSION', null), 0)
+                }
+                return { data: { subscription: { unsubscribe: () => { } } } }
+            }
         }
     }
-
-    return new Proxy(dummyFn(), handler)
 }
 
 export function createClient(): ReturnType<typeof createBrowserClient<Database>> {
-    // During build or if missing, use mock to prevent crash
+    const isBrowser = typeof window !== 'undefined'
+
     if (isDemoMode) {
-        if (typeof window !== 'undefined') {
-            console.warn('🎭 BarberCloud: Using Demo Mode (Incomplete/Missing Supabase Config)')
+        if (isBrowser) {
+            console.warn('⚠️ PROYECTO EN MODO DEMO: No se detectó configuración de Supabase.')
+            console.log('DEBUG INFO:', {
+                url_present: !!SUPABASE_URL,
+                url_type: typeof SUPABASE_URL,
+                url_starts_with_http: SUPABASE_URL?.startsWith('http')
+            })
         }
-        return createPowerMock() as any
+        return createFallbackMock() as any
     }
 
     try {
@@ -73,15 +81,15 @@ export function createClient(): ReturnType<typeof createBrowserClient<Database>>
             SUPABASE_ANON_KEY!
         )
     } catch (e) {
-        console.error('Supabase Init Error:', e)
-        return createPowerMock() as any
+        if (isBrowser) console.error('❌ Error al inicializar Supabase:', e)
+        return createFallbackMock() as any
     }
 }
 
 // Server-side client for API routes
 export function createServerClient(supabaseUrl: string, supabaseKey: string) {
     if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
-        return createPowerMock() as any
+        return createFallbackMock() as any
     }
     return createBrowserClient<Database>(supabaseUrl, supabaseKey)
 }
