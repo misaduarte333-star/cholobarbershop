@@ -106,16 +106,16 @@ export default function AdminDashboard() {
         <>
             <header className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-                    <p className="text-slate-400 mt-1">
+                    <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Dashboard</h1>
+                    <p className="text-slate-500 mt-1 font-medium">
                         Bienvenido de vuelta. Aquí está el resumen del día.
                     </p>
                 </div>
                 <div className="text-right">
-                    <p className="text-3xl font-bold text-white tabular-nums">
+                    <p className="text-3xl font-black text-slate-900 tabular-nums">
                         {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </p>
-                    <p className="text-slate-400">
+                    <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">
                         {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                 </div>
@@ -165,10 +165,10 @@ export default function AdminDashboard() {
             {/* Quick Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 {/* Recent Appointments */}
-                <div className="glass-card p-6">
+                <div className="glass-card p-6 bg-white border border-slate-200">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-white">Citas Recientes</h2>
-                        <Link href="/admin/citas" className="text-sm text-purple-400 hover:text-purple-300">
+                        <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Citas Recientes</h2>
+                        <Link href="/admin/citas" className="text-sm font-bold text-[var(--secondary)] hover:opacity-80 transition-opacity">
                             Ver todas →
                         </Link>
                     </div>
@@ -198,60 +198,60 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="glass-card p-6">
-                    <h2 className="text-lg font-semibold text-white mb-4">Acciones Rápidas</h2>
+                <div className="glass-card p-6 bg-white border border-slate-200">
+                    <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4">Acciones Rápidas</h2>
                     <div className="grid grid-cols-2 gap-3">
-                        <Link href="/admin/citas" className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors text-left block">
-                            <svg className="w-6 h-6 text-purple-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <Link href="/admin/citas" className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors text-left block">
+                            <svg className="w-6 h-6 text-slate-900 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
-                            <p className="text-sm font-medium text-white">Nueva Cita</p>
-                            <p className="text-xs text-slate-400">Agendar manualmente</p>
+                            <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Nueva Cita</p>
+                            <p className="text-xs text-slate-500 font-medium">Agendar manualmente</p>
                         </Link>
 
-                        <Link href="/admin/citas" className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-colors text-left block">
-                            <svg className="w-6 h-6 text-amber-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <Link href="/admin/citas" className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors text-left block">
+                            <svg className="w-6 h-6 text-slate-900 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                             </svg>
-                            <p className="text-sm font-medium text-white">Walk-in</p>
-                            <p className="text-xs text-slate-400">Cliente sin cita</p>
+                            <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Walk-in</p>
+                            <p className="text-xs text-slate-500 font-medium">Cliente sin cita</p>
                         </Link>
 
-                        <Link href="/admin/citas" className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors text-left block">
-                            <svg className="w-6 h-6 text-red-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <Link href="/admin/citas" className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors text-left block">
+                            <svg className="w-6 h-6 text-slate-900 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                             </svg>
-                            <p className="text-sm font-medium text-white">Bloqueo</p>
-                            <p className="text-xs text-slate-400">Bloquear horario</p>
+                            <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Bloqueo</p>
+                            <p className="text-xs text-slate-500 font-medium">Bloquear horario</p>
                         </Link>
 
-                        <Link href="/admin/reportes" className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-colors text-left block">
-                            <svg className="w-6 h-6 text-blue-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <Link href="/admin/reportes" className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors text-left block">
+                            <svg className="w-6 h-6 text-slate-900 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <p className="text-sm font-medium text-white">Reporte</p>
-                            <p className="text-xs text-slate-400">Generar PDF</p>
+                            <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Reporte</p>
+                            <p className="text-xs text-slate-500 font-medium">Generar PDF</p>
                         </Link>
                     </div>
                 </div>
             </div>
 
             {/* Barber Status */}
-            <div className="glass-card p-6">
-                <h2 className="text-lg font-semibold text-white mb-4">Estado de Barberos</h2>
+            <div className="glass-card p-6 bg-white border border-slate-200">
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4">Estado de Barberos</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {barberStatuses.length === 0 ? (
                         <p className="text-slate-400 col-span-4 text-center py-4">Cargando estado de barberos...</p>
                     ) : (
                         barberStatuses.map((barbero) => (
-                            <div key={barbero.id} className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                            <div key={barbero.id} className="p-4 rounded-xl bg-slate-50 border border-slate-100">
                                 <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center font-bold text-white">
+                                    <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center font-bold text-white shadow-md">
                                         {barbero.estacion}
                                     </div>
                                     <div>
-                                        <p className="font-medium text-white">{barbero.nombre}</p>
-                                        <p className="text-xs text-slate-400">Estación {barbero.estacion}</p>
+                                        <p className="font-black text-slate-900">{barbero.nombre}</p>
+                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Estación {barbero.estacion}</p>
                                     </div>
                                 </div>
                                 <div className={`

@@ -10,8 +10,8 @@ export default function Home() {
                 style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]" />
 
-            {/* Content */}
-            <div className="relative z-10 text-center px-6 animate-fade-in">
+            {/* Content Container */}
+            <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 py-20 animate-fade-in">
                 {/* Logo */}
                 <div className="mb-8">
                     <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white border-2 border-slate-900 shadow-xl shadow-slate-200 mb-6">
@@ -30,14 +30,14 @@ export default function Home() {
                         className="group glass-card px-8 py-6 hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20"
                     >
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
-                                <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
+                                <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                 </svg>
                             </div>
                             <div className="text-left">
-                                <h3 className="text-lg font-semibold text-white">App Tablet</h3>
-                                <p className="text-sm text-slate-400">Vista para barberos</p>
+                                <h3 className="text-lg font-black text-slate-900">App Tablet</h3>
+                                <p className="text-sm text-slate-500 font-bold">Vista para barberos</p>
                             </div>
                         </div>
                     </Link>
@@ -47,14 +47,14 @@ export default function Home() {
                         className="group glass-card px-8 py-6 hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/20"
                     >
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center group-hover:bg-amber-500/30 transition-colors">
-                                <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
+                                <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
                             </div>
                             <div className="text-left">
-                                <h3 className="text-lg font-semibold text-white">Panel Admin</h3>
-                                <p className="text-sm text-slate-400">Gestión y reportes</p>
+                                <h3 className="text-lg font-black text-slate-900">Panel Admin</h3>
+                                <p className="text-sm text-slate-500 font-bold">Gestión y reportes</p>
                             </div>
                         </div>
                     </Link>

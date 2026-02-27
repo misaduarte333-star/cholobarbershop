@@ -30,39 +30,34 @@ export type TipoBloqueo = 'almuerzo' | 'vacaciones' | 'dia_festivo' | 'emergenci
 export type RolAdmin = 'admin' | 'secretaria'
 
 // ============================================================================
-// Database Row Types
+// Database Row Types (Sincronizado con Esquema SQL)
 // ============================================================================
 
 export interface Sucursal {
     id: string
     nombre: string
-    direccion: string | null
-    telefono_whatsapp: string
-    horario_apertura: HorarioApertura
+    direccion: string
+    telefono_whatsapp: string | null
     activa: boolean
     created_at: string
 }
 
 export interface Barbero {
     id: string
-    sucursal_id: string
+    sucursal_id: string | null
     nombre: string
-    estacion_id: number
     usuario_tablet: string
-    password_hash: string
-    horario_laboral: HorarioLaboralSemana
-    bloqueo_almuerzo: BloqueAlmuerzo | null
-    activo: boolean
-    hora_entrada: string | null
+    password_hash: string | null
+    horario_laboral: JSON | any // JSONB: { "lunes": { "entrada": "09:00", ... } }
+    estacion_id: number | null
     created_at: string
 }
 
 export interface Servicio {
     id: string
-    sucursal_id: string
     nombre: string
-    duracion_minutos: number
     precio: number
+    duracion_minutos: number
     activo: boolean
     created_at: string
 }
@@ -71,39 +66,36 @@ export interface Cita {
     id: string
     sucursal_id: string
     barbero_id: string
-    servicio_id: string | null
+    servicio_id: string
     cliente_nombre: string
-    cliente_telefono: string
+    cliente_telefono: string | null
     timestamp_inicio: string
     timestamp_fin: string
-    origen: OrigenCita
-    estado: EstadoCita
-    notas: string | null
-    recordatorio_24h_enviado: boolean
-    recordatorio_1h_enviado: boolean
+    origen: 'manual' | 'walkin' | 'whatsapp'
+    estado: 'confirmada' | 'en_espera' | 'en_proceso' | 'finalizada' | 'cancelada' | 'no_show'
+    notas?: string | null
+    monto_pagado?: number | null
+    metodo_pago?: 'efectivo' | 'tarjeta' | 'transferencia' | null
+    notas_crm?: string | null
     created_at: string
-    updated_at: string
 }
 
 export interface Bloqueo {
     id: string
-    barbero_id: string | null
-    sucursal_id: string
-    fecha_inicio: string
-    fecha_fin: string
-    tipo: TipoBloqueo
+    barbero_id: string
+    timestamp_inicio: string
+    timestamp_fin: string
     motivo: string | null
     created_at: string
 }
 
 export interface UsuarioAdmin {
     id: string
-    sucursal_id: string
+    sucursal_id: string | null
     nombre: string
     email: string
-    password_hash: string
-    rol: RolAdmin
-    activo: boolean
+    password_hash: string | null
+    rol: string // 'admin', etc.
     created_at: string
 }
 

@@ -12,34 +12,34 @@ interface KPICardProps {
 export function KPICard({ titulo, valor, color, icon, trend, trendInverse }: KPICardProps) {
     const colorConfig = {
         purple: {
-            bg: 'from-purple-600/20 to-purple-700/10',
-            border: 'border-purple-500/20',
-            icon: 'text-purple-400',
-            iconBg: 'bg-purple-500/20'
+            bg: 'bg-white',
+            border: 'border-slate-200',
+            icon: 'text-slate-900',
+            iconBg: 'bg-slate-50'
         },
         green: {
-            bg: 'from-emerald-600/20 to-emerald-700/10',
-            border: 'border-emerald-500/20',
-            icon: 'text-emerald-400',
-            iconBg: 'bg-emerald-500/20'
+            bg: 'bg-white',
+            border: 'border-slate-200',
+            icon: 'text-slate-900',
+            iconBg: 'bg-slate-50'
         },
         blue: {
-            bg: 'from-blue-600/20 to-blue-700/10',
-            border: 'border-blue-500/20',
-            icon: 'text-blue-400',
-            iconBg: 'bg-blue-500/20'
+            bg: 'bg-white',
+            border: 'border-slate-200',
+            icon: 'text-slate-900',
+            iconBg: 'bg-slate-50'
         },
         red: {
-            bg: 'from-red-600/20 to-red-700/10',
-            border: 'border-red-500/20',
-            icon: 'text-red-400',
-            iconBg: 'bg-red-500/20'
+            bg: 'bg-white',
+            border: 'border-slate-200',
+            icon: 'text-slate-900',
+            iconBg: 'bg-slate-50'
         },
         amber: {
-            bg: 'from-amber-600/20 to-amber-700/10',
-            border: 'border-amber-500/20',
-            icon: 'text-amber-400',
-            iconBg: 'bg-amber-500/20'
+            bg: 'bg-white',
+            border: 'border-slate-200',
+            icon: 'text-slate-900',
+            iconBg: 'bg-slate-50'
         }
     }
 
@@ -96,8 +96,8 @@ export function KPICard({ titulo, valor, color, icon, trend, trendInverse }: KPI
                 )}
             </div>
 
-            <p className="text-slate-400 text-sm mb-1">{titulo}</p>
-            <p className="text-3xl font-bold text-white">{valor}</p>
+            <p className="text-slate-500 text-sm mb-1 font-bold uppercase tracking-widest">{titulo}</p>
+            <p className="text-3xl font-black text-slate-900">{valor}</p>
         </div>
     )
 }
