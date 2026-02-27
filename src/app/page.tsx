@@ -20,7 +20,7 @@ export default function Home() {
             <div className="relative z-10 text-center px-6 animate-fade-in">
                 {/* Logo */}
                 <div className="mb-8">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] shadow-lg shadow-gold-900/40 mb-6">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] shadow-lg shadow-[#d4af37]/40 mb-6">
                         <span className="text-3xl font-black text-black">CB</span>
                     </div>
                     <h1 className="text-5xl md:text-6xl font-bold mb-4">

@@ -144,7 +144,7 @@ export default function BookingPage() {
                         <div
                             key={s}
                             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300
-                            ${step >= s ? 'bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-black shadow-lg shadow-gold-900/40' : 'bg-slate-800 text-slate-500 border border-slate-700'}
+                            ${step >= s ? 'bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-black shadow-lg shadow-[#d4af37]/40' : 'bg-slate-800 text-slate-500 border border-slate-700'}
                             `}
                         >
                             {s}
