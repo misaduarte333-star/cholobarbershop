@@ -365,7 +365,7 @@ function getDemoCitas(fecha: string): CitaConRelaciones[] {
             recordatorio_1h_enviado: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            servicio: { id: '1', sucursal_id: '1', nombre: 'Corte Clásico', duracion_minutos: 40, precio: 250, activo: true, created_at: '' },
+            servicio: { id: '1', nombre: 'Corte Clásico', duracion_minutos: 40, precio: 250, activo: true, created_at: '' },
             barbero: { id: '1', sucursal_id: '1', nombre: 'Carlos H.', estacion_id: 1, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, created_at: '' }
         },
         {
@@ -384,7 +384,7 @@ function getDemoCitas(fecha: string): CitaConRelaciones[] {
             recordatorio_1h_enviado: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            servicio: { id: '2', sucursal_id: '1', nombre: 'Barba', duracion_minutos: 30, precio: 150, activo: true, created_at: '' },
+            servicio: { id: '2', nombre: 'Barba', duracion_minutos: 30, precio: 150, activo: true, created_at: '' },
             barbero: { id: '1', sucursal_id: '1', nombre: 'Carlos H.', estacion_id: 1, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, created_at: '' }
         },
         {
@@ -403,7 +403,7 @@ function getDemoCitas(fecha: string): CitaConRelaciones[] {
             recordatorio_1h_enviado: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            servicio: { id: '3', sucursal_id: '1', nombre: 'Combo Completo', duracion_minutos: 60, precio: 350, activo: true, created_at: '' },
+            servicio: { id: '3', nombre: 'Combo Completo', duracion_minutos: 60, precio: 350, activo: true, created_at: '' },
             barbero: { id: '2', sucursal_id: '1', nombre: 'Miguel L.', estacion_id: 2, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, created_at: '' }
         }
     ]

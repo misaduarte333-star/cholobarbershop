@@ -39,6 +39,7 @@ export interface Sucursal {
     direccion: string
     telefono_whatsapp: string | null
     activa: boolean
+    horario_apertura?: HorarioApertura | null
     created_at: string
 }
 
@@ -49,12 +50,16 @@ export interface Barbero {
     usuario_tablet: string
     password_hash: string | null
     horario_laboral: JSON | any // JSONB: { "lunes": { "entrada": "09:00", ... } }
+    bloqueo_almuerzo: BloqueAlmuerzo | null
+    hora_entrada: string | null
+    activo: boolean
     estacion_id: number | null
     created_at: string
 }
 
 export interface Servicio {
     id: string
+    sucursal_id?: string | null
     nombre: string
     precio: number
     duracion_minutos: number
@@ -77,6 +82,9 @@ export interface Cita {
     monto_pagado?: number | null
     metodo_pago?: 'efectivo' | 'tarjeta' | 'transferencia' | null
     notas_crm?: string | null
+    recordatorio_24h_enviado?: boolean | null
+    recordatorio_1h_enviado?: boolean | null
+    updated_at?: string
     created_at: string
 }
 

@@ -46,8 +46,8 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
 
         try {
             console.log('🛰️ Enviando a Supabase...', { id: cita.id, estado: nuevoEstado })
-            const { error, data } = await supabase
-                .from('citas')
+            const { error, data } = await (supabase
+                .from('citas') as any)
                 .update({
                     estado: nuevoEstado,
                     updated_at: new Date().toISOString()
@@ -82,8 +82,8 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
     const liquidarCita = async () => {
         setLoading(true)
         try {
-            const { error } = await supabase
-                .from('citas')
+            const { error } = await (supabase
+                .from('citas') as any)
                 .update({
                     estado: 'finalizada' as EstadoCita,
                     monto_pagado: montoFinal,
@@ -117,8 +117,8 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
             newInicio.setHours(hours, minutes, 0, 0)
             const newFin = new Date(newInicio.getTime() + duration)
 
-            const { error } = await supabase
-                .from('citas')
+            const { error } = await (supabase
+                .from('citas') as any)
                 .update({
                     timestamp_inicio: newInicio.toISOString(),
                     timestamp_fin: newFin.toISOString(),
