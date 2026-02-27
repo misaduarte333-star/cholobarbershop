@@ -22,14 +22,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="p-6 h-full flex flex-col">
                     {/* Logo */}
                     <Link href="/admin" className="flex items-center gap-3 mb-10 text-white hover:opacity-80 transition-opacity">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center shadow-lg shadow-purple-900/20">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] flex items-center justify-center shadow-lg shadow-gold-900/20">
+                            <span className="text-xl font-black">CB</span>
                         </div>
                         <div>
-                            <h1 className="font-bold text-lg leading-none">BarberCloud</h1>
-                            <p className="text-xs text-slate-400 mt-1">Panel Admin</p>
+                            <h1 className="font-black text-lg leading-none tracking-tighter">CHOLO<span className="text-[var(--primary)]">BARBER</span></h1>
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-1">Management</p>
                         </div>
                     </Link>
 
@@ -88,7 +86,7 @@ function NavItem({ href, icon, label, active = false }: { href: string; icon: st
             className={`
         flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
         ${active
-                    ? 'bg-purple-600 shadow-md shadow-purple-900/40 text-white'
+                    ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] shadow-md shadow-gold-900/40 text-black'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }
       `}

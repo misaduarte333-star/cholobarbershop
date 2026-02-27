@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
@@ -118,10 +119,8 @@ export default function TabletDashboard() {
             <header className="bg-slate-800/50 backdrop-blur-xl border-b border-slate-700/50 px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] flex items-center justify-center shadow-lg shadow-gold-900/20">
+                            <span className="text-xl font-black text-black">CB</span>
                         </div>
                         <div>
                             <h1 className="text-xl font-bold">{barbero?.nombre || 'Cargando...'}</h1>
@@ -142,12 +141,22 @@ export default function TabletDashboard() {
                             </p>
                             <p className="text-sm text-slate-400">{citasActivas.length} citas pendientes</p>
                         </div>
+                        <Link
+                            href="/tablet/galeria"
+                            className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-[var(--primary)] transition-colors flex items-center gap-2"
+                            title="Galería de Cortes"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="hidden sm:inline text-sm font-medium">Mi Galería</span>
+                        </Link>
                         <button
                             onClick={() => {
                                 localStorage.removeItem('barbero_session')
                                 router.push('/tablet/login')
                             }}
-                            className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                            className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-red-400 transition-colors"
                             title="Cerrar Sesión"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

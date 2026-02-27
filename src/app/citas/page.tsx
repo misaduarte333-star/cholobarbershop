@@ -131,10 +131,10 @@ export default function BookingPage() {
             <div className="max-w-2xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-10">
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent mb-2">
-                        BarberCloud
+                    <h1 className="text-4xl font-black mb-2 tracking-tighter uppercase">
+                        CHOLO<span className="text-[var(--primary)]">BARBER</span>
                     </h1>
-                    <p className="text-slate-400">Reserva tu próxima experiencia</p>
+                    <p className="text-slate-500 text-sm uppercase tracking-widest">Reserva tu experiencia elite</p>
                 </div>
 
                 {/* Progress Bar */}
@@ -144,7 +144,7 @@ export default function BookingPage() {
                         <div
                             key={s}
                             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300
-                            ${step >= s ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/50' : 'bg-slate-800 text-slate-500 border border-slate-700'}
+                            ${step >= s ? 'bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-black shadow-lg shadow-gold-900/40' : 'bg-slate-800 text-slate-500 border border-slate-700'}
                             `}
                         >
                             {s}

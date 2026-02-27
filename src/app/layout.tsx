@@ -10,7 +10,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-    title: 'BarberCloud AI',
+    title: 'CholoBarber AI',
     description: 'Sistema inteligente de gestión de citas para barberías',
     keywords: ['barbería', 'citas', 'gestión', 'IA', 'WhatsApp'],
     authors: [{ name: 'BarberCloud' }],
