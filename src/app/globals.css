@@ -1,43 +1,45 @@
 @import "tailwindcss";
 
-/* CholoBarber - Urban Elite Design System */
+/* CholoBarber - Classic Elegant Design System */
 :root {
-  /* Brand Colors */
-  --primary: #d4af37;
-  /* Gold - metallic */
-  --primary-dark: #b8860b;
-  --primary-light: #f4d03f;
+  /* Brand Colors - Inspired by Classic Barber Pole */
+  --primary: #dc2626;
+  /* Deep Red */
+  --primary-dark: #991b1b;
+  --primary-light: #fef2f2;
 
-  --secondary: #8b5cf6;
-  /* Electric Purple */
-  --secondary-dark: #6d28d9;
-  --secondary-light: #a78bfa;
+  --secondary: #2563eb;
+  /* Royal Blue */
+  --secondary-dark: #1e40af;
+  --secondary-light: #eff6ff;
+
+  --accent: #f8fafc;
+  /* Silver / Snow White */
 
   /* Status Colors */
-  --status-confirmed: #3b82f6;
-  --status-waiting: #f59e0b;
-  --status-in-progress: #10b981;
-  --status-completed: #6b7280;
-  --status-cancelled: #ef4444;
-  --status-no-show: #dc2626;
+  --status-confirmed: #2563eb;
+  --status-waiting: #d97706;
+  --status-in-progress: #059669;
+  --status-completed: #475569;
+  --status-cancelled: #dc2626;
+  --status-no-show: #991b1b;
 
-  /* Background Colors */
-  --bg-primary: #020617;
-  /* Deepest Navy/Black */
-  --bg-secondary: #0f172a;
-  /* Slate 900 */
-  --bg-tertiary: #1e293b;
-  /* Slate 800 */
+  /* Background Colors - Clean & Bright */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
 
   /* Text Colors */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #0f172a;
+  /* Slate 900 */
+  --text-secondary: #475569;
+  /* Slate 600 */
+  --text-muted: #94a3b8;
+  /* Slate 400 */
 
-  /* Gradients */
-  --gradient-brand: linear-gradient(135deg, #d4af37 0%, #8b5cf6 100%);
-  --gradient-urban: linear-gradient(135deg, #1e293b 0%, #020617 100%);
-  --gradient-glow: radial-gradient(circle at center, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
+  /* Gradients - Subtle & Clean */
+  --gradient-brand: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  --gradient-soft: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
 }
 
 /* Base Styles */
@@ -53,11 +55,11 @@ body {
   overflow-x: hidden;
 }
 
-/* Glass Morphism Card */
+/* Elegant Card Style */
 .glass-card {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: #ffffff;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
   border-radius: 1rem;
 }
 
@@ -69,16 +71,16 @@ body {
   background-clip: text;
 }
 
-/* Button Styles */
+/* Button Styles - Sharp & Professional */
 .btn-primary {
   @apply px-6 py-3 rounded-xl font-bold transition-all duration-300;
-  @apply bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)];
-  @apply text-white;
-  box-shadow: 0 10px 15px -3px rgba(212, 175, 55, 0.2);
+  @apply bg-slate-900 border border-slate-900 text-white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 
   &:hover {
-    transform: scale(1.02);
-    box-shadow: 0 20px 25px -5px rgba(212, 175, 55, 0.3);
+    @apply bg-white text-slate-900;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   }
 
   @apply active:scale-95;
@@ -86,66 +88,45 @@ body {
 
 .btn-secondary {
   @apply px-6 py-3 rounded-xl font-semibold transition-all duration-300;
-  @apply bg-slate-700 text-white;
-  @apply hover:bg-slate-600;
+  @apply bg-white border border-slate-200 text-slate-700;
+  @apply hover:bg-slate-50 hover:border-slate-300;
   @apply active:scale-95;
 }
 
 .btn-danger {
   @apply px-6 py-3 rounded-xl font-semibold transition-all duration-300;
-  @apply bg-red-600 text-white;
-  @apply hover:bg-red-500;
+  @apply bg-red-50 text-red-600 border border-red-100;
+  @apply hover:bg-red-100;
   @apply active:scale-95;
 }
 
 /* Status Badge */
 .status-badge {
-  @apply px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider;
+  @apply px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider;
 }
 
 .status-confirmed {
-  @apply bg-blue-500/20 text-blue-400 border border-blue-500/30;
+  @apply bg-blue-50 text-blue-600 border border-blue-100;
 }
 
 .status-waiting {
-  @apply bg-amber-500/20 text-amber-400 border border-amber-500/30;
+  @apply bg-amber-50 text-amber-600 border border-amber-100;
 }
 
 .status-in-progress {
-  @apply bg-emerald-500/20 text-emerald-400 border border-emerald-500/30;
+  @apply bg-emerald-50 text-emerald-600 border border-emerald-100;
 }
 
 .status-completed {
-  @apply bg-slate-500/20 text-slate-400 border border-slate-500/30;
+  @apply bg-slate-50 text-slate-500 border border-slate-100;
 }
 
 .status-cancelled,
 .status-no-show {
-  @apply bg-red-500/20 text-red-400 border border-red-500/30;
-}
-
-/* Glow Effects */
-.glow-primary {
-  box-shadow: 0 0 40px rgba(212, 175, 55, 0.3);
-}
-
-.glow-secondary {
-  box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+  @apply bg-red-50 text-red-600 border border-red-100;
 }
 
 /* Animations */
-@keyframes pulse-glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
-  }
-
-  50% {
-    box-shadow: 0 0 40px rgba(124, 58, 237, 0.7);
-  }
-}
-
 @keyframes slide-in {
   from {
     opacity: 0;
@@ -168,10 +149,6 @@ body {
   }
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
 .animate-slide-in {
   animation: slide-in 0.4s ease-out forwards;
 }
@@ -180,32 +157,34 @@ body {
   animation: fade-in 0.3s ease-out forwards;
 }
 
-/* Timeline Styles */
+/* Timeline Styles - High Contrast */
 .timeline-slot {
-  @apply relative border-l-2 border-slate-700 pl-4 py-2;
-  @apply hover:bg-slate-800/50 transition-colors duration-200;
+  @apply relative border-l-2 border-slate-200 pl-4 py-3;
+  @apply hover:bg-slate-50 transition-colors duration-200;
 }
 
 .timeline-slot::before {
   content: '';
   @apply absolute -left-[5px] top-1/2 -translate-y-1/2;
-  @apply w-2 h-2 rounded-full bg-slate-600;
+  @apply w-2 h-2 rounded-full bg-slate-200;
 }
 
 .timeline-slot.has-appointment::before {
-  @apply bg-purple-500;
+  @apply bg-blue-600;
 }
 
-/* Current Time Indicator */
-.current-time-line {
-  @apply absolute left-0 right-0 h-0.5 bg-red-500 z-10;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+/* Input Styles - Clean */
+.input-field {
+  @apply w-full px-4 py-3 rounded-xl;
+  @apply bg-white border border-slate-200;
+  @apply text-slate-900 placeholder:text-slate-400;
+  @apply focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100;
+  @apply transition-all duration-200;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
-  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -213,26 +192,17 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
+  background: #cbd5e1;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
-}
-
-/* Input Styles */
-.input-field {
-  @apply w-full px-4 py-3 rounded-xl;
-  @apply bg-slate-800 border border-slate-700;
-  @apply text-white placeholder:text-slate-500;
-  @apply focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20;
-  @apply transition-all duration-200;
+  background: #94a3b8;
 }
 
 /* Loading Spinner */
 .spinner {
-  @apply w-6 h-6 border-2 border-white/20 border-t-white rounded-full;
+  @apply w-6 h-6 border-2 border-slate-200 border-t-blue-600 rounded-full;
   animation: spin 0.8s linear infinite;
 }
 

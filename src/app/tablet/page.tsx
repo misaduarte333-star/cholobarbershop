@@ -114,13 +114,13 @@ export default function TabletDashboard() {
     const citasSiguientes = citasActivas.filter(c => c.estado !== 'en_proceso')
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
+        <div className="min-h-screen bg-slate-50 text-slate-900">
             {/* Header */}
-            <header className="bg-slate-800/50 backdrop-blur-xl border-b border-slate-700/50 px-6 py-4">
+            <header className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] flex items-center justify-center shadow-lg shadow-[#d4af37]/20">
-                            <span className="text-xl font-black text-black">CB</span>
+                        <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
+                            <span className="text-xl font-black text-white">CB</span>
                         </div>
                         <div>
                             <h1 className="text-xl font-bold">{barbero?.nombre || 'Cargando...'}</h1>

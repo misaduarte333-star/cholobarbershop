@@ -16,18 +16,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 flex">
+        <div className="min-h-screen bg-slate-50 flex text-slate-900">
             {/* Sidebar */}
-            <aside className="w-64 bg-slate-800/50 backdrop-blur-xl border-r border-slate-700/50 flex-shrink-0 fixed h-full z-50">
+            <aside className="w-64 bg-white border-r border-slate-200 flex-shrink-0 fixed h-full z-50 shadow-sm">
                 <div className="p-6 h-full flex flex-col">
                     {/* Logo */}
-                    <Link href="/admin" className="flex items-center gap-3 mb-10 text-white hover:opacity-80 transition-opacity">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] flex items-center justify-center shadow-lg shadow-[#d4af37]/20">
-                            <span className="text-xl font-black">CB</span>
+                    <Link href="/admin" className="flex items-center gap-3 mb-10 hover:opacity-80 transition-opacity">
+                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
+                            <span className="text-xl font-black text-white">CB</span>
                         </div>
                         <div>
-                            <h1 className="font-black text-lg leading-none tracking-tighter">CHOLO<span className="text-[var(--primary)]">BARBER</span></h1>
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-1">Management</p>
+                            <h1 className="font-black text-lg leading-none tracking-tighter text-slate-900">CHOLO<span className="text-[var(--primary)]">BARBER</span></h1>
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold mt-1">Management</p>
                         </div>
                     </Link>
 
@@ -41,23 +41,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <NavItem href="/admin/configuracion" icon="settings" label="Configuración" active={isActive('configuracion')} />
                     </nav>
 
-                    {/* User Profile */}
-                    <div className="pt-6 border-t border-slate-700/50">
-                        <div className="glass-card p-3 flex items-center gap-3 bg-slate-800/80">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center text-sm font-bold text-white shadow-lg">
+                    {/* User Profile & Logout */}
+                    <div className="pt-6 border-t border-slate-100 flex flex-col gap-3">
+                        <div className="p-3 flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">
                                 A
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">Admin</p>
-                                <p className="text-xs text-slate-400">Sucursal Principal</p>
+                                <p className="text-sm font-bold text-slate-900 truncate">Admin</p>
+                                <p className="text-xs text-slate-500 font-medium">Sucursal Principal</p>
                             </div>
                         </div>
+
+                        <button
+                            onClick={() => window.location.href = '/'}
+                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors duration-200 font-bold text-sm w-full"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Cerrar Sesión
+                        </button>
                     </div>
                 </div>
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 ml-64 p-8 min-h-screen relative">
+            <main className="flex-1 ml-64 p-8 min-h-screen relative bg-slate-50/50">
                 <ConnectionStatus />
                 <div className="max-w-7xl mx-auto animate-fade-in">
                     {children}
@@ -86,17 +96,17 @@ function NavItem({ href, icon, label, active = false }: { href: string; icon: st
             className={`
         flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
         ${active
-                    ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] shadow-md shadow-[#d4af37]/40 text-black'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    ? 'bg-slate-100 text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                 }
       `}
         >
-            <svg className={`w-5 h-5 transition-transform group-hover:scale-110 ${active ? 'text-white' : 'text-current'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-5 h-5 transition-transform group-hover:scale-110 ${active ? 'text-[var(--primary)]' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {getIcon()}
             </svg>
-            <span className="font-medium">{label}</span>
+            <span className="font-bold">{label}</span>
             {active && (
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white opacity-50" />
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--primary)] shadow-sm shadow-[var(--primary)]/50" />
             )}
         </Link>
     )

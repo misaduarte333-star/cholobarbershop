@@ -127,14 +127,14 @@ export default function BookingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white p-4 md:p-8">
+        <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8">
             <div className="max-w-2xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black mb-2 tracking-tighter uppercase">
+                    <h1 className="text-4xl font-black mb-2 tracking-tighter uppercase text-slate-900">
                         CHOLO<span className="text-[var(--primary)]">BARBER</span>
                     </h1>
-                    <p className="text-slate-500 text-sm uppercase tracking-widest">Reserva tu experiencia elite</p>
+                    <p className="text-slate-400 text-xs uppercase tracking-[0.4em] font-bold">Premium Experience</p>
                 </div>
 
                 {/* Progress Bar */}
@@ -143,8 +143,8 @@ export default function BookingPage() {
                     {[1, 2, 3, 4].map((s) => (
                         <div
                             key={s}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300
-                            ${step >= s ? 'bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-black shadow-lg shadow-[#d4af37]/40' : 'bg-slate-800 text-slate-500 border border-slate-700'}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300
+                            ${step >= s ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-300 border border-slate-200'}
                             `}
                         >
                             {s}

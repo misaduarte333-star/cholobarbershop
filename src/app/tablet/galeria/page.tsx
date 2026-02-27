@@ -109,7 +109,7 @@ export default function GalleryPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#020617] text-white p-6">
+        <div className="min-h-screen bg-slate-50 text-slate-900 p-6">
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
@@ -134,7 +134,7 @@ export default function GalleryPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {servicios.map((servicio) => (
                             <div key={servicio.id} className="glass-card overflow-hidden group border-slate-800/50 hover:border-[var(--primary)]/30 transition-all">
-                                <div className="aspect-video relative bg-slate-900 flex items-center justify-center">
+                                <div className="aspect-video relative bg-slate-100 flex items-center justify-center">
                                     {fotosMap[servicio.id] ? (
                                         <img
                                             src={fotosMap[servicio.id]}
@@ -174,8 +174,8 @@ export default function GalleryPage() {
                                         </div>
                                     </label>
                                 </div>
-                                <div className="p-4 border-t border-slate-800/80 bg-slate-900/50">
-                                    <h3 className="font-bold text-white uppercase tracking-wider text-sm">{servicio.nombre}</h3>
+                                <div className="p-4 border-t border-slate-100 bg-white">
+                                    <h3 className="font-bold text-slate-900 uppercase tracking-wider text-sm">{servicio.nombre}</h3>
                                     <p className="text-xs text-slate-500 mt-1">Sube tu mejor trabajo de este servicio</p>
                                 </div>
                             </div>
@@ -184,10 +184,10 @@ export default function GalleryPage() {
                 )}
 
                 {/* Info Card */}
-                <div className="mt-10 p-4 rounded-xl bg-purple-900/10 border border-purple-500/20">
+                <div className="mt-10 p-4 rounded-xl bg-blue-50 border border-blue-100">
                     <div className="flex gap-3">
                         <span className="text-xl">🤖</span>
-                        <p className="text-xs text-purple-300 leading-relaxed">
+                        <p className="text-xs text-blue-800 leading-relaxed font-medium">
                             Estas fotos serán visibles automáticamente por el bot de WhatsApp (n8n).
                             Asegúrate de que tus trabajos luzcan impecables para atraer más clientes.
                         </p>

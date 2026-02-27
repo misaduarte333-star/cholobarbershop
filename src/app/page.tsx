@@ -4,32 +4,23 @@ import Link from 'next/link'
 
 export default function Home() {
     return (
-        <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-            {/* Background Effects */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[#020617] via-purple-950/20 to-[#020617]" />
-            <div
-                className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20"
-                style={{ background: 'var(--primary)' }}
-            />
-            <div
-                className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl opacity-10"
-                style={{ background: 'var(--secondary)' }}
-            />
+        <main className="min-h-screen relative overflow-hidden bg-white text-slate-900">
+            {/* Elegant Background Pattern */}
+            <div className="absolute inset-0 z-0 opacity-[0.03]"
+                style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]" />
 
             {/* Content */}
             <div className="relative z-10 text-center px-6 animate-fade-in">
                 {/* Logo */}
                 <div className="mb-8">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] shadow-lg shadow-[#d4af37]/40 mb-6">
-                        <span className="text-3xl font-black text-black">CB</span>
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white border-2 border-slate-900 shadow-xl shadow-slate-200 mb-6">
+                        <span className="text-3xl font-black text-slate-900">CB</span>
                     </div>
-                    <h1 className="text-5xl md:text-6xl font-bold mb-4">
-                        <span className="gradient-text">CHOLO<span className="text-[var(--primary)]">BARBER</span></span>
-                        <span className="text-white"> AI</span>
+                    <h1 className="text-5xl md:text-6xl font-black mb-4 tracking-tighter uppercase text-slate-900">
+                        CHOLO<span className="text-[var(--primary)]">BARBER</span>
                     </h1>
-                    <p className="text-xl text-slate-400 max-w-xl mx-auto">
-                        Sistema inteligente de gestión de citas con IA conversacional para WhatsApp
-                    </p>
+                    <p className="text-slate-500 text-lg uppercase tracking-[0.3em] font-bold">Classic & Elegant</p>
                 </div>
 
                 {/* Navigation Cards */}
@@ -74,6 +65,6 @@ export default function Home() {
                     Desarrollado con Next.js, Supabase y OpenAI GPT-4o
                 </p>
             </div>
-        </div>
+        </main>
     )
 }
