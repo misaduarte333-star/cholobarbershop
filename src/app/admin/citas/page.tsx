@@ -1,20 +1,38 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
-import type { CitaConRelaciones, EstadoCita, Servicio, Barbero } from '@/lib/types'
+import { useSearchParams, useRouter } from 'next/navigation'
+import type { CitaDesdeVista, EstadoCita, Servicio, Barbero } from '@/lib/types'
 
-export default function CitasPage() {
+function CitasContent() {
     // 1. Hydration mismatch fix: Start with a stable state or wait for mount
     const [mounted, setMounted] = useState(false)
-    const [citas, setCitas] = useState<CitaConRelaciones[]>([])
+    const [citas, setCitas] = useState<CitaDesdeVista[]>([])
     const [loading, setLoading] = useState(true)
     const [filtroFecha, setFiltroFecha] = useState('') // Empty initially
     const [filtroEstado, setFiltroEstado] = useState<EstadoCita | 'todas'>('todas')
     const [debugMsg, setDebugMsg] = useState('')
     const [showModal, setShowModal] = useState(false)
-    const [editingCita, setEditingCita] = useState<CitaConRelaciones | null>(null)
+    const [editingCita, setEditingCita] = useState<CitaDesdeVista | null>(null)
     const [initialOrigen, setInitialOrigen] = useState<'whatsapp' | 'walkin'>('whatsapp')
+
+    const searchParams = useSearchParams()
+    const router = useRouter()
+
+    // Check for query parameters to automatically open the modal
+    useEffect(() => {
+        if (mounted && searchParams) {
+            const action = searchParams.get('action')
+            if (action === 'agenda-manual') {
+                handleNewCita('whatsapp')
+                router.replace('/admin/citas') // Clean URL
+            } else if (action === 'walk-in') {
+                handleNewCita('walkin')
+                router.replace('/admin/citas') // Clean URL
+            }
+        }
+    }, [mounted, searchParams, router])
 
     const handleNewCita = (origen: 'whatsapp' | 'walkin' = 'whatsapp') => {
         setEditingCita(null)
@@ -22,7 +40,7 @@ export default function CitasPage() {
         setShowModal(true)
     }
 
-    const handleEditCita = (cita: CitaConRelaciones) => {
+    const handleEditCita = (cita: CitaDesdeVista) => {
         setEditingCita(cita)
         setInitialOrigen(cita.origen as any)
         setShowModal(true)
@@ -39,7 +57,7 @@ export default function CitasPage() {
         }
     }
 
-    const handleStatusChange = async (cardita: CitaConRelaciones, newStatus: EstadoCita) => {
+    const handleStatusChange = async (cardita: CitaDesdeVista, newStatus: EstadoCita) => {
         try {
             const { error } = await (supabase
                 .from('citas') as any)
@@ -78,16 +96,11 @@ export default function CitasPage() {
 
             console.log('Fetching citas for:', filtroFecha)
 
-            // Force casting to any to avoid TS issues with Supabase definitions
+            // Use localized date for filtering to stay consistent with Hermosillo boundaries
             let query = (supabase
-                .from('citas') as any)
-                .select(`
-          *,
-          servicio:servicios(*),
-          barbero:barberos(nombre, estacion_id)
-        `)
-                .gte('timestamp_inicio', inicioDelDia)
-                .lte('timestamp_inicio', finDelDia)
+                .from('vista_citas_agente') as any)
+                .select('*')
+                .eq('fecha_cita_local', filtroFecha)
                 .order('timestamp_inicio', { ascending: true })
 
             if (filtroEstado !== 'todas') {
@@ -121,8 +134,24 @@ export default function CitasPage() {
     useEffect(() => {
         if (mounted && filtroFecha) {
             cargarCitas()
+
+            // Supabase Realtime Subscription
+            const channel = supabase.channel('citas-page-changes')
+                .on(
+                    'postgres_changes' as any,
+                    { event: '*', schema: 'public', table: 'citas' },
+                    () => {
+                        console.log('Realtime update received on CitasPage')
+                        cargarCitas()
+                    }
+                )
+                .subscribe()
+
+            return () => {
+                supabase.removeChannel(channel)
+            }
         }
-    }, [mounted, filtroFecha, cargarCitas])
+    }, [mounted, filtroFecha, cargarCitas, supabase])
 
     // Avoid hydration mismatch by not rendering until mounted
     if (!mounted) {
@@ -248,9 +277,10 @@ export default function CitasPage() {
                             {citas.map((cita) => (
                                 <tr key={cita.id} className="hover:bg-slate-800/30 transition-colors">
                                     <td className="px-6 py-4 font-mono text-sm text-slate-300">
-                                        {cita.timestamp_inicio ? new Date(cita.timestamp_inicio).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                                        <span className="text-slate-500 mx-1">-</span>
-                                        {cita.timestamp_fin ? new Date(cita.timestamp_fin).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                        <div className="flex flex-col">
+                                            <span className="text-white font-bold">{cita.hora_cita_local || '--:--'}</span>
+                                            <span className="text-[10px] text-slate-500 uppercase">{cita.fecha_cita_local}</span>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <p className="font-medium text-white">{cita.cliente_nombre}</p>
@@ -263,10 +293,10 @@ export default function CitasPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="text-sm text-slate-300">
-                                            {cita.servicio?.nombre || 'Servicio Personalizado'}
+                                            {cita.servicio_nombre || 'Servicio Personalizado'}
                                         </div>
                                         <div className="text-xs text-slate-500">
-                                            {cita.barbero?.nombre || 'Sin barbero'}
+                                            {cita.barbero_nombre || 'Sin barbero'}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
@@ -341,12 +371,19 @@ export default function CitasPage() {
                     />
                 )
             }
-
         </>
     )
 }
 
-function getDemoCitas(fecha: string): CitaConRelaciones[] {
+export default function CitasPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-white">Cargando aplicación...</div>}>
+            <CitasContent />
+        </Suspense>
+    )
+}
+
+function getDemoCitas(fecha: string): CitaDesdeVista[] {
     const safeFecha = fecha || new Date().toISOString().split('T')[0]
     return [
         {
@@ -365,8 +402,14 @@ function getDemoCitas(fecha: string): CitaConRelaciones[] {
             recordatorio_1h_enviado: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            servicio: { id: '1', nombre: 'Corte Clásico', duracion_minutos: 40, precio: 250, activo: true, created_at: '' },
-            barbero: { id: '1', sucursal_id: '1', nombre: 'Carlos H.', estacion_id: 1, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, created_at: '' }
+            hora_cita_local: '10:00 AM',
+            hora_fin_local: '10:40 AM',
+            fecha_cita_local: safeFecha,
+            servicio_nombre: 'Corte Clásico',
+            servicio_precio: 250,
+            barbero_nombre: 'Carlos H.',
+            monto_pagado: null,
+            metodo_pago: null
         },
         {
             id: '2',
@@ -384,8 +427,14 @@ function getDemoCitas(fecha: string): CitaConRelaciones[] {
             recordatorio_1h_enviado: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            servicio: { id: '2', nombre: 'Barba', duracion_minutos: 30, precio: 150, activo: true, created_at: '' },
-            barbero: { id: '1', sucursal_id: '1', nombre: 'Carlos H.', estacion_id: 1, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, created_at: '' }
+            hora_cita_local: '11:00 AM',
+            hora_fin_local: '11:30 AM',
+            fecha_cita_local: safeFecha,
+            servicio_nombre: 'Barba',
+            servicio_precio: 150,
+            barbero_nombre: 'Carlos H.',
+            monto_pagado: null,
+            metodo_pago: null
         },
         {
             id: '3',
@@ -403,20 +452,21 @@ function getDemoCitas(fecha: string): CitaConRelaciones[] {
             recordatorio_1h_enviado: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            servicio: { id: '3', nombre: 'Combo Completo', duracion_minutos: 60, precio: 350, activo: true, created_at: '' },
-            barbero: { id: '2', sucursal_id: '1', nombre: 'Miguel L.', estacion_id: 2, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, created_at: '' }
+            hora_cita_local: '12:00 PM',
+            hora_fin_local: '01:00 PM',
+            fecha_cita_local: safeFecha,
+            servicio_nombre: 'Combo Completo',
+            servicio_precio: 350,
+            barbero_nombre: 'Miguel L.',
+            monto_pagado: null,
+            metodo_pago: null
         }
     ]
 }
 
 
-function CitaModal({
-    cita,
-    onClose,
-    onSave,
-    initialOrigen = 'whatsapp'
-}: {
-    cita?: CitaConRelaciones | null
+function CitaModal({ cita, onClose, onSave, initialOrigen }: {
+    cita?: CitaDesdeVista | null
     onClose: () => void
     onSave: () => void
     initialOrigen?: 'whatsapp' | 'walkin'
@@ -431,9 +481,9 @@ function CitaModal({
         cliente_telefono: cita?.cliente_telefono || '',
         servicio_id: cita?.servicio_id || (cita ? 'custom' : ''), // If editing and no service, assume custom
         barbero_id: cita?.barbero_id || '',
-        fecha: cita?.timestamp_inicio ? cita.timestamp_inicio.split('T')[0] : new Date().toISOString().split('T')[0],
-        hora: cita?.timestamp_inicio ? cita.timestamp_inicio.split('T')[1].substring(0, 5) : '10:00',
-        horaFin: cita?.timestamp_fin ? cita.timestamp_fin.split('T')[1].substring(0, 5) : '10:30', // New Field
+        fecha: cita?.timestamp_inicio ? new Date(cita.timestamp_inicio).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        hora: cita?.timestamp_inicio ? new Date(cita.timestamp_inicio).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '10:00',
+        horaFin: cita?.timestamp_fin ? new Date(cita.timestamp_fin).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '10:30',
         notas: cita?.notas || ''
     })
 

@@ -117,6 +117,32 @@ export interface CitaConRelaciones extends Cita {
     sucursal?: Sucursal
 }
 
+export interface CitaDesdeVista {
+    id: string
+    sucursal_id: string
+    barbero_id: string
+    servicio_id: string
+    cliente_nombre: string
+    cliente_telefono: string | null
+    timestamp_inicio: string
+    timestamp_fin: string
+    hora_cita_local: string
+    hora_fin_local: string
+    fecha_cita_local: string
+    barbero_nombre: string
+    servicio_nombre: string
+    servicio_precio: number
+    estado: EstadoCita
+    origen: OrigenCita
+    monto_pagado: number | null
+    metodo_pago: string | null
+    notas: string | null
+    recordatorio_24h_enviado?: boolean | null
+    recordatorio_1h_enviado?: boolean | null
+    created_at?: string
+    updated_at?: string
+}
+
 export interface BarberoConSucursal extends Barbero {
     sucursal?: Sucursal
 }

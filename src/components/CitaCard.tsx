@@ -4,15 +4,15 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
-import type { CitaConRelaciones, EstadoCita } from '@/lib/types'
+import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
 
 interface CitaCardProps {
-    cita: CitaConRelaciones
+    cita: CitaDesdeVista
     onUpdate?: () => void
     isHighlighted?: boolean
     style?: React.CSSProperties
     currentTime: Date
-    allCitas: CitaConRelaciones[]
+    allCitas: CitaDesdeVista[]
 }
 
 export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, allCitas }: CitaCardProps) {
@@ -30,7 +30,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
     const [agreedCancel, setAgreedCancel] = useState(false)
 
     // Checkout states
-    const [montoFinal, setMontoFinal] = useState<number>(cita.servicio?.precio || 0)
+    const [montoFinal, setMontoFinal] = useState<number>(cita.servicio_precio || 0)
     const [metodoPago, setMetodoPago] = useState<'efectivo' | 'tarjeta' | 'transferencia'>('efectivo')
     const [notasCrm, setNotasCrm] = useState('')
 
@@ -241,7 +241,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                 )}
                                 <div className="h-1 w-1 rounded-full bg-white/20" />
                                 <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">
-                                    {cita.servicio?.nombre}
+                                    {cita.servicio_nombre}
                                 </span>
                             </div>
                         </div>
@@ -357,13 +357,12 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="p-6 bg-[#16181D] rounded-[2rem]">
                                                 <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-2">Servicio</p>
-                                                <p className="font-black text-white text-sm uppercase">{cita.servicio?.nombre}</p>
-                                                <p className="text-lg font-black text-primary mt-1 tracking-tight">${cita.servicio?.precio}</p>
+                                                <p className="font-black text-white text-sm uppercase">{cita.servicio_nombre}</p>
+                                                <p className="text-lg font-black text-primary mt-1 tracking-tight">${cita.servicio_precio}</p>
                                             </div>
                                             <div className="p-6 bg-[#16181D] rounded-[2rem]">
                                                 <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-2">Horario</p>
                                                 <p className="font-black text-white text-sm uppercase">{horaInicio}</p>
-                                                <p className="text-xs font-bold text-white/40 mt-1 uppercase tracking-widest">{cita.servicio?.duracion_minutos} MIN</p>
                                             </div>
                                         </div>
                                     </div>
@@ -460,7 +459,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                                         className="w-32 bg-transparent text-6xl font-black text-white outline-none font-display tracking-tighter"
                                                     />
                                                 </div>
-                                                <p className="mt-6 text-[9px] font-black text-white/20 uppercase tracking-widest bg-white/5 px-4 py-2 rounded-lg border border-white/5">Precio Base: ${cita.servicio?.precio}</p>
+                                                <p className="mt-6 text-[9px] font-black text-white/20 uppercase tracking-widest bg-white/5 px-4 py-2 rounded-lg border border-white/5">Precio Base: ${cita.servicio_precio}</p>
                                             </div>
 
                                             <div>

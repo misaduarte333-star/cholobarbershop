@@ -67,16 +67,16 @@ export function KPICard({ titulo, valor, color, icon, trend, trendInverse }: KPI
 
     return (
         <div className={`
-            glass-card p-7 sm:p-9 rounded-[2rem] border-primary/10
+            glass-card p-3 sm:p-4 rounded-[1.2rem] border-primary/10
             transition-all duration-500 hover:scale-[1.03] hover:border-primary/30
             hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] group relative overflow-hidden
         `}>
             {/* Ambient Background Glow */}
-            <div className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-700 bg-primary`} />
+            <div className={`absolute -right-8 -bottom-8 w-16 h-16 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-700 bg-primary`} />
 
-            <div className="flex items-start justify-between mb-8">
-                <div className={`w-14 h-14 rounded-2xl ${config.iconBg} flex items-center justify-center border border-white/5 shadow-inner scale-110 group-hover:scale-125 transition-transform duration-500`}>
-                    <svg className={`w-7 h-7 ${config.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-start justify-between mb-3">
+                <div className={`w-9 h-9 rounded-lg ${config.iconBg} flex items-center justify-center border border-white/5 shadow-inner scale-100 group-hover:scale-110 transition-transform duration-500`}>
+                    <svg className={`w-4 h-4 ${config.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {getIcon()}
                     </svg>
                 </div>
@@ -95,10 +95,10 @@ export function KPICard({ titulo, valor, color, icon, trend, trendInverse }: KPI
             </div>
 
             <div className="relative z-10">
-                <p className="text-white/40 text-[10px] sm:text-xs mb-3 font-black uppercase tracking-[0.3em] font-display leading-tight">
+                <p className="text-white/40 text-[8px] sm:text-[9px] mb-0.5 font-black uppercase tracking-[0.2em] font-display leading-tight">
                     {titulo}
                 </p>
-                <p className={`text-4xl sm:text-5xl font-black font-display uppercase tracking-tight leading-none drop-shadow-2xl ${color === 'amber' ? 'text-gradient-gold' : 'text-white'}`}>
+                <p className={`text-xl sm:text-2xl font-black font-display uppercase tracking-tight leading-none drop-shadow-2xl truncate ${color === 'amber' ? 'text-gradient-gold' : 'text-white'}`}>
                     {valor}
                 </p>
             </div>

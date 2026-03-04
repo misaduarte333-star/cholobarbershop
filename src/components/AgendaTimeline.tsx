@@ -1,10 +1,10 @@
 'use client'
 
 import { useMemo, useEffect, useRef, useState } from 'react'
-import type { CitaConRelaciones } from '@/lib/types'
+import type { CitaDesdeVista } from '@/lib/types'
 
 interface AgendaTimelineProps {
-    citas: CitaConRelaciones[]
+    citas: CitaDesdeVista[]
     currentTime: Date
 }
 
@@ -134,7 +134,7 @@ export function AgendaTimeline({ citas, currentTime }: AgendaTimelineProps) {
                                                     {cita.cliente_nombre}
                                                 </p>
                                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight mt-1">
-                                                    {cita.servicio?.nombre}
+                                                    {cita.servicio_nombre}
                                                 </p>
                                             </div>
                                         </div>

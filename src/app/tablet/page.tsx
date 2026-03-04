@@ -7,11 +7,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
-import type { CitaConRelaciones } from '@/lib/types'
+import type { CitaDesdeVista } from '@/lib/types'
 
 export default function TabletDashboard() {
     const router = useRouter()
-    const [citas, setCitas] = useState<CitaConRelaciones[]>([])
+    const [citas, setCitas] = useState<CitaDesdeVista[]>([])
     const [loading, setLoading] = useState(true)
     const [currentTime, setCurrentTime] = useState(new Date())
     const [barbero, setBarbero] = useState<{ id: string, nombre: string, estacion_id: number | null } | null>(null)
@@ -25,8 +25,17 @@ export default function TabletDashboard() {
 
     // Initialize Audio
     useEffect(() => {
-        audioRef.current = new Audio('/notification.mp3') // Assume a standard sound file exists or browser default
-        audioRef.current.volume = 0.5
+        try {
+            audioRef.current = new Audio('/notification.mp3')
+            audioRef.current.volume = 0.5
+            // Pre-load check
+            audioRef.current.onerror = () => {
+                console.warn('⚠️ Archivo /notification.mp3 no encontrado. Sube un archivo a public/notification.mp3 para habilitar sonidos.')
+                audioRef.current = null
+            }
+        } catch (e) {
+            console.error('Error initializing audio:', e)
+        }
     }, [])
 
     // Auth Check
@@ -49,20 +58,14 @@ export default function TabletDashboard() {
         if (!barbero?.id) return
         console.log('🔄 Fetching appointments from Supabase...')
 
-        const hoy = new Date()
-        const inicioDelDia = new Date(hoy.setHours(0, 0, 0, 0)).toISOString()
-        const finDelDia = new Date(hoy.setHours(23, 59, 59, 999)).toISOString()
+        const hoyLocal = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local time
 
         try {
-            const { data, error } = await (supabase
-                .from('citas') as any)
-                .select(`
-          *,
-          servicio:servicios(*)
-        `)
+            const { data, error } = await supabase
+                .from('vista_citas_agente')
+                .select('*')
                 .eq('barbero_id', barbero.id)
-                .gte('timestamp_inicio', inicioDelDia)
-                .lte('timestamp_inicio', finDelDia)
+                .eq('fecha_cita_local', hoyLocal)
                 .neq('estado', 'cancelada')
                 .order('timestamp_inicio', { ascending: true })
 
@@ -115,7 +118,7 @@ export default function TabletDashboard() {
 
     const totalDinero = citas
         .filter(c => c.estado === 'finalizada')
-        .reduce((acc, current) => acc + (current.monto_pagado ?? current.servicio?.precio ?? 0), 0)
+        .reduce((acc, current) => acc + (current.monto_pagado ?? current.servicio_precio ?? 0), 0)
 
     const citasPendientes = citas.filter(c => ['confirmada', 'en_espera', 'en_proceso'].includes(c.estado))
     const citaEnProceso = citas.find(c => c.estado === 'en_proceso')

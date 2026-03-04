@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
-
+import type { CitaDesdeVista } from '@/lib/types'
 import { KPICard } from '@/components/KPICard'
 
 export default function ReportesPage() {
@@ -26,29 +26,22 @@ export default function ReportesPage() {
     const cargarReportes = useCallback(async () => {
         setLoading(true)
         try {
-            const startDate = `${dateRange.start}T00:00:00`
-            const endDate = `${dateRange.end}T23:59:59`
-
-            const { data: citas, error } = await (supabase
-                .from('citas') as any)
-                .select(`
-                    id,
-                    timestamp_inicio,
-                    estado,
-                    servicio:servicios(nombre, precio)
-                `)
-                .gte('timestamp_inicio', startDate)
-                .lte('timestamp_inicio', endDate)
+            const { data: citas, error } = await supabase
+                .from('vista_citas_agente')
+                .select('*')
+                .gte('fecha_cita_local', dateRange.start)
+                .lte('fecha_cita_local', dateRange.end)
                 .in('estado', ['finalizada', 'confirmada', 'en_proceso'])
 
             if (error) throw error
 
             if (citas) {
+                const castedCitas = citas as CitaDesdeVista[]
                 // Calculate Stats
-                const finalizadas = citas.filter((c: any) => c.estado === 'finalizada')
-                const totalIngresos = finalizadas.reduce((sum: any, c: any) => sum + ((c.servicio as any)?.precio || 0), 0)
-                const totalCitas = citas.length
-                const ticketPromedio = totalCitas > 0 ? totalIngresos / finalizadas.length : 0
+                const finalizadas = castedCitas.filter(c => c.estado === 'finalizada')
+                const totalIngresos = finalizadas.reduce((sum, c) => sum + (c.servicio_precio || 0), 0)
+                const totalCitas = castedCitas.length
+                const ticketPromedio = finalizadas.length > 0 ? totalIngresos / finalizadas.length : 0
 
                 setStats({
                     totalIngresos,
@@ -59,20 +52,20 @@ export default function ReportesPage() {
 
                 // Prepare Chart Data: Ingresos por Dia
                 const ingresosMap = new Map<string, number>()
-                finalizadas.forEach((c: any) => {
+                finalizadas.forEach(c => {
                     const dia = new Date(c.timestamp_inicio).toLocaleDateString('es-MX', { weekday: 'short' })
-                    const precio = (c.servicio as any)?.precio || 0
+                    const precio = c.servicio_precio || 0
                     ingresosMap.set(dia, (ingresosMap.get(dia) || 0) + precio)
                 })
                 setIngresosPorDia(Array.from(ingresosMap.entries()).map(([dia, monto]) => ({ dia, monto })))
 
                 // Prepare Chart Data: Citas por Servicio
                 const serviciosMap = new Map<string, number>()
-                citas.forEach((c: any) => {
-                    const nombre = (c.servicio as any)?.nombre || 'Desconocido'
+                castedCitas.forEach(c => {
+                    const nombre = c.servicio_nombre || 'Desconocido'
                     serviciosMap.set(nombre, (serviciosMap.get(nombre) || 0) + 1)
                 })
-                const totalServicios = citas.length
+                const totalServicios = castedCitas.length
                 setCitasPorServicio(Array.from(serviciosMap.entries())
                     .map(([servicio, cantidad]) => ({
                         servicio,
@@ -119,7 +112,7 @@ export default function ReportesPage() {
         ])
     }
 
-    const maxIngreso = Math.max(...ingresosPorDia.map(d => d.monto), 1)
+    const maxIngreso = Math.max(...ingresosPorDia.map((d: { monto: number }) => d.monto), 1)
 
     return (
         <>
@@ -151,14 +144,14 @@ export default function ReportesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <KPICard
                     titulo="Ingresos Totales"
-                    valor={`$${stats.totalIngresos.toLocaleString('es-MX')}`}
+                    valor={`$${Math.round(stats.totalIngresos).toLocaleString('es-MX', { maximumFractionDigits: 0 })}`}
                     color="green"
                     icon="money"
                     trend={12}
                 />
                 <KPICard
                     titulo="Ticket Promedio"
-                    valor={`$${stats.ticketPromedio.toFixed(2)}`}
+                    valor={`$${Math.round(stats.ticketPromedio).toLocaleString('es-MX', { maximumFractionDigits: 0 })}`}
                     color="blue"
                     icon="money"
                     trend={5}
@@ -184,7 +177,7 @@ export default function ReportesPage() {
                 <div className="glass-card p-6">
                     <h2 className="text-lg font-bold text-white mb-6">Ingresos por Día</h2>
                     <div className="h-64 flex items-end justify-between gap-2">
-                        {ingresosPorDia.map((item, i) => (
+                        {ingresosPorDia.map((item: { dia: string; monto: number }, i: number) => (
                             <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
                                 <div className="w-full relative flex items-end justify-center">
                                     <div
@@ -192,7 +185,7 @@ export default function ReportesPage() {
                                         style={{ height: `${(item.monto / maxIngreso) * 200}px` }}
                                     >
                                         <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap transition-opacity">
-                                            ${item.monto.toLocaleString()}
+                                            ${Math.round(item.monto).toLocaleString('es-MX')}
                                         </div>
                                     </div>
                                 </div>
@@ -206,7 +199,7 @@ export default function ReportesPage() {
                 <div className="glass-card p-6">
                     <h2 className="text-lg font-bold text-white mb-6">Servicios Más Solicitados</h2>
                     <div className="space-y-6">
-                        {citasPorServicio.map((item, i) => (
+                        {citasPorServicio.map((item: { servicio: string; cantidad: number; porcentaje: number }, i: number) => (
                             <div key={i}>
                                 <div className="flex justify-between items-end mb-2">
                                     <span className="text-sm font-medium text-slate-200">{item.servicio}</span>

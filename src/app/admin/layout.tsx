@@ -84,11 +84,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Sidebar (Premium Glassmorphism) */}
             <aside className={`
-                w-72 glass-card border-r border-white/5 flex-shrink-0 fixed h-[calc(100%-2rem)] m-4 z-[80] shadow-[30px_0_60px_rgba(0,0,0,0.5)]
+                w-60 glass-card border-r border-white/5 flex-shrink-0 fixed h-[calc(100%-1.5rem)] m-3 z-[80] shadow-[30px_0_60px_rgba(0,0,0,0.5)]
                 transition-all duration-700 ease-out lg:translate-x-0
                 ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full lg:translate-x-0'}
             `}>
-                <div className="p-8 h-full flex flex-col relative z-10">
+                <div className="p-6 h-full flex flex-col relative z-10">
                     {/* Logo Section */}
                     <Link href="/admin" className="flex items-center gap-4 mb-12 hover:opacity-80 transition-all group">
                         <div className="relative group-hover:scale-110 transition-transform duration-500">
@@ -139,7 +139,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 lg:ml-80 p-6 md:p-12 min-h-screen relative z-10 pt-32 lg:pt-12 flex flex-col">
+            <main className="flex-1 lg:ml-[260px] p-3 md:p-5 h-screen overflow-y-auto relative z-10 pt-20 lg:pt-6 flex flex-col">
                 <ConnectionStatus />
                 <div className="max-w-7xl mx-auto w-full animate-fade-in relative flex-1">
                     {children}
@@ -155,7 +155,7 @@ function NavItem({ href, icon, label, active, onClick }: { href: string; icon: s
             href={href}
             onClick={onClick}
             className={`
-                flex items-center gap-5 px-6 py-4 rounded-[1.2rem] transition-all duration-500 relative group w-full
+                flex items-center gap-4 px-5 py-3 rounded-[1.2rem] transition-all duration-500 relative group w-full
                 ${active
                     ? 'bg-gradient-gold text-black shadow-[0_10px_25px_rgba(234,179,8,0.3)] scale-[1.02] border-primary'
                     : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 hover:translate-x-1'

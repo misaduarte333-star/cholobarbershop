@@ -164,7 +164,7 @@ export default function ServiciosPage() {
                             {/* Price */}
                             <div className="flex items-baseline gap-1 mb-6">
                                 <span className="text-3xl font-bold text-white">
-                                    ${servicio.precio.toLocaleString('es-MX')}
+                                    ${Math.round(servicio.precio).toLocaleString('es-MX')}
                                 </span>
                                 <span className="text-slate-400">MXN</span>
                             </div>
