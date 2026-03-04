@@ -1,75 +1,147 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 import { ConnectionStatus } from '@/components/ConnectionStatus'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+    const router = useRouter()
     const pathname = usePathname()
     const active = pathname.split('/').pop() || 'admin'
 
+    useEffect(() => {
+        // Skip check if we are on the login page (though login has its own page.tsx in subfolder,
+        // layout applies to all /admin/*)
+        if (pathname === '/admin/login') {
+            setIsCheckingAuth(false)
+            return
+        }
+
+        const session = localStorage.getItem('admin_session')
+        if (!session) {
+            router.push('/admin/login')
+        } else {
+            setIsCheckingAuth(false)
+        }
+    }, [pathname, router])
+
     // Helper for active state
-    const isActive = (key: string) => {
-        if (key === 'dashboard') return pathname === '/admin'
-        return pathname.startsWith(`/admin/${key}`)
+    const isLinkActive = (href: string) => {
+        if (href === '/admin') return pathname === '/admin'
+        return pathname === href || pathname.startsWith(href + '/')
+    }
+
+    if (isCheckingAuth) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#050608] text-white">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary shadow-[0_0_15px_rgba(234,179,8,0.3)]"></div>
+            </div>
+        )
+    }
+
+    // Exempt login page from the admin layout wrapper
+    if (pathname === '/admin/login') {
+        return <>{children}</>
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex text-slate-900">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-slate-200 flex-shrink-0 fixed h-full z-50 shadow-sm">
-                <div className="p-6 h-full flex flex-col">
-                    {/* Logo */}
-                    <Link href="/admin" className="flex items-center gap-3 mb-10 hover:opacity-80 transition-opacity">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
-                            <span className="text-xl font-black text-white">CB</span>
+        <div className="min-h-screen bg-shop-premium bg-fixed flex text-white relative font-sans selection:bg-primary selection:text-black antialiased">
+            {/* Design Overlays */}
+            <div className="fixed inset-0 vignette-overlay pointer-events-none z-0" />
+            <div className="fixed top-0 left-0 w-full h-1 bg-gradient-brand z-[100]" />
+
+            {/* Mobile Header (Premium) */}
+            <header className="lg:hidden fixed top-0 left-0 right-0 h-20 bg-black/60 backdrop-blur-3xl border-b border-white/5 z-[60] px-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-gold p-[1px]">
+                        <div className="w-full h-full rounded-xl bg-black flex items-center justify-center">
+                            <span className="text-xl font-black text-gradient-gold">CB</span>
                         </div>
-                        <div>
-                            <h1 className="font-black text-lg leading-none tracking-tighter text-slate-900">CHOLO<span className="text-[var(--primary)]">BARBER</span></h1>
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold mt-1">Management</p>
+                    </div>
+                    <span className="font-black text-sm tracking-tight text-white font-display uppercase">CHOLO<span className="text-primary font-black">BARBER</span></span>
+                </div>
+                <button
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-primary border border-primary/20"
+                >
+                    <span className="material-icons-round">
+                        {isSidebarOpen ? 'close' : 'menu'}
+                    </span>
+                </button>
+            </header>
+
+            {/* Sidebar Overlay (Mobile) */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/80 backdrop-blur-md z-[70] lg:hidden animate-fade-in"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar (Premium Glassmorphism) */}
+            <aside className={`
+                w-72 glass-card border-r border-white/5 flex-shrink-0 fixed h-[calc(100%-2rem)] m-4 z-[80] shadow-[30px_0_60px_rgba(0,0,0,0.5)]
+                transition-all duration-700 ease-out lg:translate-x-0
+                ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full lg:translate-x-0'}
+            `}>
+                <div className="p-8 h-full flex flex-col relative z-10">
+                    {/* Logo Section */}
+                    <Link href="/admin" className="flex items-center gap-4 mb-12 hover:opacity-80 transition-all group">
+                        <div className="relative group-hover:scale-110 transition-transform duration-500">
+                            <div className="absolute inset-0 bg-primary/30 rounded-2xl blur-xl group-hover:bg-primary/50 transition-all" />
+                            <div className="relative w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center shadow-2xl">
+                                <span className="text-2xl font-black text-gradient-gold">CB</span>
+                            </div>
+                        </div>
+                        <div className="min-w-0">
+                            <h1 className="font-black text-xl leading-none tracking-tight text-white drop-shadow-md font-display uppercase">CHOLO<span className="text-primary">BARBER</span></h1>
+                            <p className="text-[10px] uppercase tracking-[0.4em] text-white/30 font-black mt-2 leading-none">Management v2</p>
                         </div>
                     </Link>
 
                     {/* Navigation */}
-                    <nav className="space-y-1 flex-1">
-                        <NavItem href="/admin" icon="dashboard" label="Dashboard" active={isActive('dashboard')} />
-                        <NavItem href="/admin/citas" icon="calendar" label="Citas" active={isActive('citas')} />
-                        <NavItem href="/admin/barberos" icon="users" label="Barberos" active={isActive('barberos')} />
-                        <NavItem href="/admin/servicios" icon="scissors" label="Servicios" active={isActive('servicios')} />
-                        <NavItem href="/admin/reportes" icon="chart" label="Reportes" active={isActive('reportes')} />
-                        <NavItem href="/admin/configuracion" icon="settings" label="Configuración" active={isActive('configuracion')} />
+                    <nav className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                        <NavItem href="/admin" icon="dashboard" label="Dashboard" active={isLinkActive('/admin')} onClick={() => setIsSidebarOpen(false)} />
+                        <NavItem href="/admin/citas" icon="event_note" label="Agenda" active={isLinkActive('/admin/citas')} onClick={() => setIsSidebarOpen(false)} />
+                        <NavItem href="/admin/barberos" icon="groups" label="Barberos" active={isLinkActive('/admin/barberos')} onClick={() => setIsSidebarOpen(false)} />
+                        <NavItem href="/admin/servicios" icon="content_cut" label="Servicios" active={isLinkActive('/admin/servicios')} onClick={() => setIsSidebarOpen(false)} />
+                        <NavItem href="/admin/reportes" icon="analytics" label="Análisis" active={isLinkActive('/admin/reportes')} onClick={() => setIsSidebarOpen(false)} />
+                        <NavItem href="/admin/configuracion" icon="tune" label="Ajustes" active={isLinkActive('/admin/configuracion')} onClick={() => setIsSidebarOpen(false)} />
                     </nav>
 
-                    {/* User Profile & Logout */}
-                    <div className="pt-6 border-t border-slate-100 flex flex-col gap-3">
-                        <div className="p-3 flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-100">
-                            <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">
-                                A
+                    {/* Footer / Logout */}
+                    <div className="mt-auto pt-8 border-t border-white/5 flex flex-col gap-4">
+                        <div className="p-4 rounded-[1.5rem] bg-black/40 border border-white/5 backdrop-blur-xl flex items-center gap-4 group/profile hover:border-primary/20 transition-all">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-gold text-black flex items-center justify-center text-sm font-black shadow-lg">
+                                AD
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-slate-900 truncate">Admin</p>
-                                <p className="text-xs text-slate-500 font-medium">Sucursal Principal</p>
+                                <p className="text-xs font-black text-white truncate uppercase tracking-widest font-display">Administrador</p>
+                                <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em] mt-1">Master Access</p>
                             </div>
                         </div>
 
                         <button
-                            onClick={() => window.location.href = '/'}
-                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors duration-200 font-bold text-sm w-full"
+                            onClick={() => { localStorage.removeItem('admin_session'); router.push('/admin/login'); }}
+                            className="flex items-center gap-4 px-6 py-4 rounded-[1.2rem] text-red-400/50 hover:text-red-400 hover:bg-red-500/5 transition-all duration-300 font-black text-[10px] uppercase tracking-[0.3em] w-full border border-transparent hover:border-red-500/10 active:scale-95"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
+                            <span className="material-icons-round">logout</span>
                             Cerrar Sesión
                         </button>
                     </div>
                 </div>
+                {/* Visual Glass Accents */}
+                <div className="absolute top-0 right-0 w-full h-32 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 ml-64 p-8 min-h-screen relative bg-slate-50/50">
+            <main className="flex-1 lg:ml-80 p-6 md:p-12 min-h-screen relative z-10 pt-32 lg:pt-12 flex flex-col">
                 <ConnectionStatus />
-                <div className="max-w-7xl mx-auto animate-fade-in">
+                <div className="max-w-7xl mx-auto w-full animate-fade-in relative flex-1">
                     {children}
                 </div>
             </main>
@@ -77,36 +149,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
 }
 
-function NavItem({ href, icon, label, active = false }: { href: string; icon: string; label: string; active?: boolean }) {
-    const getIcon = () => {
-        switch (icon) {
-            case 'dashboard': return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            case 'calendar': return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            case 'users': return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            case 'scissors': return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
-            case 'chart': return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            case 'settings': return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.31 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            default: return null
-        }
-    }
-
+function NavItem({ href, icon, label, active, onClick }: { href: string; icon: string; label: string; active: boolean; onClick: () => void }) {
     return (
         <Link
             href={href}
+            onClick={onClick}
             className={`
-        flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
-        ${active
-                    ? 'bg-slate-100 text-slate-900 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                flex items-center gap-5 px-6 py-4 rounded-[1.2rem] transition-all duration-500 relative group w-full
+                ${active
+                    ? 'bg-gradient-gold text-black shadow-[0_10px_25px_rgba(234,179,8,0.3)] scale-[1.02] border-primary'
+                    : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 hover:translate-x-1'
                 }
-      `}
+            `}
         >
-            <svg className={`w-5 h-5 transition-transform group-hover:scale-110 ${active ? 'text-[var(--primary)]' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {getIcon()}
-            </svg>
-            <span className="font-bold">{label}</span>
+            <span className={`material-icons-round text-2xl ${active ? 'text-black' : 'group-hover:text-primary transition-colors'}`}>
+                {icon}
+            </span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] font-display">
+                {label}
+            </span>
             {active && (
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--primary)] shadow-sm shadow-[var(--primary)]/50" />
+                <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-black shadow-inner" />
             )}
         </Link>
     )

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
@@ -14,22 +15,34 @@ export default function TabletDashboard() {
     const [loading, setLoading] = useState(true)
     const [currentTime, setCurrentTime] = useState(new Date())
     const [barbero, setBarbero] = useState<{ id: string, nombre: string, estacion_id: number | null } | null>(null)
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+
+    // Notification State
+    const [newApptAlert, setNewApptAlert] = useState<{ show: boolean, clientName: string }>({ show: false, clientName: '' })
+    const audioRef = useRef<HTMLAudioElement | null>(null)
 
     const supabase = createClient()
+
+    // Initialize Audio
+    useEffect(() => {
+        audioRef.current = new Audio('/notification.mp3') // Assume a standard sound file exists or browser default
+        audioRef.current.volume = 0.5
+    }, [])
 
     // Auth Check
     useEffect(() => {
         const sessionStr = localStorage.getItem('barbero_session')
         if (!sessionStr) {
             router.push('/tablet/login')
-            return
+        } else {
+            try {
+                const session = JSON.parse(sessionStr)
+                setBarbero(session)
+            } catch {
+                router.push('/tablet/login')
+            }
         }
-        try {
-            const session = JSON.parse(sessionStr)
-            setBarbero(session)
-        } catch {
-            router.push('/tablet/login')
-        }
+        setIsCheckingAuth(false)
     }, [router])
 
     const cargarCitas = useCallback(async () => {
@@ -72,7 +85,25 @@ export default function TabletDashboard() {
         cargarCitas()
         const channel = supabase
             .channel(`citas-barbero-${barbero.id}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'citas', filter: `barbero_id=eq.${barbero.id}` }, () => cargarCitas())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'citas', filter: `barbero_id=eq.${barbero.id}` }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    const newCita = payload.new as any
+
+                    // Trigger sound & banner
+                    if (audioRef.current) {
+                        audioRef.current.play().catch(e => console.log('Audio autoplay prevented:', e))
+                    }
+
+                    setNewApptAlert({ show: true, clientName: newCita.cliente_nombre || 'Nuevo Cliente' })
+
+                    // Auto-hide after 5 seconds
+                    setTimeout(() => {
+                        setNewApptAlert(prev => ({ ...prev, show: false }))
+                    }, 5000)
+                }
+
+                cargarCitas()
+            })
             .subscribe()
         return () => { supabase.removeChannel(channel) }
     }, [cargarCitas, supabase, barbero])
@@ -90,105 +121,172 @@ export default function TabletDashboard() {
     const citaEnProceso = citas.find(c => c.estado === 'en_proceso')
     const citasSiguientes = citasPendientes.filter(c => c.estado !== 'en_proceso')
 
+    if (isCheckingAuth) {
+        return (
+            <div className="h-screen flex items-center justify-center bg-[var(--bg-secondary)]">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="spinner w-12 h-12 border-slate-700 border-t-primary" />
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse font-display">Iniciando Estación...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (!barbero) return null
+
     return (
-        <div className="h-screen flex flex-col bg-slate-50 text-slate-900 overflow-hidden">
+        <div className="h-screen flex flex-col bg-[#050608] text-white overflow-hidden relative selection:bg-primary selection:text-black">
+            {/* Background Ambient Glow */}
+            <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px] pointer-events-none" />
+            <div className="absolute inset-0 z-0 bg-shop-premium opacity-10 scale-110"></div>
+            <div className="absolute inset-0 z-0 vignette-overlay opacity-50"></div>
+
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm shrink-0 z-50">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
-                            <span className="text-xl font-black text-white italic">CB</span>
+
+            {/* New Appointment Notification Banner */}
+            <AnimatePresence>
+                {newApptAlert.show && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -100, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 32, scale: 1 }}
+                        exit={{ opacity: 0, y: -100, scale: 0.9 }}
+                        className="fixed top-0 left-1/2 -translate-x-1/2 z-[99999] pointer-events-none"
+                    >
+                        <div className="bg-[#16181D] border-2 border-primary/50 text-white px-8 py-4 rounded-[2rem] shadow-[0_30px_60px_rgba(0,0,0,0.8),0_0_40px_rgba(234,179,8,0.2)] flex items-center gap-6">
+                            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center border border-primary/50 animate-pulse-glow">
+                                <span className="material-icons-round text-primary text-2xl">notifications_active</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">¡Nueva Cita Agendada!</span>
+                                <span className="text-xl font-black font-display tracking-tight text-white uppercase">{newApptAlert.clientName}</span>
+                            </div>
                         </div>
-                        <div>
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-xl font-black text-slate-900 leading-none">{barbero?.nombre || 'Cargando...'}</h1>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-lg border border-amber-100">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                        <span className="text-[9px] font-black text-amber-700 uppercase tracking-wider">{citasPendientes.length} Pendientes</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <header className="bg-black/60 backdrop-blur-3xl border-b border-white/5 px-8 py-5 shadow-[0_10px_50px_rgba(0,0,0,0.8)] shrink-0 z-50 relative">
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-gold opacity-30" />
+
+                <div className="flex items-center justify-between max-w-[1920px] mx-auto">
+                    <div className="flex items-center gap-6 group">
+                        <div className="relative scale-90">
+                            <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-lg group-hover:bg-primary/10 transition-all duration-700" />
+                            <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-black border border-white/10 shadow-2xl backdrop-blur-sm overflow-hidden group-hover:border-white/20 transition-colors duration-500">
+                                <span className="text-2xl font-black text-primary font-display relative z-10 transition-transform group-hover:scale-105">CB</span>
+                                <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-30 transition-opacity duration-700" />
+                            </div>
+                        </div>
+                        <div className="animate-slide-in">
+                            <div className="flex flex-col items-start leading-none">
+                                <h1 className="text-2xl font-black text-white tracking-tight uppercase font-display">
+                                    {barbero?.nombre || 'Barbero'}
+                                </h1>
+                                <div className="mt-3 flex items-center gap-2">
+                                    <div className="flex items-center gap-2 px-2.5 py-1 bg-primary/5 rounded-lg border border-primary/10">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(234,179,8,0.4)]" />
+                                        <span className="text-[9px] font-black text-primary uppercase tracking-widest">{citasPendientes.length} Pendientes</span>
                                     </div>
-                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-lg border border-emerald-100">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                        <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wider">{citas.filter(c => c.estado === 'finalizada').length} Completadas</span>
+                                    <div className="flex items-center gap-2 px-2.5 py-1 bg-white/5 rounded-lg border border-white/5">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                                        <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{citas.filter(c => c.estado === 'finalizada').length} Finalizadas</span>
                                     </div>
                                 </div>
                             </div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight mt-1.5">
-                                Estación {barbero?.estacion_id} • {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
-                            </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-8">
-                        <div className="hidden lg:flex items-center gap-6 px-6 py-2 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner">
+                    <div className="flex items-center gap-12">
+                        {/* Stats Summary */}
+                        <div className="hidden xl:flex items-center gap-8 px-8 py-3 bg-white/5 rounded-2xl border border-white/5 shadow-inner backdrop-blur-xl">
                             <div className="text-center">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Citas Hoy</p>
-                                <p className="text-xl font-black text-slate-900 leading-none">{citas.length}</p>
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Citas Hoy</p>
+                                <p className="text-xl font-black text-white leading-none font-display">{citas.length}</p>
                             </div>
-                            <div className="w-px h-8 bg-slate-200" />
+                            <div className="w-[1px] h-6 bg-white/10" />
                             <div className="text-center">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Acumulado</p>
-                                <p className="text-xl font-black text-emerald-600 leading-none">${totalDinero}</p>
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Caja Hoy</p>
+                                <p className="text-xl font-black text-primary leading-none font-display tracking-tight">${totalDinero}</p>
                             </div>
                         </div>
 
-                        <div className="text-right hidden md:block">
-                            <p className="text-2xl font-black text-slate-900 tabular-nums tracking-tighter">
+                        {/* Clock & Status */}
+                        <div className="text-right hidden sm:block">
+                            <p className="text-2xl font-black text-white tabular-nums tracking-tighter font-display leading-none">
                                 {currentTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
                             </p>
-                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{citasPendientes.length} pendientes</p>
+                            <p className="text-[8px] text-white/20 font-black uppercase tracking-[0.4em] mt-2">Estación #{barbero?.estacion_id || '0'}</p>
                         </div>
-                        <Link href="/tablet/galeria" className="p-2 rounded-lg text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-2">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                            <span className="hidden sm:inline text-xs font-black uppercase tracking-widest">Galería</span>
-                        </Link>
-                        <button onClick={() => { localStorage.removeItem('barbero_session'); router.push('/tablet/login'); }} className="p-2 rounded-lg text-slate-400 hover:text-red-600 transition-colors">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                        </button>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                            <Link href="/tablet/galeria" className="w-12 h-12 rounded-xl bg-white/5 text-white/30 hover:text-primary hover:bg-primary/5 hover:border-primary/20 transition-all flex items-center justify-center border border-white/5 group active:scale-95">
+                                <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">photo_library</span>
+                            </Link>
+                            <button
+                                onClick={() => { localStorage.removeItem('barbero_session'); router.push('/tablet/login'); }}
+                                className="w-12 h-12 rounded-xl bg-white/5 text-white/30 hover:text-red-400 hover:bg-red-500/5 hover:border-red-400/20 transition-all flex items-center justify-center border border-white/5 group active:scale-95"
+                            >
+                                <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">logout</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-hidden p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+            <main className="flex-1 overflow-hidden p-6 md:p-8 relative z-10 flex flex-col gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full max-w-[1920px] mx-auto w-full">
                     {/* Appointments - Left Column */}
-                    <div className="lg:col-span-8 flex flex-col min-h-0 relative z-20">
-                        <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-8 pb-10">
-                            {/* Current Appointment */}
+                    <div className="lg:col-span-8 flex flex-col min-h-0 relative">
+                        <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-10 pb-10">
+                            {/* Current Appointment - High Presence */}
                             {citaEnProceso && (
-                                <div className="animate-fade-in shrink-0">
-                                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        Atendiendo Ahora
-                                    </h2>
-                                    <CitaCard cita={citaEnProceso} onUpdate={cargarCitas} isHighlighted currentTime={currentTime} allCitas={citas} />
+                                <div className="animate-slide-in relative group">
+                                    <div className="flex items-center gap-4 mb-5">
+                                        <div className="h-1 w-8 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                        <h2 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] font-display">Atendiendo Ahora</h2>
+                                    </div>
+                                    <div className="relative">
+                                        <div className="absolute -inset-4 bg-emerald-500/5 rounded-[3rem] blur-2xl opacity-40 pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-700" />
+                                        <CitaCard cita={citaEnProceso} onUpdate={cargarCitas} isHighlighted currentTime={currentTime} allCitas={citas} />
+                                    </div>
                                 </div>
                             )}
 
-                            {/* Upcoming Appointments */}
-                            <div className="flex-1">
-                                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-                                    Próximas Citas ({citasSiguientes.length})
-                                </h2>
+                            {/* Upcoming Appointments List */}
+                            <div className="flex flex-col flex-1">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-1 w-8 bg-white/10 rounded-full" />
+                                        <h2 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] font-display">Siguientes en Agenda ({citasSiguientes.length})</h2>
+                                    </div>
+                                    {citasSiguientes.length > 0 && (
+                                        <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-xl border border-white/5 backdrop-blur-md">
+                                            <span className="material-icons-round text-xs text-primary">schedule</span>
+                                            <span className="text-[8px] font-black text-white/50 uppercase tracking-widest">Flujo de Trabajo</span>
+                                        </div>
+                                    )}
+                                </div>
 
                                 {loading ? (
-                                    <div className="glass-card p-24 flex flex-col items-center justify-center bg-white border border-slate-100 rounded-3xl">
+                                    <div className="bg-white/5 p-20 flex flex-col items-center justify-center border border-white/5 rounded-[2.5rem] shadow-2xl backdrop-blur-sm">
                                         <div className="spinner w-10 h-10 mb-4" />
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sincronizando...</p>
+                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse">Cargando Agenda...</p>
                                     </div>
                                 ) : citasSiguientes.length === 0 ? (
-                                    <div className="glass-card p-24 text-center bg-white border border-slate-100 shadow-sm rounded-3xl">
-                                        <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-100 text-slate-200">
-                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    <div className="bg-white/2 p-20 text-center border border-white/5 shadow-2xl rounded-[2.5rem] group hover:border-white/10 transition-all duration-700">
+                                        <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/5 text-white/10 group-hover:text-primary transition-all duration-700 shadow-inner group-hover:scale-110">
+                                            <span className="material-icons-round text-4xl">done_all</span>
                                         </div>
-                                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Sin más citas programadas</p>
+                                        <p className="text-white/20 font-black uppercase tracking-[0.2em] text-[10px]">Sin más citas para hoy</p>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
+                                    <div className="grid grid-cols-1 gap-6 pb-20">
                                         {citasSiguientes.map((cita, index) => (
-                                            <CitaCard key={cita.id} cita={cita} onUpdate={cargarCitas} currentTime={currentTime} allCitas={citas} style={{ animationDelay: `${index * 100}ms` }} />
+                                            <div key={cita.id} className="animate-slide-in" style={{ animationDelay: `${index * 100}ms` }}>
+                                                <CitaCard cita={cita} onUpdate={cargarCitas} currentTime={currentTime} allCitas={citas} />
+                                            </div>
                                         ))}
                                     </div>
                                 )}
@@ -196,13 +294,14 @@ export default function TabletDashboard() {
                         </div>
                     </div>
 
-                    {/* Timeline - Right Column */}
-                    <div className="lg:col-span-4 h-full flex flex-col min-h-0 relative z-10">
-                        <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-3 shrink-0">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Cronograma
-                        </h2>
-                        <div className="flex-1 glass-card bg-white border border-slate-100 shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden relative">
+                    {/* Timeline - Right Column - Premium Container */}
+                    <div className="lg:col-span-4 h-full flex flex-col min-h-0 relative pb-4 lg:pb-0">
+                        <div className="flex items-center gap-4 mb-6 shrink-0 px-2">
+                            <div className="h-1 w-8 bg-primary/20 rounded-full" />
+                            <h2 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] font-display">Cronograma General</h2>
+                        </div>
+                        <div className="flex-1 bg-black/40 border border-white/5 shadow-[0_30px_90px_rgba(0,0,0,0.5)] rounded-[2.5rem] overflow-hidden relative backdrop-blur-3xl group transition-all duration-700 hover:border-white/10">
+                            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-gold opacity-10" />
                             <AgendaTimeline citas={citas} currentTime={currentTime} />
                         </div>
                     </div>

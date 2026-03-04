@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 
-export default function TabletLoginPage() {
+export default function AdminLoginPage() {
     const router = useRouter()
-    const [usuario, setUsuario] = useState('')
+    const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -20,30 +20,27 @@ export default function TabletLoginPage() {
         setError('')
 
         try {
-            // Check credentials against barberos table
-            // Note: Currently using plain comparison to match database state
-            const providedPassword = password
-
-            const { data: barberos, error: dbError } = await supabase
-                .from('barberos')
+            const { data: admins, error: dbError } = await supabase
+                .from('usuarios_admin')
                 .select('*')
-                .eq('usuario_tablet', usuario)
+                .eq('email', email)
                 .limit(1)
 
             if (dbError) throw dbError
 
-            const barbero = barberos?.[0] as any
+            const admin = admins?.[0] as any
 
-            if (barbero && barbero.password_hash === providedPassword) {
-                // Success
-                localStorage.setItem('barbero_session', JSON.stringify(barbero))
-                router.push('/tablet')
+            // In a real app we would use proper hash comparison
+            // Matching the pattern used in the barber login for now
+            if (admin && admin.password_hash === password) {
+                localStorage.setItem('admin_session', JSON.stringify(admin))
+                router.push('/admin')
             } else {
-                setError('Usuario o contraseña incorrectos')
+                setError('Credenciales incorrectas')
             }
         } catch (err) {
             console.error('Login error:', err)
-            setError('Error al conectar con el servidor. Verifica tu conexión.')
+            setError('Error de conexión con el servidor')
         } finally {
             setLoading(false)
         }
@@ -51,11 +48,11 @@ export default function TabletLoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#050608] text-white selection:bg-primary selection:text-black antialiased">
-            {/* Background elements - Consistent with Brand Identity */}
+            {/* Background elements - Same as Home for consistency */}
             <div className="absolute inset-0 z-0 bg-shop-premium opacity-40 scale-105"></div>
             <div className="absolute inset-0 z-0 vignette-overlay opacity-80"></div>
 
-            {/* Light Leaks & Ambient Glows */}
+            {/* Light Leaks */}
             <div className="absolute -top-24 -right-24 w-[500px] h-[500px] rounded-full blur-[120px] opacity-20 bg-primary pointer-events-none animate-pulse-glow" />
             <div className="absolute -bottom-24 -left-24 w-[500px] h-[500px] rounded-full blur-[120px] opacity-10 bg-primary pointer-events-none" />
 
@@ -63,7 +60,7 @@ export default function TabletLoginPage() {
             <div className="absolute top-8 left-8 z-30">
                 <Link href="/" className="flex items-center gap-3 px-5 py-3 rounded-2xl glass-card text-white/70 hover:text-primary transition-all group border-primary/20">
                     <span className="material-icons-round text-lg group-hover:-translate-x-1 transition-transform">arrow_back</span>
-                    <span className="text-xs font-black uppercase tracking-[0.2em] font-display">Volver</span>
+                    <span className="text-xs font-black uppercase tracking-[0.2em] font-display">Regresar</span>
                 </Link>
             </div>
 
@@ -80,12 +77,12 @@ export default function TabletLoginPage() {
                             <span className="text-3xl font-black text-primary relative z-10 font-display">CB</span>
                         </div>
                         <h1 className="font-display font-black text-4xl md:text-5xl tracking-tight flex flex-col items-center leading-none">
-                            <span className="text-white drop-shadow-2xl">ACCESO</span>
-                            <span className="text-gradient-gold uppercase">Barberos</span>
+                            <span className="text-white drop-shadow-2xl">MASTER</span>
+                            <span className="text-gradient-gold uppercase">Panel Admin</span>
                         </h1>
                         <div className="mt-6 flex items-center justify-center space-x-4">
                             <div className="h-[1px] w-10 bg-primary/30"></div>
-                            <p className="text-[9px] tracking-[0.5em] text-white/50 font-black uppercase">Estación de Trabajo</p>
+                            <p className="text-[9px] tracking-[0.5em] text-white/50 font-black uppercase">Administración Central</p>
                             <div className="h-[1px] w-10 bg-primary/30"></div>
                         </div>
                     </div>
@@ -93,27 +90,25 @@ export default function TabletLoginPage() {
                     {/* Form */}
                     <form onSubmit={handleLogin} className="space-y-6">
                         <div className="space-y-2">
-                            <label htmlFor="usuario" className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-2">ID de Usuario</label>
+                            <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-2">Correo Corporativo</label>
                             <div className="group flex items-center gap-4 px-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-all">
-                                <span className="material-icons-round text-white/30 group-focus-within:text-primary transition-colors">badge</span>
+                                <span className="material-icons-round text-white/30 group-focus-within:text-primary transition-colors">alternate_email</span>
                                 <input
-                                    id="usuario"
-                                    type="text"
-                                    value={usuario}
-                                    onChange={(e) => setUsuario(e.target.value)}
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
                                     className="bg-transparent border-none outline-none w-full text-white placeholder:text-white/20 font-bold text-sm"
-                                    placeholder="NOMBRE_USUARIO"
+                                    placeholder="admin@cholobarber.com"
                                     required
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <label htmlFor="password" className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-2">Clave Maestra</label>
+                            <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-2">Clave Maestra</label>
                             <div className="group flex items-center gap-4 px-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-all">
-                                <span className="material-icons-round text-white/30 group-focus-within:text-primary transition-colors">lock_person</span>
+                                <span className="material-icons-round text-white/30 group-focus-within:text-primary transition-colors">vpn_key</span>
                                 <input
-                                    id="password"
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -126,7 +121,7 @@ export default function TabletLoginPage() {
 
                         {error && (
                             <div className="bg-red-500/10 border border-red-500/30 rounded-2xl px-4 py-3 text-red-400 text-sm flex items-center gap-4 animate-shake">
-                                <span className="material-icons-round text-red-400 text-sm">warning_amber</span>
+                                <span className="material-icons-round text-sm">error_outline</span>
                                 <span className="font-bold tracking-wide uppercase text-[10px]">{error}</span>
                             </div>
                         )}
@@ -140,18 +135,17 @@ export default function TabletLoginPage() {
                                 <div className="spinner" />
                             ) : (
                                 <>
-                                    <span className="font-black italic">Entrar al Sistema</span>
-                                    <span className="material-icons-round group-hover:translate-x-2 transition-transform">auto_awesome</span>
+                                    <span className="font-black">Entrar al Sistema</span>
+                                    <span className="material-icons-round group-hover:translate-x-2 transition-transform">login</span>
                                 </>
                             )}
                         </button>
                     </form>
 
-                    {/* Help Link */}
+                    {/* Footer Info */}
                     <div className="mt-8 pt-6 border-t border-white/5 text-center">
-                        <p className="text-[9px] uppercase tracking-[0.4em] text-white/30 font-black flex items-center justify-center gap-3">
-                            <span className="material-icons-round text-xs">headset_mic</span>
-                            Contacto Soporte
+                        <p className="text-[9px] uppercase tracking-[0.4em] text-white/20 font-black">
+                            Propiedad Privada de Cholo Barber
                         </p>
                     </div>
                 </div>

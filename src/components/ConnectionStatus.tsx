@@ -57,7 +57,7 @@ export function ConnectionStatus() {
             fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all flex flex-col gap-1
             ${status === 'connected' ? 'bg-slate-900/90 border-emerald-500/30 shadow-emerald-900/20' : ''}
             ${status === 'error' ? 'bg-slate-900/90 border-red-500/30 shadow-red-900/20' : ''}
-            ${status === 'demo' ? 'bg-slate-900/90 border-amber-500/30 shadow-amber-900/20' : ''}
+            ${status === 'demo' ? 'bg-slate-900/90 border-primary/30 shadow-primary/20' : ''}
         `}>
             <div className="flex items-center gap-3">
                 <span className={`relative flex h-2.5 w-2.5`}>
@@ -69,7 +69,7 @@ export function ConnectionStatus() {
                     <span className={`relative inline-flex rounded-full h-2.5 w-2.5
                     ${status === 'connected' ? 'bg-emerald-500' : ''}
                     ${status === 'error' ? 'bg-red-500' : ''}
-                    ${status === 'demo' ? 'bg-amber-500' : ''}
+                    ${status === 'demo' ? 'bg-primary' : ''}
                   `}></span>
                 </span>
                 <span className={`text-sm font-semibold

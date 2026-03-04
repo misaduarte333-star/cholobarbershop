@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import type { CitaConRelaciones, EstadoCita } from '@/lib/types'
@@ -15,6 +16,9 @@ interface CitaCardProps {
 }
 
 export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, allCitas }: CitaCardProps) {
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => setMounted(true), [])
+
     // States
     const [loading, setLoading] = useState(false)
     const [showDetails, setShowDetails] = useState(false)
@@ -60,7 +64,6 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                 alert(`Error en Base de Datos: ${error.message}`)
             } else {
                 console.log('✅ ACTUALIZACION EXITOSA:', data)
-                // Using alert to confirm to the user that it worked on the tablet
                 if (nuevoEstado === 'en_proceso') {
                     console.log('Moved to In Process')
                 }
@@ -138,18 +141,24 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
     }
 
     const config = {
-        confirmada: { bg: 'bg-white', border: 'border-blue-100', accent: 'border-l-blue-600', badge: 'status-confirmed', label: 'Bot: Confirmada' },
-        en_espera: { bg: 'bg-white', border: 'border-amber-100', accent: 'border-l-amber-600', badge: 'status-waiting', label: 'Cliente en Sucursal' },
-        en_proceso: { bg: 'bg-white', border: 'border-emerald-100', accent: 'border-l-emerald-600', badge: 'status-in-progress', label: 'En Proceso' },
-        finalizada: { bg: 'bg-white', border: 'border-slate-100', accent: 'border-l-slate-600', badge: 'status-completed', label: 'Pagada y Finalizada' },
-        cancelada: { bg: 'bg-white', border: 'border-red-100', accent: 'border-l-red-600', badge: 'status-cancelled', label: 'Cancelada' },
-        no_show: { bg: 'bg-white', border: 'border-red-100', accent: 'border-l-red-600', badge: 'status-cancelled', label: 'No Show' }
-    }[cita.estado] || { bg: 'bg-white', border: 'border-slate-100', accent: 'border-l-slate-600', badge: 'status-completed', label: cita.estado }
+        confirmada: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-primary', badge: 'bg-primary/20 text-primary border border-primary/30', label: 'Confirmada' },
+        en_espera: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-primary', badge: 'bg-primary/20 text-primary border border-primary/30', label: 'En Sucursal' },
+        en_proceso: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-emerald-500', badge: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30', label: 'En Proceso' },
+        finalizada: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-slate-500', badge: 'bg-slate-500/20 text-slate-400 border border-slate-500/30', label: 'Finalizada' },
+        cancelada: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-red-500', badge: 'bg-red-500/20 text-red-400 border border-red-500/30', label: 'Cancelada' },
+        no_show: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-red-500', badge: 'bg-red-500/20 text-red-400 border border-red-500/30', label: 'No Show' }
+    }[cita.estado] || { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-slate-500', badge: 'bg-slate-500/20 text-slate-400', label: cita.estado }
 
     const citaStartTime = new Date(cita.timestamp_inicio)
     const minutosDiferencia = Math.floor((currentTime.getTime() - citaStartTime.getTime()) / 60000)
     const esNoShow = minutosDiferencia > 15
     const canConfirm = currentTime.getTime() >= (citaStartTime.getTime() - 5 * 60 * 1000)
+
+    const isEnSucursal = cita.estado === 'en_espera'
+    const minHastaCita = Math.floor((citaStartTime.getTime() - currentTime.getTime()) / 60000)
+    const isTiempoCorto = cita.estado === 'confirmada' && minHastaCita >= 0 && minHastaCita <= 15
+    const hasUpdatedAt = cita.updated_at && cita.created_at && new Date(cita.updated_at).getTime() > new Date(cita.created_at).getTime() + 60000
+    const isReprogramada = hasUpdatedAt && cita.estado === 'confirmada'
 
     const hasNextSoon = allCitas.some(c => {
         if (c.id === cita.id || c.estado === 'cancelada' || c.estado === 'finalizada') return false
@@ -190,40 +199,76 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
 
     return (
         <div
-            className={`relative rounded-2xl p-6 border border-slate-100 border-l-[6px] ${config.bg} ${config.accent} ${isHighlighted || isInProcess ? 'shadow-[0_20px_60px_-15px_rgba(16,185,129,0.2)]' : 'shadow-sm'} ${isAnyModalOpen ? 'z-[9999]' : (isHighlighted ? 'z-10' : 'z-0')} transition-all duration-500 hover:shadow-md animate-fade-in ${isInProcess ? 'bg-emerald-50/20 border-emerald-500/10' : ''}`}
+            className={`relative rounded-[2.5rem] p-8 border-l-[8px] glass-card ${config.bg} ${config.border} ${config.accent} ${isHighlighted || isInProcess ? 'shadow-[0_20px_60px_rgba(234,179,8,0.2)] border-primary/30' : 'border-white/5'} ${isAnyModalOpen ? 'z-[9999]' : (isHighlighted ? 'z-10' : 'z-0')} transition-all duration-700 hover:scale-[1.02] hover:bg-black/60 group animate-fade-in relative overflow-hidden`}
             style={style}
         >
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 text-slate-900">
+            {/* Interior Glow Overlay for active items */}
+            {(isHighlighted || isInProcess) && (
+                <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+            )}
+
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 text-white relative z-10">
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center shrink-0 shadow-lg shadow-slate-200">
-                            <span className="text-2xl font-black text-white">{cita.cliente_nombre.charAt(0).toUpperCase()}</span>
+                    <div className="flex items-center gap-6 mb-6">
+                        <div className="w-16 h-16 rounded-[1.2rem] bg-black/60 border-2 border-white/10 flex items-center justify-center shrink-0 shadow-2xl group-hover:border-primary/40 transition-colors duration-500">
+                            <span className="text-3xl font-black text-primary font-display group-hover:scale-110 transition-transform">{cita.cliente_nombre.charAt(0).toUpperCase()}</span>
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-xl font-black text-slate-900 truncate tracking-tight">{cita.cliente_nombre}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className={`status-badge text-[10px] ${config.badge}`}>{config.label}</span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{cita.servicio?.nombre}</span>
+                            <h3 className="text-2xl font-black text-white truncate tracking-tight font-display uppercase drop-shadow-md">
+                                {cita.cliente_nombre}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-3 mt-2">
+                                <span className={`px-3 py-1 rounded-xl text-[10px] uppercase font-black tracking-[0.1em] border ${config.badge}`}>
+                                    {config.label}
+                                </span>
+                                {isEnSucursal && (
+                                    <span className="px-3 py-1 rounded-xl text-[10px] uppercase font-black tracking-[0.1em] bg-emerald-500 text-black animate-pulse flex items-center gap-1 shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                                        <span className="material-icons-round text-[12px]">how_to_reg</span>
+                                        En sucursal
+                                    </span>
+                                )}
+                                {isTiempoCorto && (
+                                    <span className="px-3 py-1 rounded-xl text-[10px] uppercase font-black tracking-[0.1em] border border-amber-500/50 text-amber-500 animate-pulse flex items-center gap-1 bg-amber-500/10">
+                                        <span className="material-icons-round text-[12px]">timer</span>
+                                        En {minHastaCita} min
+                                    </span>
+                                )}
+                                {isReprogramada && !isTiempoCorto && !isEnSucursal && (
+                                    <span className="px-3 py-1 rounded-xl text-[10px] uppercase font-black tracking-[0.1em] border border-blue-500/30 text-blue-400 flex items-center gap-1 bg-blue-500/10">
+                                        <span className="material-icons-round text-[12px]">update</span>
+                                        Reprogramada
+                                    </span>
+                                )}
+                                <div className="h-1 w-1 rounded-full bg-white/20" />
+                                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">
+                                    {cita.servicio?.nombre}
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 text-slate-500 font-bold uppercase tracking-widest text-[10px]">
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-100">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            <span>{horaInicio} - {horaFin}</span>
+                    <div className="flex flex-wrap items-center gap-6 text-white/40 font-black uppercase tracking-[0.4em] text-[10px]">
+                        <div className="flex items-center gap-3 px-5 py-2.5 bg-black/40 rounded-2xl border border-white/5 shadow-inner group-hover:border-primary/20 transition-colors">
+                            <span className="material-icons-round text-primary text-sm">schedule</span>
+                            <span className="text-white tracking-[0.2em]">{horaInicio}</span>
+                            <span className="text-white/20 px-1">—</span>
+                            <span className="text-white/40">{horaFin}</span>
                         </div>
-                        {cita.notas && <span className="text-blue-600 truncate max-w-[200px]">📝 {cita.notas}</span>}
+                        {cita.notas && (
+                            <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/5 rounded-2xl border border-blue-500/20 max-w-[300px]">
+                                <span className="material-icons-round text-blue-400 text-sm">notes</span>
+                                <span className="text-blue-400 truncate tracking-normal italic opacity-80">{cita.notas}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 md:flex-col lg:flex-row shrink-0">
+                <div className="flex flex-wrap gap-3 shrink-0">
                     {cita.estado === 'confirmada' && (
                         <>
-                            <div className="flex flex-col gap-1">
+                            <div className="flex flex-col gap-2">
                                 <button
                                     onClick={() => {
-                                        console.log('Action: ATENDER clicked', { citaId: cita.id, esNoShow, loading })
                                         if (loading) return
                                         if (esNoShow) {
                                             setShowLateWarning(true)
@@ -232,27 +277,26 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                         }
                                     }}
                                     disabled={loading || !canConfirm}
-                                    className={`px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest shadow-sm transition-all flex items-center gap-2 ${!canConfirm ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' :
-                                        esNoShow ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-100 animate-pulse' :
-                                            'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-emerald-200 shadow-emerald-100'
+                                    className={`px-8 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-2xl transition-all flex items-center gap-3 border active:scale-95 ${!canConfirm ? 'bg-white/5 text-white/20 cursor-not-allowed border-white/5' :
+                                        esNoShow ? 'bg-amber-500 text-white hover:bg-amber-400 border-amber-300 shadow-[0_10px_30px_rgba(245,158,11,0.3)] animate-pulse' :
+                                            'bg-gradient-gold text-black hover:scale-105 border-primary shadow-[0_10px_30px_rgba(234,179,8,0.3)]'
                                         }`}
                                 >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                    {!canConfirm ? `Faltan ${Math.abs(minutosDiferencia)} min` : esNoShow ? 'Atender Tardío' : 'Atender'}
+                                    <span className="material-icons-round text-lg">{!canConfirm ? 'timer' : 'play_arrow'}</span>
+                                    <span className="font-display">{!canConfirm ? `Faltan ${Math.abs(minutosDiferencia)} MIN` : esNoShow ? 'Atender Tardío' : 'Iniciar Servicio'}</span>
                                 </button>
                                 {esNoShow && (
-                                    <span className="text-[8px] font-black text-amber-600 animate-pulse text-center uppercase tracking-tighter">
-                                        ⚠️ {minutosDiferencia} min de retraso
+                                    <span className="text-[9px] font-black text-primary animate-pulse text-center uppercase tracking-[0.3em]">
+                                        ⚠️ RETRASO CRÍTICO
                                     </span>
                                 )}
                             </div>
-                            <button onClick={() => setShowMove(true)} className="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                            <button onClick={() => setShowMove(true)} className="px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] text-white/70 hover:text-white hover:bg-white/10 border border-white/10 transition-all flex items-center justify-center gap-3 backdrop-blur-sm active:scale-95">
+                                <span className="material-icons-round text-lg">event_repeat</span>
                                 Mover
                             </button>
-                            <button onClick={() => setShowCancel(true)} disabled={loading} className="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest text-red-600 hover:bg-red-50 border border-red-100 transition-all flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                                Cancelar
+                            <button onClick={() => setShowCancel(true)} disabled={loading} className="px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] text-red-400/70 hover:text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-all flex items-center justify-center gap-3 backdrop-blur-sm active:scale-95">
+                                <span className="material-icons-round text-lg">close</span>
                             </button>
                         </>
                     )}
@@ -261,9 +305,9 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                         <button
                             onClick={() => actualizarEstado('en_proceso')}
                             disabled={loading}
-                            className="px-6 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center gap-2"
+                            className="px-8 py-5 rounded-[1.5rem] font-black text-[12px] uppercase tracking-[0.3em] border-2 border-primary/50 bg-primary/10 text-primary hover:bg-primary hover:text-black shadow-[0_10px_40px_rgba(234,179,8,0.2)] transition-all flex items-center gap-4 active:scale-95"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg>
+                            <span className="material-icons-round text-xl">start</span>
                             Confirmar Inicio
                         </button>
                     )}
@@ -272,267 +316,270 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                         <button
                             onClick={() => setShowCheckout(true)}
                             disabled={loading}
-                            className="px-6 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200 transition-all flex items-center gap-2"
+                            className="px-10 py-5 rounded-[1.5rem] font-black text-[12px] uppercase tracking-[0.3em] bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_20px_50px_rgba(16,185,129,0.3)] transition-all flex items-center gap-4 border-2 border-emerald-300 active:scale-95"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <span className="material-icons-round text-xl">receipt_long</span>
                             Cobrar y Finalizar
                         </button>
                     )}
 
-                    <button onClick={() => setShowDetails(true)} className="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Detalles
-                    </button>
+                    {!isInProcess && (
+                        <button onClick={() => setShowDetails(true)} className="px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] text-white/30 hover:text-white hover:bg-white/5 transition-all flex items-center justify-center gap-3 border border-white/5 active:scale-95">
+                            <span className="material-icons-round text-lg">info</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* MODALS */}
-            {showDetails && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in text-slate-900">
-                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-in">
-                        <div className="p-8 text-slate-900">
-                            <div className="flex items-center justify-between mb-8">
-                                <h3 className="text-2xl font-black uppercase tracking-tighter">Detalles de la Cita</h3>
-                                <button onClick={() => setShowDetails(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-slate-900">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            <div className="space-y-6">
-                                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cliente</p>
-                                    <p className="text-xl font-black text-slate-900">{cita.cliente_nombre}</p>
-                                    <p className="text-sm font-bold text-slate-500 mt-1">{cita.cliente_telefono}</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Servicio</p>
-                                        <p className="font-black text-slate-900">{cita.servicio?.nombre}</p>
-                                        <p className="text-xs font-bold text-emerald-600 mt-1">${cita.servicio?.precio}</p>
-                                    </div>
-                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Horario</p>
-                                        <p className="font-black text-slate-900">{horaInicio}</p>
-                                        <p className="text-xs font-bold text-slate-500 mt-1">{cita.servicio?.duracion_minutos} min</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowDetails(false)} className="w-full mt-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
-                                Entendido
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showMove && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in text-slate-900">
-                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-slide-in">
-                        <div className="p-8 text-slate-900">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="text-2xl font-black uppercase tracking-tighter">Reprogramar Cita</h3>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Solo Horas Enteras Disponibles</p>
-                                </div>
-                                <button onClick={() => setShowMove(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 py-6 border-y border-slate-100 my-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                {generateTimeSlots().map((slot) => {
-                                    const isSelected = newHour === slot.value
-                                    let btnClass = slot.isPast ? "bg-slate-50 text-slate-300 cursor-not-allowed opacity-50" :
-                                        slot.isOccupied ? "bg-red-50 text-red-300 border border-red-100 cursor-not-allowed" :
-                                            isSelected ? "bg-emerald-600 text-white shadow-xl shadow-emerald-200" :
-                                                "bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-100"
-                                    return (
-                                        <button key={slot.value} disabled={slot.isPast || slot.isOccupied} onClick={() => setNewHour(slot.value)} className={`py-6 rounded-2xl text-sm font-black transition-all flex flex-col items-center justify-center gap-1 ${btnClass}`}>
-                                            {slot.label}
-                                            <span className="text-[8px] uppercase tracking-widest">{slot.isPast ? "Pasado" : slot.isOccupied ? "Ocupado" : "Libre"}</span>
-                                        </button>
-                                    )
-                                })}
-                            </div>
-                            <div className="flex gap-4">
-                                <button onClick={() => setShowMove(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Salir</button>
-                                <button onClick={moverCita} disabled={!newHour || loading} className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg transition-all ${!newHour ? 'bg-slate-100 text-slate-300' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>
-                                    {loading ? 'Cargando...' : 'Confirmar'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showCheckout && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm text-slate-900">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] relative"
-                    >
-                        {/* Animación de Éxito / Carga */}
-                        {loading && (
+            {/* MODALS - Fixed position and high z-index to prevent clipping */}
+            {mounted && typeof document !== 'undefined' ? createPortal(
+                <AnimatePresence>
+                    {showDetails && (
+                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
                             <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center gap-4"
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                className="bg-[#0A0C10] rounded-[2.5rem] w-full max-w-md shadow-[0_30px_90px_rgba(0,0,0,0.8)] overflow-hidden relative"
                             >
-                                <motion.div
-                                    animate={{ scale: [1, 1.2, 1] }}
-                                    transition={{ repeat: Infinity, duration: 2 }}
-                                    className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center border border-emerald-100 shadow-inner"
-                                >
-                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                </motion.div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600 animate-pulse">Sincronizando Pago...</p>
+                                <div className="p-10 text-white">
+                                    <div className="flex items-center justify-end mb-4">
+                                        <button onClick={() => setShowDetails(false)} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white absolute top-6 right-6">
+                                            <span className="material-icons-round">close</span>
+                                        </button>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="p-6 bg-[#16181D] rounded-[2rem]">
+                                            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-2">Cliente</p>
+                                            <p className="text-2xl font-black text-white font-display uppercase tracking-tight">{cita.cliente_nombre}</p>
+                                            <p className="text-sm font-bold text-primary mt-1 tracking-widest">{cita.cliente_telefono}</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-6 bg-[#16181D] rounded-[2rem]">
+                                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-2">Servicio</p>
+                                                <p className="font-black text-white text-sm uppercase">{cita.servicio?.nombre}</p>
+                                                <p className="text-lg font-black text-primary mt-1 tracking-tight">${cita.servicio?.precio}</p>
+                                            </div>
+                                            <div className="p-6 bg-[#16181D] rounded-[2rem]">
+                                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-2">Horario</p>
+                                                <p className="font-black text-white text-sm uppercase">{horaInicio}</p>
+                                                <p className="text-xs font-bold text-white/40 mt-1 uppercase tracking-widest">{cita.servicio?.duracion_minutos} MIN</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </motion.div>
-                        )}
-
-                        <div className="px-6 py-4 border-b border-slate-100 shrink-0 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-xl font-black uppercase tracking-tighter text-slate-900 leading-none">Finalizar y Cobrar</h3>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">{cita.cliente_nombre}</p>
-                            </div>
-                            <button onClick={() => setShowCheckout(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
                         </div>
+                    )}
 
-                        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-5 gap-4 items-stretch">
-                                    <div className="col-span-2 bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col items-center justify-center relative shadow-inner">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 leading-none text-center">Monto Final</label>
-                                        <div className="flex items-center justify-center gap-1.5 translate-x-[-4px]">
-                                            <span className="text-2xl font-black text-slate-300">$</span>
-                                            <input
-                                                type="number"
-                                                value={montoFinal}
-                                                onChange={(e) => setMontoFinal(Number(e.target.value))}
-                                                className="w-32 text-center bg-transparent text-5xl font-black text-slate-900 outline-none tabular-nums"
-                                            />
+                    {showMove && (
+                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                className="border border-white/10 bg-[#0A0C10] rounded-[3rem] w-full max-w-2xl shadow-[0_30px_90px_rgba(0,0,0,0.8)] overflow-hidden relative"
+                            >
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold opacity-50" />
+                                <div className="p-10 text-white">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div>
+                                            <h3 className="text-2xl font-black uppercase tracking-tighter font-display">Reprogramar</h3>
+                                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mt-2">Selecciona un nuevo horario disponible</p>
                                         </div>
-                                        <div className="mt-4 px-3 py-1 bg-white rounded-lg border border-slate-200 shadow-sm flex items-center gap-1.5">
-                                            <span className="text-[8px] font-black text-slate-300 uppercase leading-none">Base:</span>
-                                            <span className="text-[10px] text-slate-500 font-black tabular-nums leading-none">${cita.servicio?.precio}</span>
-                                        </div>
+                                        <button onClick={() => setShowMove(false)} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
+                                            <span className="material-icons-round">close</span>
+                                        </button>
                                     </div>
-
-                                    <div className="col-span-3 flex flex-col">
-                                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block leading-none">Método de Pago</label>
-                                        <div className="grid grid-cols-3 gap-2 flex-1">
-                                            {(['efectivo', 'tarjeta', 'transferencia'] as const).map(metodo => (
-                                                <button
-                                                    key={metodo}
-                                                    onClick={() => setMetodoPago(metodo)}
-                                                    className={`h-full rounded-xl border-2 font-black text-[9px] uppercase tracking-tighter transition-all flex flex-col items-center justify-center gap-1.5 ${metodoPago === metodo ? 'bg-slate-900 text-white border-slate-900 shadow-lg scale-[1.02]' : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200'}`}
-                                                >
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${metodoPago === metodo ? 'bg-emerald-400' : 'bg-slate-200'}`} />
-                                                    {metodo}
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 py-6 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                                        {generateTimeSlots().map((slot) => {
+                                            const isSelected = newHour === slot.value
+                                            let btnClass = slot.isPast ? "opacity-20 cursor-not-allowed grayscale" :
+                                                slot.isOccupied ? "bg-red-500/10 text-red-500/40 border-red-500/10 cursor-not-allowed" :
+                                                    isSelected ? "bg-primary text-black border-primary shadow-[0_0_30px_rgba(234,179,8,0.3)] scale-105" :
+                                                        "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white border-white/5"
+                                            return (
+                                                <button key={slot.value} disabled={slot.isPast || slot.isOccupied} onClick={() => setNewHour(slot.value)} className={`py-6 rounded-2xl text-[10px] font-black transition-all flex flex-col items-center justify-center gap-1 border ${btnClass}`}>
+                                                    <span className="text-sm tracking-tighter">{slot.label}</span>
+                                                    <span className="opacity-40 uppercase tracking-widest text-[7px]">{slot.isOccupied ? "Ocupado" : "Libre"}</span>
                                                 </button>
-                                            ))}
+                                            )
+                                        })}
+                                    </div>
+                                    <div className="flex gap-4 mt-10">
+                                        <button onClick={() => setShowMove(false)} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all">Regresar</button>
+                                        <button onClick={moverCita} disabled={!newHour || loading} className={`flex-1 py-5 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] shadow-2xl transition-all active:scale-95 ${!newHour ? 'bg-white/5 text-white/10 cursor-not-allowed' : 'bg-gradient-gold text-black hover:scale-[1.02]'}`}>
+                                            {loading ? 'Procesando...' : 'Confirmar Cambio'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+
+                    {showCheckout && (
+                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl text-white">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                className="bg-[#050608] border border-white/10 rounded-[3rem] w-full max-w-2xl shadow-[0_0_100px_rgba(234,179,8,0.1)] overflow-hidden flex flex-col max-h-[90vh] relative"
+                            >
+                                <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500" />
+                                {loading && (
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="absolute inset-0 bg-black/95 z-50 flex flex-col items-center justify-center gap-6"
+                                    >
+                                        <div className="spinner w-16 h-16 border-white/10 border-t-emerald-500" />
+                                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-400 animate-pulse">Finalizando Transacción...</p>
+                                    </motion.div>
+                                )}
+
+                                <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-3xl font-black uppercase tracking-tighter text-white font-display">Check-out</h3>
+                                        <p className="text-xs font-black text-white/30 uppercase tracking-[0.4em] mt-2">Cliente: <span className="text-white">{cita.cliente_nombre}</span></p>
+                                    </div>
+                                    <button onClick={() => setShowCheckout(false)} className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
+                                        <span className="material-icons-round">close</span>
+                                    </button>
+                                </div>
+
+                                <div className="p-10 overflow-y-auto custom-scrollbar flex-1">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        <div className="space-y-8">
+                                            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 shadow-inner flex flex-col items-center justify-center">
+                                                <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-6">Monto Total</label>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-3xl font-black text-primary">$</span>
+                                                    <input
+                                                        type="number"
+                                                        value={montoFinal}
+                                                        onChange={(e) => setMontoFinal(Number(e.target.value))}
+                                                        className="w-32 bg-transparent text-6xl font-black text-white outline-none font-display tracking-tighter"
+                                                    />
+                                                </div>
+                                                <p className="mt-6 text-[9px] font-black text-white/20 uppercase tracking-widest bg-white/5 px-4 py-2 rounded-lg border border-white/5">Precio Base: ${cita.servicio?.precio}</p>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-4 block">Notas de Seguimiento</label>
+                                                <textarea
+                                                    placeholder="Ej: Prefiere corte con máquina #2..."
+                                                    value={notasCrm}
+                                                    onChange={(e) => setNotasCrm(e.target.value)}
+                                                    className="w-full h-32 p-6 bg-white/5 border border-white/5 rounded-[1.5rem] text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:bg-white/10 outline-none resize-none transition-all placeholder:text-white/10 text-white"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-8">
+                                            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] block">Método de Pago</label>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {(['efectivo', 'tarjeta', 'transferencia'] as const).map(metodo => (
+                                                    <button
+                                                        key={metodo}
+                                                        onClick={() => setMetodoPago(metodo)}
+                                                        className={`p-6 rounded-2xl border-2 font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-between group ${metodoPago === metodo ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40 shadow-xl' : 'bg-white/5 text-white/20 border-white/5 hover:bg-white/10 hover:border-white/10'}`}
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <span className="material-icons-round text-xl opacity-50">
+                                                                {metodo === 'efectivo' ? 'payments' : metodo === 'tarjeta' ? 'credit_card' : 'account_balance'}
+                                                            </span>
+                                                            {metodo}
+                                                        </div>
+                                                        <div className={`w-3 h-3 rounded-full border-2 ${metodoPago === metodo ? 'bg-emerald-400 border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'border-white/10'}`} />
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block leading-none">Notas CRM (Seguimiento)</label>
-                                    <textarea
-                                        placeholder="Ej: Prefiere corte con máquina #2..."
-                                        value={notasCrm}
-                                        onChange={(e) => setNotasCrm(e.target.value)}
-                                        className="w-full h-16 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:bg-white outline-none resize-none transition-all"
-                                    />
+                                <div className="px-10 py-8 border-t border-white/5 bg-black/40 flex gap-4">
+                                    <button onClick={() => setShowCheckout(false)} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all border border-white/5">Cancelar</button>
+                                    <button onClick={liquidarCita} disabled={loading} className="flex-[2] py-5 bg-emerald-500 text-black rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:bg-emerald-400 shadow-[0_15px_40px_rgba(16,185,129,0.3)] transition-all active:scale-95 flex items-center justify-center gap-3">
+                                        <span className="material-icons-round">check_circle</span>
+                                        Finalizar y Cobrar
+                                    </button>
                                 </div>
-                            </div>
+                            </motion.div>
                         </div>
+                    )}
 
-                        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex gap-3 shrink-0">
-                            <button onClick={() => setShowCheckout(false)} className="flex-1 py-3 bg-white text-slate-500 border border-slate-200 rounded-xl font-black uppercase tracking-widest hover:bg-slate-100 transition-all text-[10px]">Cerrar</button>
-                            <button onClick={liquidarCita} disabled={loading} className="group relative flex-[2.5] py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl flex items-center justify-center gap-2 text-[10px] overflow-hidden">
-                                <span className="relative z-10">{loading ? 'Sincronizando...' : 'Confirmar y Finalizar'}</span>
-                                {!loading && <svg className="w-3 h-3 relative z-10 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-
-            {showCancel && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-red-900/20 backdrop-blur-md animate-fade-in text-slate-900">
-                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-in">
-                        <div className="p-8 text-center border-b border-slate-100">
-                            <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                            </div>
-                            <h3 className="text-2xl font-black uppercase tracking-tighter">¿Cancelar Cita?</h3>
-                            <p className="text-sm text-slate-500 font-medium mt-2 leading-relaxed">Solo debe realizarse si el cliente lo solicitó presencialmente.</p>
-                        </div>
-                        <div className="p-6">
-                            <label className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 cursor-pointer group hover:bg-white hover:border-slate-200 transition-all">
-                                <input type="checkbox" checked={agreedCancel} onChange={(e) => setAgreedCancel(e.target.checked)} className="w-6 h-6 rounded-lg text-red-600 focus:ring-red-500 border-slate-300" />
-                                <span className="text-xs font-bold uppercase tracking-tight">Confirmo que el cliente está de acuerdo</span>
-                            </label>
-                        </div>
-                        <div className="flex p-6 pt-0 gap-4">
-                            <button onClick={() => setShowCancel(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Volver</button>
-                            <button onClick={() => actualizarEstado('cancelada')} disabled={loading || !agreedCancel} className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all ${!agreedCancel ? 'bg-slate-100 text-slate-300' : 'bg-red-600 text-white hover:bg-red-700 shadow-lg'}`}>
-                                {loading ? 'Cargando...' : 'Sí, Cancelar'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showLateWarning && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in text-slate-900">
-                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-in border border-amber-200">
-                        <div className="p-8 text-center bg-amber-50/50 border-b border-amber-100">
-                            <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                            </div>
-                            <h3 className="text-2xl font-black uppercase tracking-tighter text-amber-900">Atención con Retraso</h3>
-                            <div className="mt-4 p-4 bg-white rounded-2xl border border-amber-100 inline-block shadow-sm">
-                                <span className="text-4xl font-black text-amber-600">{minutosDiferencia}</span>
-                                <span className="text-xs font-black text-amber-400 uppercase ml-2">minutos tarde</span>
-                            </div>
-                        </div>
-                        <div className="p-8 space-y-6">
-                            <div className="space-y-3">
-                                <p className="text-sm font-bold text-slate-700 leading-relaxed">
-                                    El cliente ha superado el tiempo de tolerancia de <span className="text-slate-900 font-black">15 minutos</span>.
-                                </p>
-                                {hasNextSoon && (
-                                    <div className="p-4 bg-red-50 rounded-2xl border border-red-100 flex gap-3 animate-pulse">
-                                        <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <p className="text-xs font-black text-red-600 uppercase leading-snug">
-                                            ⚠️ ADVERTENCIA: Tienes otra cita en menos de 30 min. Atender ahora podría retrasar toda tu agenda.
-                                        </p>
+                    {showCancel && (
+                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fade-in text-white">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                className="bg-[#050608] border border-red-500/20 rounded-[3rem] w-full max-w-md shadow-[0_30px_90px_rgba(239,68,68,0.1)] overflow-hidden"
+                            >
+                                <div className="p-10 text-center">
+                                    <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8 border border-red-500/20 shadow-inner">
+                                        <span className="material-icons-round text-4xl">warning_amber</span>
                                     </div>
-                                )}
-                            </div>
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => setShowLateWarning(false)}
-                                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-200 transition-all text-[10px]"
-                                >
-                                    Reagendar / Salir
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        console.log('Action: Atender Tardio confirmado');
-                                        actualizarEstado('en_proceso');
-                                    }}
-                                    className="flex-[1.5] py-4 bg-amber-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-amber-700 shadow-xl shadow-amber-200 transition-all text-[10px]"
-                                >
-                                    {loading ? 'Procesando...' : 'Atender de Todas Formas'}
-                                </button>
-                            </div>
+                                    <h3 className="text-3xl font-black uppercase tracking-tighter font-display">¿Confirmar Cancelación?</h3>
+                                    <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-4 leading-relaxed">Esta acción liberará el espacio de <span className="text-white font-black">{cita.cliente_nombre}</span> permanentemente.</p>
+                                </div>
+                                <div className="px-10 pb-10 space-y-4">
+                                    <label className="flex items-center gap-4 p-6 bg-white/5 rounded-[1.5rem] border border-white/5 cursor-pointer group hover:bg-red-500/5 hover:border-red-500/10 transition-all">
+                                        <input type="checkbox" checked={agreedCancel} onChange={(e) => setAgreedCancel(e.target.checked)} className="w-6 h-6 rounded-lg text-red-500 focus:ring-red-500 border-white/10 bg-black" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-red-400">Entiendo las consecuencias</span>
+                                    </label>
+                                    <div className="flex gap-4">
+                                        <button onClick={() => setShowCancel(false)} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all">Regresar</button>
+                                        <button onClick={() => actualizarEstado('cancelada')} disabled={loading || !agreedCancel} className={`flex-1 py-5 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] transition-all active:scale-95 ${!agreedCancel ? 'bg-white/5 text-white/10 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-500 shadow-xl'}`}>
+                                            {loading ? '...' : 'Cancelar Cita'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
                         </div>
-                    </div>
-                </div>
-            )}
+                    )}
+
+                    {showLateWarning && (
+                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fade-in">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                className="bg-[#050608] rounded-[3rem] w-full max-w-md shadow-[0_30px_90px_rgba(245,158,11,0.2)] overflow-hidden border border-amber-500/20"
+                            >
+                                <div className="p-10 text-center bg-amber-500/5 border-b border-amber-500/10">
+                                    <div className="w-20 h-20 bg-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner border border-amber-500/20">
+                                        <span className="material-icons-round text-4xl">timer</span>
+                                    </div>
+                                    <h3 className="text-3xl font-black uppercase tracking-tighter text-amber-500 font-display">Retraso Excesivo</h3>
+                                    <div className="mt-6 p-6 bg-black/60 rounded-[2rem] border border-amber-500/20 inline-flex flex-col items-center">
+                                        <span className="text-5xl font-black text-white font-display tracking-tighter">{minutosDiferencia}</span>
+                                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mt-2">MIN TARDE</span>
+                                    </div>
+                                </div>
+                                <div className="p-10 space-y-8">
+                                    <p className="text-sm font-bold text-white/40 leading-relaxed text-center">
+                                        El cliente ha superado el tiempo límite de tolerancia. <span className="text-white">¿Deseas atenderlo o reorganizar tu agenda?</span>
+                                    </p>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => setShowLateWarning(false)}
+                                            className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all border border-white/5"
+                                        >
+                                            Reagendar
+                                        </button>
+                                        <button
+                                            onClick={() => actualizarEstado('en_proceso')}
+                                            className="flex-[1.5] py-5 bg-amber-600 text-white rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:bg-amber-500 shadow-2xl transition-all active:scale-95"
+                                        >
+                                            {loading ? '...' : 'Atender Tardío'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            ) : null}
         </div>
     )
 }

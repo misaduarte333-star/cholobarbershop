@@ -12,34 +12,34 @@ interface KPICardProps {
 export function KPICard({ titulo, valor, color, icon, trend, trendInverse }: KPICardProps) {
     const colorConfig = {
         purple: {
-            bg: 'bg-white',
-            border: 'border-slate-200',
-            icon: 'text-slate-900',
-            iconBg: 'bg-slate-50'
+            bg: 'bg-slate-800/40',
+            border: 'border-purple-500/30',
+            icon: 'text-purple-400',
+            iconBg: 'bg-purple-500/20'
         },
         green: {
-            bg: 'bg-white',
-            border: 'border-slate-200',
-            icon: 'text-slate-900',
-            iconBg: 'bg-slate-50'
+            bg: 'bg-slate-800/40',
+            border: 'border-emerald-500/30',
+            icon: 'text-emerald-400',
+            iconBg: 'bg-emerald-500/20'
         },
         blue: {
-            bg: 'bg-white',
-            border: 'border-slate-200',
-            icon: 'text-slate-900',
-            iconBg: 'bg-slate-50'
+            bg: 'bg-slate-800/40',
+            border: 'border-blue-500/30',
+            icon: 'text-blue-400',
+            iconBg: 'bg-blue-500/20'
         },
         red: {
-            bg: 'bg-white',
-            border: 'border-slate-200',
-            icon: 'text-slate-900',
-            iconBg: 'bg-slate-50'
+            bg: 'bg-slate-800/40',
+            border: 'border-red-500/30',
+            icon: 'text-red-400',
+            iconBg: 'bg-red-500/20'
         },
         amber: {
-            bg: 'bg-white',
-            border: 'border-slate-200',
-            icon: 'text-slate-900',
-            iconBg: 'bg-slate-50'
+            bg: 'bg-white/5',
+            border: 'border-primary/20',
+            icon: 'text-primary',
+            iconBg: 'bg-primary/20'
         }
     }
 
@@ -67,37 +67,44 @@ export function KPICard({ titulo, valor, color, icon, trend, trendInverse }: KPI
 
     return (
         <div className={`
-      rounded-2xl p-6 border backdrop-blur-sm
-      bg-gradient-to-br ${config.bg} ${config.border}
-      transition-all duration-300 hover:scale-[1.02]
-    `}>
-            <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-xl ${config.iconBg} flex items-center justify-center`}>
-                    <svg className={`w-6 h-6 ${config.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            glass-card p-7 sm:p-9 rounded-[2rem] border-primary/10
+            transition-all duration-500 hover:scale-[1.03] hover:border-primary/30
+            hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] group relative overflow-hidden
+        `}>
+            {/* Ambient Background Glow */}
+            <div className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-700 bg-primary`} />
+
+            <div className="flex items-start justify-between mb-8">
+                <div className={`w-14 h-14 rounded-2xl ${config.iconBg} flex items-center justify-center border border-white/5 shadow-inner scale-110 group-hover:scale-125 transition-transform duration-500`}>
+                    <svg className={`w-7 h-7 ${config.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {getIcon()}
                     </svg>
                 </div>
 
                 {trend !== undefined && (
                     <div className={`
-            flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full
-            ${isPositive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}
-          `}>
-                        <svg
-                            className={`w-3 h-3 ${isPositive ? '' : 'rotate-180'}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                        </svg>
+                        flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-xl border appearance-none backdrop-blur-md
+                        ${isPositive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}
+                    `}>
+                        <span className="material-icons-round text-xs">
+                            {isPositive ? 'trending_up' : 'trending_down'}
+                        </span>
                         {Math.abs(trend)}%
                     </div>
                 )}
             </div>
 
-            <p className="text-slate-500 text-sm mb-1 font-bold uppercase tracking-widest">{titulo}</p>
-            <p className="text-3xl font-black text-slate-900">{valor}</p>
+            <div className="relative z-10">
+                <p className="text-white/40 text-[10px] sm:text-xs mb-3 font-black uppercase tracking-[0.3em] font-display leading-tight">
+                    {titulo}
+                </p>
+                <p className={`text-4xl sm:text-5xl font-black font-display uppercase tracking-tight leading-none drop-shadow-2xl ${color === 'amber' ? 'text-gradient-gold' : 'text-white'}`}>
+                    {valor}
+                </p>
+            </div>
+
+            {/* Interactive Bottom Accent */}
+            <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-brand opacity-0 group-hover:opacity-40 transition-opacity" />
         </div>
     )
 }

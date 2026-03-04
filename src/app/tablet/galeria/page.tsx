@@ -109,19 +109,21 @@ export default function GalleryPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 p-6">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-[var(--background-dark)] text-white p-6 relative overflow-hidden">
+            {/* Ambient Background */}
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute inset-0 light-leak-top opacity-20" />
+
+            <div className="max-w-4xl mx-auto relative z-10">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
-                        <Link href="/tablet" className="p-2 rounded-xl bg-slate-800/50 hover:bg-slate-700 transition-colors">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
+                        <Link href="/tablet" className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
+                            <span className="material-icons-round text-slate-400">arrow_back</span>
                         </Link>
                         <div>
-                            <h1 className="text-2xl font-black tracking-tight uppercase">Mi <span className="text-[var(--primary)]">Galería</span></h1>
-                            <p className="text-slate-500 text-sm">Gestiona las fotos de tus trabajos por servicio</p>
+                            <h1 className="text-2xl font-black tracking-tight uppercase font-display">Mi <span className="text-gradient-gold">Galería</span></h1>
+                            <p className="text-primary mt-1 font-bold text-[10px] uppercase tracking-[0.2em]">Gestiona las fotos de tus trabajos por servicio</p>
                         </div>
                     </div>
                 </div>
@@ -133,8 +135,8 @@ export default function GalleryPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {servicios.map((servicio) => (
-                            <div key={servicio.id} className="glass-card overflow-hidden group border-slate-800/50 hover:border-[var(--primary)]/30 transition-all">
-                                <div className="aspect-video relative bg-slate-100 flex items-center justify-center">
+                            <div key={servicio.id} className="glass-card overflow-hidden group border-white/5 hover:border-primary/30 transition-all">
+                                <div className="aspect-video relative bg-[#0B0D11] flex items-center justify-center">
                                     {fotosMap[servicio.id] ? (
                                         <img
                                             src={fotosMap[servicio.id]}
@@ -142,11 +144,9 @@ export default function GalleryPage() {
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
-                                        <div className="text-center p-6">
-                                            <svg className="w-12 h-12 text-slate-700 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <p className="text-xs text-slate-600">Sin foto actual</p>
+                                        <div className="text-center p-6 grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+                                            <span className="material-icons-round text-5xl text-slate-700 mb-2">add_a_photo</span>
+                                            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Sin foto actual</p>
                                         </div>
                                     )}
 
@@ -166,17 +166,15 @@ export default function GalleryPage() {
                                             onChange={(e) => e.target.files?.[0] && handleUpload(servicio.id, e.target.files[0])}
                                             disabled={!!uploading}
                                         />
-                                        <div className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-2">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                            </svg>
+                                        <div className="btn-primary py-2 px-4 text-[10px] font-black flex items-center gap-2 font-display uppercase tracking-widest shadow-xl">
+                                            <span className="material-icons-round text-sm">upload</span>
                                             {fotosMap[servicio.id] ? 'Cambiar Foto' : 'Subir Foto'}
                                         </div>
                                     </label>
                                 </div>
-                                <div className="p-4 border-t border-slate-100 bg-white">
-                                    <h3 className="font-bold text-slate-900 uppercase tracking-wider text-sm">{servicio.nombre}</h3>
-                                    <p className="text-xs text-slate-500 mt-1">Sube tu mejor trabajo de este servicio</p>
+                                <div className="p-4 border-t border-white/5 bg-[#0B0D11]/50">
+                                    <h3 className="font-black text-white uppercase tracking-wider text-sm font-display">{servicio.nombre}</h3>
+                                    <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-widest">Sube tu mejor trabajo de este servicio</p>
                                 </div>
                             </div>
                         ))}
@@ -184,10 +182,10 @@ export default function GalleryPage() {
                 )}
 
                 {/* Info Card */}
-                <div className="mt-10 p-4 rounded-xl bg-blue-50 border border-blue-100">
-                    <div className="flex gap-3">
-                        <span className="text-xl">🤖</span>
-                        <p className="text-xs text-blue-800 leading-relaxed font-medium">
+                <div className="mt-10 p-5 rounded-2xl bg-primary/5 border border-primary/20 backdrop-blur-sm glow-gold">
+                    <div className="flex gap-4">
+                        <span className="material-icons-round text-primary">psychology</span>
+                        <p className="text-[10px] text-primary leading-relaxed font-black uppercase tracking-[0.1em]">
                             Estas fotos serán visibles automáticamente por el bot de WhatsApp (n8n).
                             Asegúrate de que tus trabajos luzcan impecables para atraer más clientes.
                         </p>
