@@ -116,26 +116,28 @@ export default function ReportesPage() {
 
     return (
         <>
-            <div className="mb-8">
-                <div className="flex items-center justify-between">
+            <div className="mb-6 md:mb-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-white">Reportes</h1>
-                        <p className="text-slate-400 mt-1">Análisis financiero y operativo</p>
+                        <h1 className="text-2xl md:text-3xl font-bold text-white">Reportes</h1>
+                        <p className="text-slate-400 mt-1 text-sm md:text-base">Análisis financiero y operativo</p>
                     </div>
-                    <div className="flex gap-3">
-                        <input
-                            type="date"
-                            value={dateRange.start}
-                            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                            className="input-field w-auto"
-                        />
-                        <span className="self-center text-slate-500">a</span>
-                        <input
-                            type="date"
-                            value={dateRange.end}
-                            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                            className="input-field w-auto"
-                        />
+                    <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                value={dateRange.start}
+                                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                className="input-field w-full sm:w-auto text-sm"
+                            />
+                            <span className="text-slate-500">a</span>
+                            <input
+                                type="date"
+                                value={dateRange.end}
+                                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                className="input-field w-full sm:w-auto text-sm"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

@@ -86,23 +86,23 @@ export default function BarberosPage() {
     return (
 
         <>
-            <div className="mb-8">
-                <div className="flex items-center justify-between">
+            <div className="mb-6 md:mb-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-white">Barberos</h1>
-                        <p className="text-slate-400 mt-1">Gestiona el equipo de trabajo</p>
+                        <h1 className="text-2xl md:text-3xl font-bold text-white">Barberos</h1>
+                        <p className="text-slate-400 mt-1 text-sm md:text-base">Gestiona el equipo de trabajo</p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                         <button
                             onClick={() => setShowGanttModal(true)}
-                            className="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white transition-colors flex items-center gap-2"
+                            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
                         >
                             <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>
                             Ver Diagrama
                         </button>
-                        <button onClick={handleNew} className="btn-primary flex items-center gap-2">
+                        <button onClick={handleNew} className="w-full sm:w-auto btn-primary flex items-center justify-center gap-2 py-2.5 text-sm">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
@@ -121,8 +121,8 @@ export default function BarberosPage() {
 
             {/* Search & Filters */}
             <div className="glass-card p-4 mb-6">
-                <div className="flex items-center gap-4">
-                    <div className="flex-1 relative">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="w-full flex-1 relative">
                         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
@@ -131,10 +131,10 @@ export default function BarberosPage() {
                             placeholder="Buscar por nombre o usuario..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="input-field pl-10"
+                            className="input-field pl-10 w-full"
                         />
                     </div>
-                    <span className="text-slate-400 text-sm">{filteredBarberos.length} barberos</span>
+                    <span className="text-slate-400 text-sm whitespace-nowrap">{filteredBarberos.length} barberos</span>
                 </div>
             </div>
 
@@ -152,101 +152,103 @@ export default function BarberosPage() {
                         <p className="text-slate-500">No se encontraron barberos</p>
                     </div>
                 ) : (
-                    <table className="w-full">
-                        <thead className="bg-slate-800/50">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Estación</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Barbero</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Usuario</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Horario</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Estado</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-700/50">
-                            {filteredBarberos.map((barbero) => (
-                                <tr key={barbero.id} className="hover:bg-slate-800/30 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center font-bold text-white">
-                                            {barbero.estacion_id}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-medium text-white">
-                                                {barbero.nombre.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-white">{barbero.nombre}</p>
-                                                <p className="text-xs text-slate-400">Estación {barbero.estacion_id}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <code className="px-2 py-1 rounded bg-slate-700 text-sm text-slate-300">
-                                            {barbero.usuario_tablet}
-                                        </code>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <p className="text-sm text-slate-300">
-                                            {getHorarioResumen(barbero.horario_laboral)}
-                                        </p>
-                                        {barbero.bloqueo_almuerzo && (
-                                            <p className="text-xs text-slate-500 mt-1">
-                                                🍽️ {barbero.bloqueo_almuerzo.inicio} - {barbero.bloqueo_almuerzo.fin}
-                                            </p>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`
-                      status-badge
-                      ${barbero.activo ? 'status-in-progress' : 'status-cancelled'}
-                    `}>
-                                            {barbero.activo ? 'Activo' : 'Inactivo'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button
-                                                onClick={() => handleEdit(barbero)}
-                                                className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
-                                                title="Editar"
-                                            >
-                                                <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setEditingBarbero(barbero)
-                                                    setShowScheduleModal(true)
-                                                }}
-                                                className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
-                                                title="Configurar Horario"
-                                            >
-                                                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(barbero.id)}
-                                                className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 transition-colors"
-                                                title="Eliminar"
-                                            >
-                                                <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[800px] md:min-w-0">
+                            <thead className="bg-slate-800/50">
+                                <tr>
+                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Estación</th>
+                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Barbero</th>
+                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Usuario</th>
+                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Horario</th>
+                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Estado</th>
+                                    <th className="px-4 md:px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Acciones</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-700/50">
+                                {filteredBarberos.map((barbero) => (
+                                    <tr key={barbero.id} className="hover:bg-slate-800/30 transition-colors">
+                                        <td className="px-4 md:px-6 py-4 text-center sm:text-left">
+                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center font-bold text-white text-xs md:text-sm">
+                                                {barbero.estacion_id}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 md:px-6 py-4">
+                                            <div className="flex items-center gap-2 md:gap-3">
+                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm md:text-lg font-medium text-white shrink-0">
+                                                    {barbero.nombre.charAt(0)}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-white text-sm md:text-base truncate max-w-[100px] md:max-w-none">{barbero.nombre}</p>
+                                                    <p className="text-[10px] md:text-xs text-slate-400">Estación {barbero.estacion_id}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 md:px-6 py-4 hidden sm:table-cell">
+                                            <code className="px-2 py-1 rounded bg-slate-700 text-xs md:text-sm text-slate-300">
+                                                {barbero.usuario_tablet}
+                                            </code>
+                                        </td>
+                                        <td className="px-4 md:px-6 py-4">
+                                            <p className="text-[11px] md:text-sm text-slate-300">
+                                                {getHorarioResumen(barbero.horario_laboral)}
+                                            </p>
+                                            {barbero.bloqueo_almuerzo && (
+                                                <p className="text-[10px] md:text-xs text-slate-500 mt-1">
+                                                    🍽️ {barbero.bloqueo_almuerzo.inicio} - {barbero.bloqueo_almuerzo.fin}
+                                                </p>
+                                            )}
+                                        </td>
+                                        <td className="px-4 md:px-6 py-4">
+                                            <span className={`
+                                                status-badge text-[10px] md:text-xs px-2 md:px-3 py-1
+                                                ${barbero.activo ? 'status-in-progress' : 'status-cancelled'}
+                                            `}>
+                                                {barbero.activo ? 'Activo' : 'Inactivo'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 md:px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-1 md:gap-2">
+                                                <button
+                                                    onClick={() => handleEdit(barbero)}
+                                                    className="p-1.5 md:p-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
+                                                    title="Editar"
+                                                >
+                                                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingBarbero(barbero)
+                                                        setShowScheduleModal(true)
+                                                    }}
+                                                    className="p-1.5 md:p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
+                                                    title="Configurar Horario"
+                                                >
+                                                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(barbero.id)}
+                                                    className="p-1.5 md:p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 transition-colors"
+                                                    title="Eliminar"
+                                                >
+                                                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
 
-            {/* Modal */}
+            {/* Modals */}
             {showModal && (
                 <BarberoModal
                     barbero={editingBarbero}
@@ -269,7 +271,6 @@ export default function BarberosPage() {
                 />
             )}
         </>
-
     )
 }
 

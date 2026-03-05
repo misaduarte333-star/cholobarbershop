@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 export default function Home() {
     return (
-        <main className="relative min-h-screen flex flex-col items-center justify-between overflow-hidden selection:bg-primary selection:text-black antialiased">
+        <main className="relative min-h-[100dvh] flex flex-col items-center justify-between overflow-hidden selection:bg-primary selection:text-black antialiased">
             {/* Background elements */}
             <div className="fixed inset-0 z-0 h-screen">
                 <div className="absolute inset-0 bg-shop-premium scale-105 brightness-50"></div>
@@ -12,7 +12,7 @@ export default function Home() {
             </div>
 
             {/* Content Container */}
-            <div className="relative z-10 w-full max-w-4xl h-screen flex flex-col items-center justify-between px-8 py-10 mx-auto">
+            <div className="relative z-10 w-full max-w-4xl min-h-[100dvh] flex flex-col items-center justify-between px-6 md:px-8 py-8 md:py-10 mx-auto">
                 {/* Logo & Header */}
                 <div className="flex flex-col items-center space-y-6 mt-2 animate-slide-in">
                     <div className="w-20 h-20 bg-black/60 rounded-full flex items-center justify-center border-2 border-primary/40 glow-logo relative scale-110">
@@ -20,7 +20,7 @@ export default function Home() {
                         <span className="text-primary font-black text-3xl tracking-tighter relative z-10 font-display">CB</span>
                     </div>
                     <div className="text-center">
-                        <h1 className="font-display font-black text-6xl md:text-7xl tracking-tight flex flex-col items-center leading-[0.85] drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
+                        <h1 className="font-display font-black text-5xl sm:text-6xl md:text-7xl tracking-tight flex flex-col items-center leading-[0.85] drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
                             <span className="text-white">CHOLO</span>
                             <span className="text-gradient-gold uppercase">Barber</span>
                         </h1>
@@ -33,7 +33,7 @@ export default function Home() {
                 </div>
 
                 {/* Navigation Buttons - Full Container Clickable */}
-                <div className="w-full flex flex-row items-stretch gap-8 md:gap-12 mb-8">
+                <div className="w-full flex flex-col sm:flex-row items-stretch gap-6 md:gap-12 mb-8">
                     {/* Barber Support */}
                     <div className="relative pt-10 flex-1 animate-slide-in delay-200 group">
                         <Link href="/tablet" className="block relative w-full h-full group">

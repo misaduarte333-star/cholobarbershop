@@ -9,15 +9,22 @@ import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
 interface CitaCardProps {
     cita: CitaDesdeVista
     onUpdate?: () => void
+    onClose?: () => void
     isHighlighted?: boolean
     style?: React.CSSProperties
     currentTime: Date
     allCitas: CitaDesdeVista[]
+    autoOpen?: 'move' | 'cancel' | 'details' | null
 }
 
-export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, allCitas }: CitaCardProps) {
+export function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, currentTime, allCitas, autoOpen }: CitaCardProps) {
     const [mounted, setMounted] = useState(false)
-    useEffect(() => setMounted(true), [])
+    useEffect(() => {
+        setMounted(true)
+        if (autoOpen === 'details') setShowDetails(true)
+        if (autoOpen === 'move') setShowMove(true)
+        if (autoOpen === 'cancel') setShowCancel(true)
+    }, [autoOpen, cita.id]) // Depend on cita.id too in case the same ghost card is reused for different appointments
 
     // States
     const [loading, setLoading] = useState(false)
@@ -199,7 +206,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
 
     return (
         <div
-            className={`relative rounded-[2.5rem] p-8 border-l-[8px] glass-card ${config.bg} ${config.border} ${config.accent} ${isHighlighted || isInProcess ? 'shadow-[0_20px_60px_rgba(234,179,8,0.2)] border-primary/30' : 'border-white/5'} ${isAnyModalOpen ? 'z-[9999]' : (isHighlighted ? 'z-10' : 'z-0')} transition-all duration-700 hover:scale-[1.02] hover:bg-black/60 group animate-fade-in relative overflow-hidden`}
+            className={`relative rounded-2xl md:rounded-[2rem] p-3 md:p-5 border-l-[3px] md:border-l-[6px] glass-card ${config.bg} ${config.border} ${config.accent} ${isHighlighted || isInProcess ? 'shadow-[0_15px_45px_rgba(234,179,8,0.15)] border-primary/20' : 'border-white/5'} ${isAnyModalOpen ? 'z-[9999]' : (isHighlighted ? 'z-10' : 'z-0')} transition-all duration-700 hover:scale-[1.01] hover:bg-black/60 group animate-fade-in relative overflow-hidden`}
             style={style}
         >
             {/* Interior Glow Overlay for active items */}
@@ -207,51 +214,45 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                 <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
             )}
 
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 text-white relative z-10">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-8 text-white relative z-10">
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-6 mb-6">
-                        <div className="w-16 h-16 rounded-[1.2rem] bg-black/60 border-2 border-white/10 flex items-center justify-center shrink-0 shadow-2xl group-hover:border-primary/40 transition-colors duration-500">
-                            <span className="text-3xl font-black text-primary font-display group-hover:scale-110 transition-transform">{cita.cliente_nombre.charAt(0).toUpperCase()}</span>
+                    <div className="flex items-center gap-3 md:gap-5 mb-2 md:mb-4">
+                        <div className="w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-black/60 border border-white/10 flex items-center justify-center shrink-0 shadow-xl group-hover:border-primary/40 transition-colors duration-500">
+                            <span className="text-base md:text-2xl font-black text-primary font-display group-hover:scale-110 transition-transform">{cita.cliente_nombre.charAt(0).toUpperCase()}</span>
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-2xl font-black text-white truncate tracking-tight font-display uppercase drop-shadow-md">
+                            <h3 className="text-sm md:text-xl font-black text-white truncate tracking-tight font-display uppercase drop-shadow-md">
                                 {cita.cliente_nombre}
                             </h3>
-                            <div className="flex flex-wrap items-center gap-3 mt-2">
-                                <span className={`px-3 py-1 rounded-xl text-[10px] uppercase font-black tracking-[0.1em] border ${config.badge}`}>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className={`px-2 py-0.5 rounded-lg text-[9px] uppercase font-black tracking-[0.1em] border ${config.badge}`}>
                                     {config.label}
                                 </span>
                                 {isEnSucursal && (
-                                    <span className="px-3 py-1 rounded-xl text-[10px] uppercase font-black tracking-[0.1em] bg-emerald-500 text-black animate-pulse flex items-center gap-1 shadow-[0_0_15px_rgba(16,185,129,0.5)]">
-                                        <span className="material-icons-round text-[12px]">how_to_reg</span>
+                                    <span className="px-2 py-0.5 rounded-lg text-[9px] uppercase font-black tracking-[0.1em] bg-emerald-500 text-black animate-pulse flex items-center gap-1 shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                                        <span className="material-icons-round text-[10px]">how_to_reg</span>
                                         En sucursal
                                     </span>
                                 )}
                                 {isTiempoCorto && (
-                                    <span className="px-3 py-1 rounded-xl text-[10px] uppercase font-black tracking-[0.1em] border border-amber-500/50 text-amber-500 animate-pulse flex items-center gap-1 bg-amber-500/10">
-                                        <span className="material-icons-round text-[12px]">timer</span>
+                                    <span className="px-2 py-0.5 rounded-lg text-[9px] uppercase font-black tracking-[0.1em] border border-amber-500/50 text-amber-500 animate-pulse flex items-center gap-1 bg-amber-500/10">
+                                        <span className="material-icons-round text-[10px]">timer</span>
                                         En {minHastaCita} min
                                     </span>
                                 )}
-                                {isReprogramada && !isTiempoCorto && !isEnSucursal && (
-                                    <span className="px-3 py-1 rounded-xl text-[10px] uppercase font-black tracking-[0.1em] border border-blue-500/30 text-blue-400 flex items-center gap-1 bg-blue-500/10">
-                                        <span className="material-icons-round text-[12px]">update</span>
-                                        Reprogramada
-                                    </span>
-                                )}
-                                <div className="h-1 w-1 rounded-full bg-white/20" />
-                                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">
+                                <div className="h-0.5 w-0.5 rounded-full bg-white/20" />
+                                <span className="text-[9px] font-black text-primary uppercase tracking-[0.1em]">
                                     {cita.servicio_nombre}
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-6 text-white/40 font-black uppercase tracking-[0.4em] text-[10px]">
-                        <div className="flex items-center gap-3 px-5 py-2.5 bg-black/40 rounded-2xl border border-white/5 shadow-inner group-hover:border-primary/20 transition-colors">
-                            <span className="material-icons-round text-primary text-sm">schedule</span>
-                            <span className="text-white tracking-[0.2em]">{horaInicio}</span>
-                            <span className="text-white/20 px-1">—</span>
+                    <div className="flex flex-wrap items-center gap-2 md:gap-4 text-white/40 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-[7px] md:text-[9px]">
+                        <div className="flex items-center gap-2 md:gap-3 px-2 md:px-4 py-1 md:py-2 bg-black/40 rounded-lg md:rounded-xl border border-white/5 shadow-inner group-hover:border-primary/20 transition-colors">
+                            <span className="material-icons-round text-primary text-[9px] md:text-xs">schedule</span>
+                            <span className="text-white tracking-[0.05em] md:tracking-[0.1em]">{horaInicio}</span>
+                            <span className="text-white/20">—</span>
                             <span className="text-white/40">{horaFin}</span>
                         </div>
                         {cita.notas && (
@@ -263,10 +264,10 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3 shrink-0">
+                <div className="flex flex-wrap gap-2 md:gap-3 shrink-0">
                     {cita.estado === 'confirmada' && (
                         <>
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-1.5">
                                 <button
                                     onClick={() => {
                                         if (loading) return
@@ -277,26 +278,26 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                         }
                                     }}
                                     disabled={loading || !canConfirm}
-                                    className={`px-8 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-2xl transition-all flex items-center gap-3 border active:scale-95 ${!canConfirm ? 'bg-white/5 text-white/20 cursor-not-allowed border-white/5' :
+                                    className={`px-5 py-2.5 md:px-7 md:py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] shadow-xl transition-all flex items-center gap-2 border active:scale-95 ${!canConfirm ? 'bg-white/5 text-white/20 cursor-not-allowed border-white/5' :
                                         esNoShow ? 'bg-amber-500 text-white hover:bg-amber-400 border-amber-300 shadow-[0_10px_30px_rgba(245,158,11,0.3)] animate-pulse' :
-                                            'bg-gradient-gold text-black hover:scale-105 border-primary shadow-[0_10px_30px_rgba(234,179,8,0.3)]'
+                                            'bg-gradient-gold text-black hover:scale-[1.03] border-primary shadow-[0_10px_30px_rgba(234,179,8,0.2)]'
                                         }`}
                                 >
-                                    <span className="material-icons-round text-lg">{!canConfirm ? 'timer' : 'play_arrow'}</span>
-                                    <span className="font-display">{!canConfirm ? `Faltan ${Math.abs(minutosDiferencia)} MIN` : esNoShow ? 'Atender Tardío' : 'Iniciar Servicio'}</span>
+                                    <span className="material-icons-round text-sm md:text-base">{!canConfirm ? 'timer' : 'play_arrow'}</span>
+                                    <span className="font-display">{!canConfirm ? `${Math.abs(minutosDiferencia)} MIN` : esNoShow ? 'Tardío' : 'Atender'}</span>
                                 </button>
                                 {esNoShow && (
-                                    <span className="text-[9px] font-black text-primary animate-pulse text-center uppercase tracking-[0.3em]">
-                                        ⚠️ RETRASO CRÍTICO
+                                    <span className="text-[8px] md:text-[9px] font-black text-primary animate-pulse text-center uppercase tracking-[0.3em]">
+                                        ⚠️ RETRASO
                                     </span>
                                 )}
                             </div>
-                            <button onClick={() => setShowMove(true)} className="px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] text-white/70 hover:text-white hover:bg-white/10 border border-white/10 transition-all flex items-center justify-center gap-3 backdrop-blur-sm active:scale-95">
-                                <span className="material-icons-round text-lg">event_repeat</span>
+                            <button onClick={() => setShowMove(true)} className="px-3 md:px-4 py-2.5 md:py-3.5 rounded-lg md:rounded-xl font-black text-[8px] md:text-[10px] uppercase tracking-[0.1em] text-white/60 hover:text-white hover:bg-white/10 border border-white/10 transition-all flex items-center justify-center gap-2 backdrop-blur-sm active:scale-95">
+                                <span className="material-icons-round text-sm md:text-base">event_repeat</span>
                                 Mover
                             </button>
-                            <button onClick={() => setShowCancel(true)} disabled={loading} className="px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] text-red-400/70 hover:text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-all flex items-center justify-center gap-3 backdrop-blur-sm active:scale-95">
-                                <span className="material-icons-round text-lg">close</span>
+                            <button onClick={() => setShowCancel(true)} disabled={loading} className="p-2.5 md:px-4 md:py-3.5 rounded-lg md:rounded-xl font-black text-[8px] md:text-[10px] uppercase tracking-[0.1em] text-red-400/60 hover:text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-all flex items-center justify-center gap-2 backdrop-blur-sm active:scale-95">
+                                <span className="material-icons-round text-sm md:text-base">close</span>
                             </button>
                         </>
                     )}
@@ -324,8 +325,8 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                     )}
 
                     {!isInProcess && (
-                        <button onClick={() => setShowDetails(true)} className="px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] text-white/30 hover:text-white hover:bg-white/5 transition-all flex items-center justify-center gap-3 border border-white/5 active:scale-95">
-                            <span className="material-icons-round text-lg">info</span>
+                        <button onClick={() => setShowDetails(true)} className="p-2.5 md:px-4 md:py-3.5 rounded-lg md:rounded-xl font-black text-[8px] md:text-[10px] uppercase tracking-[0.1em] text-white/30 hover:text-white hover:bg-white/5 transition-all flex items-center justify-center gap-2 border border-white/5 active:scale-95">
+                            <span className="material-icons-round text-sm md:text-base">info</span>
                         </button>
                     )}
                 </div>
@@ -344,7 +345,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                             >
                                 <div className="p-10 text-white">
                                     <div className="flex items-center justify-end mb-4">
-                                        <button onClick={() => setShowDetails(false)} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white absolute top-6 right-6">
+                                        <button onClick={() => { setShowDetails(false); onClose?.(); }} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white absolute top-6 right-6">
                                             <span className="material-icons-round">close</span>
                                         </button>
                                     </div>
@@ -386,7 +387,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                             <h3 className="text-2xl font-black uppercase tracking-tighter font-display">Reprogramar</h3>
                                             <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mt-2">Selecciona un nuevo horario disponible</p>
                                         </div>
-                                        <button onClick={() => setShowMove(false)} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
+                                        <button onClick={() => { setShowMove(false); onClose?.(); }} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
                                             <span className="material-icons-round">close</span>
                                         </button>
                                     </div>
@@ -406,7 +407,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                         })}
                                     </div>
                                     <div className="flex gap-4 mt-10">
-                                        <button onClick={() => setShowMove(false)} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all">Regresar</button>
+                                        <button onClick={() => { setShowMove(false); onClose?.(); }} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all">Regresar</button>
                                         <button onClick={moverCita} disabled={!newHour || loading} className={`flex-1 py-5 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] shadow-2xl transition-all active:scale-95 ${!newHour ? 'bg-white/5 text-white/10 cursor-not-allowed' : 'bg-gradient-gold text-black hover:scale-[1.02]'}`}>
                                             {loading ? 'Procesando...' : 'Confirmar Cambio'}
                                         </button>
@@ -440,7 +441,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                         <h3 className="text-3xl font-black uppercase tracking-tighter text-white font-display">Check-out</h3>
                                         <p className="text-xs font-black text-white/30 uppercase tracking-[0.4em] mt-2">Cliente: <span className="text-white">{cita.cliente_nombre}</span></p>
                                     </div>
-                                    <button onClick={() => setShowCheckout(false)} className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
+                                    <button onClick={() => { setShowCheckout(false); onClose?.(); }} className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
                                         <span className="material-icons-round">close</span>
                                     </button>
                                 </div>
@@ -497,7 +498,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                 </div>
 
                                 <div className="px-10 py-8 border-t border-white/5 bg-black/40 flex gap-4">
-                                    <button onClick={() => setShowCheckout(false)} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all border border-white/5">Cancelar</button>
+                                    <button onClick={() => { setShowCheckout(false); onClose?.(); }} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all border border-white/5">Cancelar</button>
                                     <button onClick={liquidarCita} disabled={loading} className="flex-[2] py-5 bg-emerald-500 text-black rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:bg-emerald-400 shadow-[0_15px_40px_rgba(16,185,129,0.3)] transition-all active:scale-95 flex items-center justify-center gap-3">
                                         <span className="material-icons-round">check_circle</span>
                                         Finalizar y Cobrar
@@ -527,7 +528,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                         <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-red-400">Entiendo las consecuencias</span>
                                     </label>
                                     <div className="flex gap-4">
-                                        <button onClick={() => setShowCancel(false)} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all">Regresar</button>
+                                        <button onClick={() => { setShowCancel(false); onClose?.(); }} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all">Regresar</button>
                                         <button onClick={() => actualizarEstado('cancelada')} disabled={loading || !agreedCancel} className={`flex-1 py-5 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] transition-all active:scale-95 ${!agreedCancel ? 'bg-white/5 text-white/10 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-500 shadow-xl'}`}>
                                             {loading ? '...' : 'Cancelar Cita'}
                                         </button>
@@ -560,7 +561,7 @@ export function CitaCard({ cita, onUpdate, isHighlighted, style, currentTime, al
                                     </p>
                                     <div className="flex gap-4">
                                         <button
-                                            onClick={() => setShowLateWarning(false)}
+                                            onClick={() => { setShowLateWarning(false); onClose?.(); }}
                                             className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all border border-white/5"
                                         >
                                             Reagendar

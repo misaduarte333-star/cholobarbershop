@@ -50,39 +50,44 @@ export function ConnectionStatus() {
         checkConnection()
     }, [])
 
-    if (status === 'loading') return <div className="fixed bottom-4 right-4 z-50 text-xs text-slate-500 bg-slate-900/50 px-2 py-1 rounded">Verificando...</div>
+    if (status === 'loading') return (
+        <div className="fixed bottom-4 left-4 z-[9999] p-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/5 animate-pulse">
+            <div className="w-2 h-2 rounded-full bg-slate-500" />
+        </div>
+    )
 
     return (
         <div className={`
-            fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all flex flex-col gap-1
-            ${status === 'connected' ? 'bg-slate-900/90 border-emerald-500/30 shadow-emerald-900/20' : ''}
-            ${status === 'error' ? 'bg-slate-900/90 border-red-500/30 shadow-red-900/20' : ''}
-            ${status === 'demo' ? 'bg-slate-900/90 border-primary/30 shadow-primary/20' : ''}
+            fixed bottom-4 left-4 z-[9999] px-3 py-2 rounded-full shadow-2xl border backdrop-blur-xl transition-all duration-500 flex items-center gap-2 group hover:px-4
+            ${status === 'connected' ? 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10' : ''}
+            ${status === 'error' ? 'bg-red-500/5 border-red-500/20 hover:bg-red-500/10' : ''}
+            ${status === 'demo' ? 'bg-amber-500/5 border-primary/20 hover:bg-amber-500/10' : ''}
         `}>
-            <div className="flex items-center gap-3">
-                <span className={`relative flex h-2.5 w-2.5`}>
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75
+            <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75
                     ${status === 'connected' ? 'bg-emerald-400' : ''}
                     ${status === 'error' ? 'bg-red-400' : ''}
                     ${status === 'demo' ? 'bg-amber-400' : ''}
-                  `}></span>
-                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5
+                `}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2
                     ${status === 'connected' ? 'bg-emerald-500' : ''}
                     ${status === 'error' ? 'bg-red-500' : ''}
                     ${status === 'demo' ? 'bg-primary' : ''}
-                  `}></span>
-                </span>
-                <span className={`text-sm font-semibold
-                    ${status === 'connected' ? 'text-emerald-400' : ''}
-                    ${status === 'error' ? 'text-red-400' : ''}
-                    ${status === 'demo' ? 'text-amber-400' : ''}
-                `}>{message}</span>
-            </div>
-            {status === 'error' && details && (
-                <div className="mt-1 text-[10px] text-red-300 opacity-75 max-w-[250px] overflow-hidden text-ellipsis">
-                    {details.message || JSON.stringify(details)}
-                </div>
-            )}
+                `}></span>
+            </span>
+
+            <span className={`text-[10px] font-black uppercase tracking-widest hidden group-hover:block transition-all
+                ${status === 'connected' ? 'text-emerald-400/70' : ''}
+                ${status === 'error' ? 'text-red-400/70' : ''}
+                ${status === 'demo' ? 'text-amber-400/70' : ''}
+            `}>
+                {status === 'connected' ? 'En línea' : status === 'demo' ? 'Demo' : 'Error'}
+            </span>
+
+            {/* Subtle dot label for non-hover state */}
+            <span className="text-[8px] font-bold text-white/20 uppercase tracking-tighter group-hover:hidden">
+                {status === 'connected' ? 'OK' : '!!'}
+            </span>
         </div>
     )
 }

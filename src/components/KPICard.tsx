@@ -67,7 +67,7 @@ export function KPICard({ titulo, valor, color, icon, trend, trendInverse }: KPI
 
     return (
         <div className={`
-            glass-card p-3 sm:p-4 rounded-[1.2rem] border-primary/10
+            glass-card p-3 md:p-4 rounded-[1.2rem] border-primary/10
             transition-all duration-500 hover:scale-[1.03] hover:border-primary/30
             hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] group relative overflow-hidden
         `}>
@@ -95,10 +95,10 @@ export function KPICard({ titulo, valor, color, icon, trend, trendInverse }: KPI
             </div>
 
             <div className="relative z-10">
-                <p className="text-white/40 text-[8px] sm:text-[9px] mb-0.5 font-black uppercase tracking-[0.2em] font-display leading-tight">
+                <p className="text-white/40 text-[7px] md:text-[9px] mb-0.5 font-black uppercase tracking-[0.2em] font-display leading-tight">
                     {titulo}
                 </p>
-                <p className={`text-xl sm:text-2xl font-black font-display uppercase tracking-tight leading-none drop-shadow-2xl truncate ${color === 'amber' ? 'text-gradient-gold' : 'text-white'}`}>
+                <p className={`text-lg md:text-2xl font-black font-display uppercase tracking-tight leading-none drop-shadow-2xl truncate ${color === 'amber' ? 'text-gradient-gold' : 'text-white'}`}>
                     {valor}
                 </p>
             </div>

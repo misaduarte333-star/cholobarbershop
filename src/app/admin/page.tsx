@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { KPICard } from '@/components/KPICard'
 import { AdminDailyCalendar } from '@/components/AdminDailyCalendar'
 import Link from 'next/link'
-import type { KPIs, CitaDesdeVista, Barbero } from '@/lib/types'
+import type { KPIs, CitaDesdeVista, Barbero, Sucursal, Bloqueo } from '@/lib/types'
 
 export default function AdminDashboard() {
     const [kpis, setKpis] = useState<KPIs>({
@@ -29,41 +29,43 @@ export default function AdminDashboard() {
 
     const [todaysCitas, setTodaysCitas] = useState<CitaDesdeVista[]>([])
     const [allBarberos, setAllBarberos] = useState<Barbero[]>([])
+    const [sucursal, setSucursal] = useState<Sucursal | null>(null)
+    const [bloqueos, setBloqueos] = useState<Bloqueo[]>([])
 
-    const cargarKPIs = useCallback(async () => {
-        const hoyLocal = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local time
+    const cargarKPIs = useCallback(async (isInitialLoad = false) => {
+        const hoyLocal = new Date().toLocaleDateString('en-CA')
 
+        if (isInitialLoad) setLoading(true)
         try {
-            // 1. Fetch Citas Today from View using localized date
-            const { data: citasHoy, error: errorCitas } = await (supabase
-                .from('vista_citas_agente') as any)
-                .select('*')
-                .eq('fecha_cita_local', hoyLocal)
+            // Execute all fetches in parallel for maximum speed
+            const [
+                { data: citasHoy, error: errorCitas },
+                { data: barberos, error: errorBarberos },
+                { data: sucursalData },
+                { data: bloqueosData }
+            ] = await Promise.all([
+                (supabase.from('vista_citas_agente') as any).select('*').eq('fecha_cita_local', hoyLocal),
+                (supabase.from('barberos') as any).select('*').eq('activo', true).order('estacion_id'),
+                supabase.from('sucursales').select('*').eq('activa', true).single(),
+                supabase.from('bloqueos').select('*').gte('timestamp_inicio', `${hoyLocal}T00:00:00`).lte('timestamp_inicio', `${hoyLocal}T23:59:59`)
+            ])
 
             if (errorCitas) throw errorCitas
-
-            const castedCitas = (citasHoy || []) as CitaDesdeVista[]
-
-            // 2. Fetch Active Barbers
-            const { data: barberos, error: errorBarberos } = await (supabase
-                .from('barberos') as any)
-                .select('*')
-                .eq('activo', true)
-                .order('estacion_id')
-
             if (errorBarberos) throw errorBarberos
 
-            // Save to state for Calendar
-            setTodaysCitas(citasHoy || [])
-            setAllBarberos(barberos || [])
+            const castedCitas = (citasHoy || []) as CitaDesdeVista[]
+            setTodaysCitas(castedCitas)
+            setAllBarberos((barberos || []) as Barbero[])
+            if (sucursalData) setSucursal(sucursalData as Sucursal)
+            if (bloqueosData) setBloqueos(bloqueosData as Bloqueo[])
 
             // 3. Process FAQs/Stats
-            const completadas = castedCitas?.filter((c) => c.estado === 'finalizada') || []
-            const noShows = castedCitas?.filter((c) => c.estado === 'no_show').length || 0
-            const ingresos = completadas.reduce((sum: number, c) => sum + (Number(c.servicio_precio) || 0), 0)
+            const completadas = castedCitas.filter((c) => c.estado === 'finalizada')
+            const noShows = castedCitas.filter((c) => c.estado === 'no_show').length
+            const ingresos = completadas.reduce((sum, c) => sum + (Number(c.servicio_precio) || 0), 0)
 
             setKpis({
-                citasHoy: citasHoy?.length || 0,
+                citasHoy: castedCitas.length,
                 completadas: completadas.length,
                 ingresos,
                 noShows
@@ -72,17 +74,13 @@ export default function AdminDashboard() {
             // 4. Calculate Barber Status
             if (barberos) {
                 const statuses = barberos.map((b: any) => {
-                    // Find active appointment: must be 'en_proceso' OR (confirmed and within current time window)
-                    // For simplicity, we prioritize 'en_proceso' status explicitly set by barber
-                    const activeCita = citasHoy?.find((c: any) =>
+                    const activeCita = castedCitas.find((c: any) =>
                         c.barbero_id === b.id && c.estado === 'en_proceso'
                     )
 
-                    // TODO: Check 'bloqueos' table for 'descanso'
-
                     return {
                         id: b.id,
-                        nombre: b.nombre.split(' ')[0], // First name only
+                        nombre: b.nombre.split(' ')[0],
                         estacion: b.estacion_id,
                         estado: activeCita ? 'ocupado' : 'disponible',
                         cliente: activeCita ? activeCita.cliente_nombre : null
@@ -94,28 +92,29 @@ export default function AdminDashboard() {
         } catch (err) {
             console.error('Error loading dashboard data:', err)
         } finally {
-            setLoading(false)
+            if (isInitialLoad) setLoading(false)
         }
     }, [supabase])
 
     useEffect(() => {
-        cargarKPIs()
+        cargarKPIs(true) // Initial load with spinner
 
         // Supabase Realtime Subscription
         const channel = supabase.channel('schema-db-changes')
             .on(
                 'postgres_changes' as any,
                 { event: '*', schema: 'public', table: 'citas' },
-                () => {
-                    cargarKPIs()
-                }
+                () => cargarKPIs() // Background update without spinner
             )
             .on(
                 'postgres_changes' as any,
                 { event: '*', schema: 'public', table: 'barberos' },
-                () => {
-                    cargarKPIs()
-                }
+                () => cargarKPIs()
+            )
+            .on(
+                'postgres_changes' as any,
+                { event: '*', schema: 'public', table: 'bloqueos' },
+                () => cargarKPIs()
             )
             .subscribe()
 
@@ -135,27 +134,24 @@ export default function AdminDashboard() {
 
     return (
         <div className="relative min-h-full selection:bg-primary selection:text-black">
-            <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-6 relative z-10">
+            <header className="flex flex-row items-center justify-between gap-2 mb-4 relative z-10 px-1">
                 <div className="animate-slide-in">
-                    <h1 className="font-display font-black text-4xl md:text-5xl tracking-tight flex flex-col items-start leading-none drop-shadow-2xl">
+                    <h1 className="font-display font-black text-xl xs:text-2xl md:text-4xl tracking-tight flex flex-row items-baseline gap-2 leading-none drop-shadow-2xl">
                         <span className="text-white">PANEL</span>
-                        <span className="text-gradient-gold uppercase">De Control</span>
+                        <span className="text-gradient-gold uppercase text-lg xs:text-xl md:text-3xl">Control</span>
                     </h1>
-                    <div className="mt-4 flex items-center space-x-4">
-                        <div className="h-[1px] w-10 bg-primary/30"></div>
-                        <p className="text-[10px] tracking-[0.5em] text-white/40 font-black uppercase">Resumen Maestro Integral</p>
-                    </div>
+                    <p className="text-[7px] md:text-[8px] tracking-[0.3em] text-white/30 font-black uppercase mt-1">Resumen Maestro</p>
                 </div>
 
-                <div className="animate-slide-in delay-100 w-full lg:w-auto">
-                    <div className="glass-card px-6 py-3 border-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] glow-gold relative overflow-hidden group">
+                <div className="animate-slide-in delay-100">
+                    <div className="glass-card px-3 py-1.5 md:px-4 md:py-2 border-primary/10 shadow-lg glow-gold relative overflow-hidden group">
                         <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
                         <div className="relative z-10 flex flex-col items-end">
-                            <p className="text-2xl md:text-3xl font-black text-white tabular-nums tracking-tighter text-gradient-gold font-display leading-none">
-                                {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            <p className="text-sm md:text-xl font-black text-white tabular-nums tracking-tighter text-gradient-gold font-display leading-none">
+                                {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                             </p>
-                            <p className="text-primary font-black uppercase text-[9px] tracking-[0.3em] mt-1 opacity-70">
-                                {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' }).toUpperCase()}
+                            <p className="text-primary/60 font-black uppercase text-[6px] md:text-[8px] tracking-[0.1em] mt-0.5">
+                                {currentTime.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }).toUpperCase()}
                             </p>
                         </div>
                     </div>
@@ -205,21 +201,27 @@ export default function AdminDashboard() {
 
             {/* Admin Daily Calendar */}
             <div className="relative z-10 mb-6 animate-fade-in delay-200">
-                <AdminDailyCalendar citas={todaysCitas} barberos={allBarberos} currentTime={currentTime} />
+                <AdminDailyCalendar
+                    citas={todaysCitas}
+                    barberos={allBarberos}
+                    currentTime={currentTime}
+                    sucursal={sucursal}
+                    bloqueos={bloqueos}
+                />
             </div>
 
             {/* Main Content Sections */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6 relative z-10 animate-fade-in delay-300">
                 {/* Active Appointments Status */}
-                <div className="glass-card p-6 rounded-[2rem] border-white/5 shadow-2xl relative overflow-hidden group">
+                <div className="glass-card p-4 md:p-6 rounded-[2rem] border-white/5 shadow-2xl relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-brand opacity-30" />
 
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                                <span className="material-icons-round text-xl">schedule</span>
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <div className="flex items-center gap-3 md:gap-4">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                                <span className="material-icons-round text-lg md:text-xl">schedule</span>
                             </div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-tight font-display">Citas Activas</h2>
+                            <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight font-display">Citas Activas</h2>
                         </div>
                         <Link href="/admin/citas" className="group/link flex items-center gap-2">
                             <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] group-hover/link:mr-2 transition-all">Ver Agenda</span>
@@ -239,16 +241,16 @@ export default function AdminDashboard() {
                                 <p className="text-white/30 text-xs font-black uppercase tracking-[0.3em]">Sin actividad programada</p>
                             </div>
                         ) : (
-                            <div className="p-8 rounded-[2rem] bg-black/40 border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
+                            <div className="p-4 md:p-8 rounded-[1.5rem] md:rounded-[2rem] bg-black/40 border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
                                 <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left">
-                                    <p className="text-white/60 text-xs font-black uppercase tracking-[0.3em] mb-2 leading-none">Total Programado</p>
-                                    <div className="flex items-baseline gap-3">
-                                        <span className="text-7xl font-black text-gradient-gold font-display leading-none">{kpis.citasHoy}</span>
-                                        <span className="text-sm font-black text-white uppercase tracking-widest opacity-60">CITAS HOY</span>
+                                    <p className="text-white/60 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] mb-2 leading-none">Total Programado</p>
+                                    <div className="flex items-baseline gap-2 md:gap-3">
+                                        <span className="text-5xl md:text-7xl font-black text-gradient-gold font-display leading-none">{kpis.citasHoy}</span>
+                                        <span className="text-[10px] md:text-sm font-black text-white uppercase tracking-widest opacity-60">CITAS HOY</span>
                                     </div>
                                 </div>
-                                <Link href="/admin/citas" className="btn-primary px-8 py-5 rounded-2xl relative z-10 shadow-[0_10px_25px_rgba(234,179,8,0.2)] active:scale-95 transition-all w-full md:w-auto text-center font-black uppercase tracking-widest text-[11px]">
+                                <Link href="/admin/citas" className="btn-primary px-6 md:px-8 py-4 md:py-5 rounded-xl md:rounded-2xl relative z-10 shadow-[0_10px_25px_rgba(234,179,8,0.2)] active:scale-95 transition-all w-full md:w-auto text-center font-black uppercase tracking-widest text-[10px] md:text-[11px]">
                                     Ir a la Agenda
                                 </Link>
                             </div>
@@ -257,28 +259,28 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Quick Master Actions */}
-                <div className="glass-card p-6 rounded-[2rem] border-white/5 shadow-2xl group">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                            <span className="material-icons-round text-xl">bolt</span>
+                <div className="glass-card p-4 md:p-6 rounded-[2rem] border-white/5 shadow-2xl group">
+                    <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                            <span className="material-icons-round text-lg md:text-xl">bolt</span>
                         </div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-tight font-display">Acciones Maestras</h2>
+                        <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight font-display">Acciones Maestras</h2>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-2 gap-3 md:gap-4">
                         {[
-                            { href: '/admin/citas?action=agenda-manual', icon: 'add_task', label: 'Nueva Cita', sub: 'Agendar Manual' },
-                            { href: '/admin/citas?action=walk-in', icon: 'person_add', label: 'Walk-in', sub: 'Cliente Directo' },
-                            { href: '/admin/citas', icon: 'block', label: 'Bloqueo', sub: 'Logística Barberos' },
-                            { href: '/admin/reportes', icon: 'analytics', label: 'Reportes', sub: 'Análisis de Datos' }
+                            { href: '/admin/citas?action=agenda-manual', icon: 'add_task', label: 'Nueva Cita', sub: 'Agendar' },
+                            { href: '/admin/citas?action=walk-in', icon: 'person_add', label: 'Walk-in', sub: 'Directo' },
+                            { href: '/admin/citas', icon: 'block', label: 'Bloqueo', sub: 'Logística' },
+                            { href: '/admin/reportes', icon: 'analytics', label: 'Reportes', sub: 'Análisis' }
                         ].map((action, i) => (
-                            <Link key={i} href={action.href} className="p-6 rounded-[1.8rem] glass-card border-white/5 hover:border-primary/40 hover:bg-black/40 transition-all group/item relative overflow-hidden active:scale-95">
+                            <Link key={i} href={action.href} className="p-4 md:p-6 rounded-[1.5rem] md:rounded-[1.8rem] glass-card border-white/5 hover:border-primary/40 hover:bg-black/40 transition-all group/item relative overflow-hidden active:scale-95">
                                 <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                                <span className="material-icons-round text-3xl text-white/40 group-hover/item:text-primary transition-colors mb-5 block">
+                                <span className="material-icons-round text-2xl md:text-3xl text-white/40 group-hover/item:text-primary transition-colors mb-4 md:mb-5 block">
                                     {action.icon}
                                 </span>
-                                <p className="text-sm font-black text-white uppercase tracking-[0.2em] mb-1 font-display leading-none">{action.label}</p>
-                                <p className="text-[10px] text-white/20 font-black uppercase tracking-widest leading-none">{action.sub}</p>
+                                <p className="text-[10px] md:text-sm font-black text-white uppercase tracking-[0.1em] md:tracking-[0.2em] mb-1 font-display leading-none">{action.label}</p>
+                                <p className="text-[8px] md:text-[10px] text-white/20 font-black uppercase tracking-widest leading-none">{action.sub}</p>
                             </Link>
                         ))}
                     </div>
