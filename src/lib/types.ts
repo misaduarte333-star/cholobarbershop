@@ -24,7 +24,7 @@ export type HorarioApertura = Partial<Record<DiasSemana, HorarioDia>>
 export type HorarioLaboralSemana = Partial<Record<DiasSemana, HorarioLaboral>>
 
 // Enums
-export type OrigenCita = 'whatsapp' | 'walkin'
+export type OrigenCita = 'whatsapp' | 'walkin' | 'telefono'
 export type EstadoCita = 'confirmada' | 'en_espera' | 'en_proceso' | 'finalizada' | 'cancelada' | 'no_show'
 export type TipoBloqueo = 'almuerzo' | 'vacaciones' | 'dia_festivo' | 'emergencia'
 export type RolAdmin = 'admin' | 'secretaria'
@@ -76,7 +76,7 @@ export interface Cita {
     cliente_telefono: string | null
     timestamp_inicio: string
     timestamp_fin: string
-    origen: 'manual' | 'walkin' | 'whatsapp'
+    origen: 'manual' | 'walkin' | 'whatsapp' | 'telefono'
     estado: 'confirmada' | 'en_espera' | 'en_proceso' | 'finalizada' | 'cancelada' | 'no_show'
     notas?: string | null
     monto_pagado?: number | null

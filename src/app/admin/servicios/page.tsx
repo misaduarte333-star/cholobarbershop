@@ -41,19 +41,15 @@ export default function ServiciosPage() {
         if (!confirm('¿Estás seguro de eliminar este servicio?')) return
 
         try {
-            const { error } = await supabase
-                .from('servicios')
-                .delete()
-                .eq('id', id)
-
-            if (error) {
-                console.error('Error deleting:', error)
-                alert('Error al eliminar')
-            } else {
-                cargarServicios()
+            const res = await fetch(`/api/servicios/${id}`, { method: 'DELETE' })
+            if (!res.ok && res.status !== 204) {
+                const body = await res.json()
+                throw new Error(body.message || 'Error al eliminar')
             }
-        } catch {
-            setServicios(servicios.filter(s => s.id !== id))
+            cargarServicios()
+        } catch (err: any) {
+            console.error('Error deleting:', err)
+            alert('Error al eliminar: ' + err.message)
         }
     }
 
@@ -69,16 +65,18 @@ export default function ServiciosPage() {
 
     const toggleActivo = async (servicio: Servicio) => {
         try {
-            const { error } = await (supabase
-                .from('servicios') as any)
-                .update({ activo: !servicio.activo })
-                .eq('id', servicio.id)
-
-            if (error) throw error
+            const res = await fetch(`/api/servicios/${servicio.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activo: !servicio.activo }),
+            })
+            if (!res.ok) {
+                const body = await res.json()
+                throw new Error(body.message)
+            }
             cargarServicios()
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error toggling:', err)
-            // Demo mode
             setServicios(servicios.map(s =>
                 s.id === servicio.id ? { ...s, activo: !s.activo } : s
             ))
@@ -305,30 +303,25 @@ function ServicioModal({
         setLoading(true)
 
         try {
-            if (!sucursalId && !servicio) {
-                throw new Error('No se encontró una sucursal activa')
-            }
-
-            const data = {
+            const payload = {
                 nombre: formData.nombre,
-                duracion_minutos: parseInt(formData.duracion_minutos),
-                precio: parseFloat(formData.precio),
+                duracion_minutos: formData.duracion_minutos,
+                precio: formData.precio,
                 activo: formData.activo
             }
 
-            if (servicio) {
-                const { error } = await (supabase
-                    .from('servicios') as any)
-                    .update(data)
-                    .eq('id', servicio.id)
+            const url = servicio ? `/api/servicios/${servicio.id}` : '/api/servicios'
+            const method = servicio ? 'PATCH' : 'POST'
 
-                if (error) throw error
-            } else {
-                const { error } = await (supabase
-                    .from('servicios') as any)
-                    .insert([{ ...data, sucursal_id: sucursalId }])
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
 
-                if (error) throw error
+            if (!res.ok) {
+                const body = await res.json()
+                throw new Error(body.message || 'Error al guardar')
             }
 
             onSave()

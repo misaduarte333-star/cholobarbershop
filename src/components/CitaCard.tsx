@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
@@ -17,7 +17,7 @@ interface CitaCardProps {
     autoOpen?: 'move' | 'cancel' | 'details' | null
 }
 
-export function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, currentTime, allCitas, autoOpen }: CitaCardProps) {
+export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, currentTime, allCitas, autoOpen }: CitaCardProps) {
     const [mounted, setMounted] = useState(false)
     useEffect(() => {
         setMounted(true)
@@ -44,9 +44,9 @@ export function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, curren
     const supabase = createClient()
 
     const actualizarEstado = async (nuevoEstado: EstadoCita) => {
-        console.log(`🚀 INICIO ACTUALIZACION: ${nuevoEstado} para ${cita.cliente_nombre}`)
-
         if (loading) return
+
+        console.log(`🚀 INICIO ACTUALIZACION: ${nuevoEstado} para ${cita.cliente_nombre}`)
         setLoading(true)
 
         // Close all modals immediately for UI responsiveness
@@ -57,29 +57,23 @@ export function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, curren
 
         try {
             console.log('🛰️ Enviando a Supabase...', { id: cita.id, estado: nuevoEstado })
-            const { error, data } = await (supabase
-                .from('citas') as any)
-                .update({
-                    estado: nuevoEstado,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', cita.id)
-                .select()
+            const res = await fetch(`/api/citas/${cita.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: nuevoEstado }),
+            })
 
-            if (error) {
-                console.error('❌ ERROR DB:', error)
-                alert(`Error en Base de Datos: ${error.message}`)
+            if (!res.ok) {
+                const body = await res.json()
+                return alert(`Error en Base de Datos: ${body.message}`)
+            }
+
+            console.log('✅ ACTUALIZACION EXITOSA:', nuevoEstado)
+
+            if (onUpdate) {
+                onUpdate()
             } else {
-                console.log('✅ ACTUALIZACION EXITOSA:', data)
-                if (nuevoEstado === 'en_proceso') {
-                    console.log('Moved to In Process')
-                }
-
-                if (onUpdate) {
-                    onUpdate()
-                } else {
-                    window.location.reload()
-                }
+                window.location.reload()
             }
         } catch (err: any) {
             console.error('💥 CRASH TECNICO:', err)
@@ -90,20 +84,26 @@ export function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, curren
     }
 
     const liquidarCita = async () => {
+        if (loading) return
         setLoading(true)
+
         try {
-            const { error } = await (supabase
-                .from('citas') as any)
-                .update({
+            const res = await fetch(`/api/citas/${cita.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     estado: 'finalizada' as EstadoCita,
                     monto_pagado: montoFinal,
                     metodo_pago: metodoPago,
                     notas_crm: notasCrm,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', cita.id)
+                }),
+            })
 
-            if (error) throw error
+            if (!res.ok) {
+                const body = await res.json()
+                throw new Error(body.message)
+            }
+
             onUpdate?.()
             setShowCheckout(false)
         } catch (err: any) {
@@ -115,7 +115,8 @@ export function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, curren
     }
 
     const moverCita = async () => {
-        if (!newHour) return
+        if (!newHour || loading) return
+
         setLoading(true)
         try {
             const [hours, minutes] = newHour.split(':').map(Number)
@@ -123,20 +124,43 @@ export function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, curren
             const oldFin = new Date(cita.timestamp_fin)
             const duration = oldFin.getTime() - oldInicio.getTime()
 
+            // Asignar manualmente la hora sobre el día actual de la cita (oldInicio)
             const newInicio = new Date(oldInicio)
             newInicio.setHours(hours, minutes, 0, 0)
             const newFin = new Date(newInicio.getTime() + duration)
 
-            const { error } = await (supabase
-                .from('citas') as any)
-                .update({
-                    timestamp_inicio: newInicio.toISOString(),
-                    timestamp_fin: newFin.toISOString(),
-                    updated_at: new Date().toISOString()
+            // Función auxiliar para forzar la construcción del string ISO en zona Hermosillo con offset
+            const TZ_OFFSET = '-07:00'
+            const formatToHermosilloISO = (d: Date) => {
+                const formatter = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'America/Hermosillo',
+                    year: 'numeric', month: '2-digit', day: '2-digit'
                 })
-                .eq('id', cita.id)
+                const dateStr = formatter.format(d) // YYYY-MM-DD
 
-            if (error) throw error
+                const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: 'America/Hermosillo',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                })
+                const parts = timeFormatter.formatToParts(d)
+                const p = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {} as any)
+                return `${dateStr}T${p.hour}:${p.minute}:00${TZ_OFFSET}`
+            }
+
+            const res = await fetch(`/api/citas/${cita.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    timestamp_inicio: formatToHermosilloISO(newInicio),
+                    timestamp_fin: formatToHermosilloISO(newFin),
+                }),
+            })
+
+            if (!res.ok) {
+                const body = await res.json()
+                throw new Error(body.message)
+            }
+
             onUpdate?.()
             setShowMove(false)
         } catch (err: any) {
@@ -582,4 +606,4 @@ export function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, curren
             ) : null}
         </div>
     )
-}
+})

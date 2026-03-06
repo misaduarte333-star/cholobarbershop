@@ -30,8 +30,6 @@ export default function AdminLoginPage() {
 
             const admin = admins?.[0] as any
 
-            // In a real app we would use proper hash comparison
-            // Matching the pattern used in the barber login for now
             if (admin && admin.password_hash === password) {
                 localStorage.setItem('admin_session', JSON.stringify(admin))
                 router.push('/admin')
@@ -47,109 +45,123 @@ export default function AdminLoginPage() {
     }
 
     return (
-        <div className="min-h-[100dvh] flex items-center justify-center relative overflow-hidden bg-[#050608] text-white selection:bg-primary selection:text-black antialiased">
-            {/* Background elements - Same as Home for consistency */}
-            <div className="absolute inset-0 z-0 bg-shop-premium opacity-40 scale-105"></div>
-            <div className="absolute inset-0 z-0 vignette-overlay opacity-80"></div>
+        <main className="relative h-[100dvh] flex flex-col justify-center items-center overflow-hidden bg-[#0f0c08] selection:bg-white selection:text-black antialiased px-6">
 
-            {/* Light Leaks - Reduced intensity for mobile */}
-            <div className="absolute -top-24 -right-24 w-[300px] md:w-[500px] h-[300px] md:h-[500px] rounded-full blur-[100px] md:blur-[120px] opacity-10 md:opacity-20 bg-primary pointer-events-none animate-pulse-glow" />
-            <div className="absolute -bottom-24 -left-24 w-[300px] md:w-[500px] h-[300px] md:h-[500px] rounded-full blur-[100px] md:blur-[120px] opacity-5 md:opacity-10 bg-primary pointer-events-none" />
-
-            {/* Back Button - Responsive positioning */}
-            <div className="absolute top-4 left-4 md:top-8 md:left-8 z-30">
-                <Link href="/" className="flex items-center gap-2 md:gap-3 px-3 py-2 md:px-5 md:py-3 rounded-xl md:rounded-2xl glass-card text-white/70 hover:text-primary transition-all group border-primary/20">
-                    <span className="material-icons-round text-base md:text-lg group-hover:-translate-x-1 transition-transform">arrow_back</span>
-                    <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] font-display">Regresar</span>
-                </Link>
+            {/* ── Ambient background ─────────────────── */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                {/* radial warm center glow matching the app theme but slightly more structured */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,rgba(177,120,20,0.08)_0%,transparent_70%)]" />
+                <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 to-transparent" />
+                <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/50 to-transparent" />
+                {/* subtle horizontal scan lines texture identical to landing */}
+                <div className="absolute inset-0 opacity-[0.03]"
+                    style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,0.5) 2px,rgba(255,255,255,0.5) 3px)' }}
+                />
             </div>
 
-            {/* Login Card Container */}
-            <div className="relative z-10 w-full max-w-xl px-4 py-4 md:py-8">
-                <div className="glass-card p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] animate-slide-in relative overflow-hidden border-primary/30 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                    {/* Interior Glow Overlay */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 md:w-48 h-1 bg-gradient-brand blur-sm opacity-50" />
+            {/* ── Header / Logo ──────────────────────── */}
+            <div className="relative z-10 w-full max-w-sm mb-8 flex flex-col items-center">
+                <div className="relative w-12 h-12 flex items-center justify-center mb-6">
+                    <div className="absolute inset-0 rounded-full border border-primary/30" />
+                    <div className="absolute inset-0 rounded-full bg-primary/10 blur-sm" />
+                    <span className="relative z-10 font-black text-sm text-primary tracking-tighter leading-none select-none">CB</span>
+                </div>
 
-                    {/* Logo & Header */}
-                    <div className="text-center mb-6 md:mb-8 relative">
-                        <div className="inline-flex items-center justify-center w-14 h-14 md:w-20 md:h-20 rounded-full bg-black/60 border-2 border-primary/40 glow-logo mb-4 md:mb-6 relative group scale-100 md:scale-110">
-                            <div className="absolute inset-0 bg-primary/15 rounded-full blur-xl group-hover:bg-primary/25 transition-all duration-500" />
-                            <span className="text-2xl md:text-3xl font-black text-primary relative z-10 font-display">CB</span>
-                        </div>
-                        <h1 className="font-display font-black text-2xl md:text-5xl tracking-tight flex flex-col items-center leading-tight md:leading-none">
-                            <span className="text-white drop-shadow-2xl">MASTER</span>
-                            <span className="text-gradient-gold uppercase">Panel Admin</span>
-                        </h1>
-                        <div className="mt-4 md:mt-6 flex items-center justify-center space-x-3 md:space-x-4">
-                            <div className="h-[1px] w-6 md:w-10 bg-primary/30"></div>
-                            <p className="text-[7px] md:text-[9px] tracking-[0.3em] md:tracking-[0.5em] text-white/50 font-black uppercase">Administración Central</p>
-                            <div className="h-[1px] w-6 md:w-10 bg-primary/30"></div>
-                        </div>
-                    </div>
+                <h1 className="text-center font-black leading-[0.9] drop-shadow-[0_4px_24px_rgba(177,120,20,0.3)] text-4xl mb-3">
+                    <span className="block text-white tracking-tight">ACCESO</span>
+                    <span className="block text-primary/80 tracking-tight">
+                        ADMIN
+                    </span>
+                </h1>
 
-                    {/* Form */}
-                    <form onSubmit={handleLogin} className="space-y-4 md:space-y-6">
-                        <div className="space-y-1 md:space-y-2">
-                            <label className="text-[8px] md:text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-2">Correo Corporativo</label>
-                            <div className="group flex items-center gap-3 md:gap-4 px-4 py-3 md:px-5 md:py-4 bg-black/40 border border-white/10 rounded-xl md:rounded-2xl focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-all">
-                                <span className="material-icons-round text-white/30 text-sm md:text-base group-focus-within:text-primary transition-colors">alternate_email</span>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="bg-transparent border-none outline-none w-full text-white placeholder:text-white/20 font-bold text-xs md:text-sm"
-                                    placeholder="admin@cholobarber.com"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-1 md:space-y-2">
-                            <label className="text-[8px] md:text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-2">Clave Maestra</label>
-                            <div className="group flex items-center gap-3 md:gap-4 px-4 py-3 md:px-5 md:py-4 bg-black/40 border border-white/10 rounded-xl md:rounded-2xl focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-all">
-                                <span className="material-icons-round text-white/30 text-sm md:text-base group-focus-within:text-primary transition-colors">vpn_key</span>
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="bg-transparent border-none outline-none w-full text-white placeholder:text-white/20 font-bold text-xs md:text-sm"
-                                    placeholder="••••••••"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {error && (
-                            <div className="bg-red-500/10 border border-red-500/30 rounded-xl md:rounded-2xl px-3 py-2 md:px-4 md:py-3 text-red-400 text-xs md:text-sm flex items-center gap-3 md:gap-4 animate-shake">
-                                <span className="material-icons-round text-sm">error_outline</span>
-                                <span className="font-bold tracking-wide uppercase text-[8px] md:text-[10px]">{error}</span>
-                            </div>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="btn-primary w-full py-4 md:py-5 flex items-center justify-center gap-3 md:gap-4 text-sm md:text-base group shadow-[0_10px_30px_rgba(234,179,8,0.2)] font-display uppercase tracking-[0.2em] relative overflow-hidden active:scale-95 transition-all"
-                        >
-                            {loading ? (
-                                <div className="spinner" />
-                            ) : (
-                                <>
-                                    <span className="font-black">Entrar al Sistema</span>
-                                    <span className="material-icons-round text-lg md:text-xl group-hover:translate-x-2 transition-transform">login</span>
-                                </>
-                            )}
-                        </button>
-                    </form>
-
-                    {/* Footer Info */}
-                    <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-white/5 text-center">
-                        <p className="text-[7px] md:text-[9px] uppercase tracking-[0.3em] md:tracking-[0.4em] text-white/20 font-black">
-                            Propiedad Privada de Cholo Barber
-                        </p>
-                    </div>
+                <div className="flex items-center gap-3">
+                    <div className="h-px w-8 bg-primary/30" />
+                    <p className="text-[9px] tracking-[0.45em] text-primary/50 font-black uppercase">Gestión y Control</p>
+                    <div className="h-px w-8 bg-gradient-to-l from-transparent to-primary/30" />
                 </div>
             </div>
-        </div>
+
+            {/* ── Login Form Card ────────────────────── */}
+            <div className="relative z-10 w-full max-w-sm p-8 rounded-3xl border border-primary/20 bg-[#14100b]/80 backdrop-blur-3xl shadow-[0_20px_80px_-20px_rgba(177,120,20,0.2)]">
+                {/* Inner light top edge */}
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                {/* Glow Overlay target for top center */}
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-48 h-8 bg-primary/20 blur-xl rounded-full opacity-40 pointer-events-none" />
+                <form onSubmit={handleLogin} className="space-y-6 relative z-10">
+
+                    <div className="space-y-2">
+                        <label htmlFor="email" className="text-[10px] font-black text-white/50 uppercase tracking-[0.3em] ml-2">Correo Corporativo</label>
+                        <div className="group flex items-center gap-3 px-5 py-4 bg-black/60 border border-white/10 rounded-2xl focus-within:border-primary/40 focus-within:bg-black/80 transition-all shadow-inner">
+                            <span className="material-icons-round text-white/30 text-base group-focus-within:text-primary transition-colors">alternate_email</span>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="bg-transparent border-none outline-none w-full text-white placeholder:text-white/20 font-bold text-sm"
+                                placeholder="admin@cholobarber.com"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label htmlFor="password" className="text-[10px] font-black text-white/50 uppercase tracking-[0.3em] ml-2">Clave Maestra</label>
+                        <div className="group flex items-center gap-3 px-5 py-4 bg-black/60 border border-white/10 rounded-2xl focus-within:border-primary/40 focus-within:bg-black/80 transition-all shadow-inner">
+                            <span className="material-icons-round text-white/30 text-base group-focus-within:text-primary transition-colors">vpn_key</span>
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="bg-transparent border-none outline-none w-full text-white placeholder:text-white/20 font-bold text-sm"
+                                placeholder="••••••••"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center gap-3 animate-shake">
+                            <span className="material-icons-round text-red-400 text-sm">error</span>
+                            <span className="font-bold uppercase tracking-widest text-[9px] text-red-300">{error}</span>
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-5 mt-4 rounded-2xl flex items-center justify-center gap-3 group transition-all duration-200 active:scale-[0.98] shadow-[0_10px_30px_rgba(177,120,20,0.15)] hover:shadow-[0_10px_40px_rgba(177,120,20,0.25)] relative overflow-hidden"
+                        style={{ border: '1px solid rgba(245,200,66,0.3)' }}
+                    >
+                        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(245,200,66,0.2) 0%,rgba(177,120,20,0.05) 100%)' }} />
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(135deg,rgba(245,200,66,0.3) 0%,rgba(177,120,20,0.1) 100%)' }} />
+
+                        <div className="relative flex items-center gap-3 z-10">
+                            {loading ? (
+                                <div className="w-5 h-5 border-2 border-primary/50 border-t-primary rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    <span className="font-black text-white text-sm uppercase tracking-[0.2em] drop-shadow-md">Acceder a Control</span>
+                                    <span className="material-icons-round text-primary text-lg group-hover:translate-x-1 transition-transform drop-shadow-md">admin_panel_settings</span>
+                                </>
+                            )}
+                        </div>
+                    </button>
+                </form>
+            </div>
+
+            {/* ── Footer / Back ──────────────────────── */}
+            <div className="relative z-10 mt-8 flex flex-col items-center gap-4">
+                <p className="text-[8px] tracking-[0.4em] text-primary/40 font-black uppercase flex items-center gap-2">
+                    <span className="material-icons-round text-[10px]">policy</span>
+                    Acceso Restringido
+                </p>
+                <Link href="/" className="px-6 py-2 rounded-full border border-primary/20 bg-primary/5 text-[9px] font-black text-primary/60 uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-primary/20 hover:text-primary transition-colors active:scale-95">
+                    <span className="material-icons-round text-[12px]">keyboard_return</span>
+                    Regresar
+                </Link>
+            </div>
+        </main>
     )
 }

@@ -53,6 +53,8 @@ const createFallbackMock = () => {
     }
 }
 
+let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null
+
 export function createClient(): ReturnType<typeof createBrowserClient<Database>> {
     const isBrowser = typeof window !== 'undefined'
 
@@ -68,12 +70,18 @@ export function createClient(): ReturnType<typeof createBrowserClient<Database>>
         return createFallbackMock() as any
     }
 
+    // Return existing client if in browser
+    if (isBrowser && browserClient) return browserClient
+
     try {
         if (isBrowser) console.log('✅ BARBERIA-APP VERSION: 1.1.0 - Usando Supabase Real')
-        return createBrowserClient<Database>(
+        const client = createBrowserClient<Database>(
             SUPABASE_URL!,
             SUPABASE_ANON_KEY!
         )
+
+        if (isBrowser) browserClient = client
+        return client
     } catch (e) {
         if (isBrowser) console.error('❌ Error Supabase Init:', e)
         return createFallbackMock() as any

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useEffect, useRef, useState } from 'react'
+import { useMemo, useEffect, useRef, useState, memo } from 'react'
 import { motion } from 'framer-motion'
 import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
 import { createClient } from '@/lib/supabase'
@@ -8,6 +8,9 @@ import { CitaCard } from './CitaCard'
 
 interface AgendaTimelineProps {
     citas: CitaDesdeVista[]
+    bloqueos?: any[]
+    almuerzoBarbero?: any
+    fechaBase?: string
     currentTime: Date
     onUpdate?: () => void
 }
@@ -27,7 +30,7 @@ function generarSlots(): string[] {
     return slots
 }
 
-export function AgendaTimeline({ citas, currentTime, onUpdate }: AgendaTimelineProps) {
+export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, fechaBase, currentTime, onUpdate }: AgendaTimelineProps) {
     const slots = useMemo(() => generarSlots(), [])
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const [selectedCita, setSelectedCita] = useState<CitaDesdeVista | null>(null)
@@ -80,19 +83,52 @@ export function AgendaTimeline({ citas, currentTime, onUpdate }: AgendaTimelineP
         if (ampm === 'AM' && hour24 === 12) hour24 = 0
 
         const slotTimeStart = new Date()
+
+        // Use fechaBase if provided, otherwise today
+        if (fechaBase) {
+            const [y, m, d] = fechaBase.split('-').map(Number)
+            slotTimeStart.setFullYear(y, m - 1, d)
+        }
+
         slotTimeStart.setHours(hour24, 0, 0, 0)
-        const slotTimeEnd = new Date()
+        const slotTimeEnd = new Date(slotTimeStart)
         slotTimeEnd.setHours(hour24 + 1, 0, 0, 0)
 
-        return citas.find(cita => {
+        const citaEncontrada = citas.find((cita: CitaDesdeVista) => {
             if (['cancelada', 'no_show'].includes(cita.estado)) return false
             const citaInicio = new Date(cita.timestamp_inicio)
             const citaFin = new Date(cita.timestamp_fin)
             return (citaInicio < slotTimeEnd && citaFin > slotTimeStart)
         })
+
+        if (citaEncontrada) return { tipo: 'cita', data: citaEncontrada }
+
+        // Check bloqueos
+        const bloqueoEncontrado = bloqueos.find(b => {
+            const bStart = new Date(b.timestamp_inicio)
+            const bEnd = new Date(b.timestamp_fin)
+            return (bStart < slotTimeEnd && bEnd > slotTimeStart)
+        })
+
+        if (bloqueoEncontrado) return { tipo: 'bloqueo', data: bloqueoEncontrado }
+
+        // Check almuerzo
+        if (almuerzoBarbero && almuerzoBarbero.inicio && almuerzoBarbero.fin) {
+            const dStr = fechaBase || new Date().toLocaleDateString('en-CA')
+            const aStart = new Date(`${dStr}T${almuerzoBarbero.inicio}:00-07:00`)
+            const aEnd = new Date(`${dStr}T${almuerzoBarbero.fin}:00-07:00`)
+            if (aStart < slotTimeEnd && aEnd > slotTimeStart) {
+                return { tipo: 'almuerzo', data: null }
+            }
+        }
+
+        return null
     }
 
-    const getStatusColor = (estado: string) => {
+    const getStatusColor = (estado: string, tipoItem?: string) => {
+        if (tipoItem === 'bloqueo') return 'bg-red-500'
+        if (tipoItem === 'almuerzo') return 'bg-amber-500'
+
         switch (estado) {
             case 'confirmada': return 'bg-primary'
             case 'en_espera': return 'bg-primary'
@@ -138,74 +174,76 @@ export function AgendaTimeline({ citas, currentTime, onUpdate }: AgendaTimelineP
 
                 <div className="space-y-0">
                     {slots.map((slot) => {
-                        const cita = getCitaEnSlot(slot)
+                        const item = getCitaEnSlot(slot)
                         return (
                             <div
                                 key={slot}
                                 style={{ height: `${SLOT_HEIGHT}px` }}
-                                className={`relative flex items-center gap-3 border-b border-slate-700/20 transition-colors duration-200 ${cita ? 'bg-transparent' : 'hover:bg-white/5'}`}
+                                className={`relative flex items-center gap-3 border-b border-slate-700/20 transition-colors duration-200 ${item ? 'bg-transparent' : 'hover:bg-white/5'}`}
                             >
                                 <div className="w-10 text-[8px] font-black text-slate-400 uppercase tracking-tighter shrink-0 opacity-60">
                                     {slot}
                                 </div>
                                 <div className="relative flex-1 py-0.5">
-                                    {cita ? (
-                                        <div className="w-full flex items-center justify-between gap-2 animate-fade-in bg-[#16181D]/90 backdrop-blur-sm p-2 rounded-xl border border-white/5 shadow-lg hover:border-white/10 transition-all group/card overflow-hidden">
+                                    {item ? (
+                                        <div className={`w-full flex items-center justify-between gap-2 animate-fade-in bg-[#16181D]/90 backdrop-blur-sm p-2 rounded-xl border ${item.tipo === 'bloqueo' ? 'border-red-500/30' : item.tipo === 'almuerzo' ? 'border-amber-500/30' : 'border-white/5 hover:border-white/10'} shadow-lg transition-all group/card overflow-hidden`}>
                                             <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                <div className={`w-0.5 h-6 rounded-full ${getStatusColor(cita.estado)} shadow-[0_0_8px_rgba(0,0,0,0.3)] shrink-0`} />
+                                                <div className={`w-0.5 h-6 rounded-full ${getStatusColor(item.tipo === 'cita' ? item.data.estado : '', item.tipo)} shadow-[0_0_8px_rgba(0,0,0,0.3)] shrink-0`} />
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-[10px] font-black text-white truncate leading-tight font-display uppercase tracking-tight">
-                                                        {cita.cliente_nombre}
+                                                    <p className={`text-[10px] font-black ${item.tipo === 'bloqueo' ? 'text-red-400' : item.tipo === 'almuerzo' ? 'text-amber-400' : 'text-white'} truncate leading-tight font-display uppercase tracking-tight`}>
+                                                        {item.tipo === 'cita' ? item.data.cliente_nombre : item.tipo === 'almuerzo' ? 'Descanso / Almuerzo' : 'Turno Bloqueado'}
                                                     </p>
-                                                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none mt-0.5 truncate">
-                                                        {cita.servicio_nombre}
+                                                    <p className={`text-[7px] font-black ${item.tipo === 'cita' ? 'text-slate-500' : item.tipo === 'bloqueo' ? 'text-red-500/50' : 'text-amber-500/50'} uppercase tracking-widest leading-none mt-0.5 truncate`}>
+                                                        {item.tipo === 'cita' ? item.data.servicio_nombre : item.tipo === 'almuerzo' ? 'Horario NO disponible' : (item.data.motivo || 'Razón no especificada')}
                                                     </p>
                                                 </div>
                                             </div>
 
-                                            {/* Quick Actions - Always visible */}
-                                            <div className="flex items-center gap-1 shrink-0">
-                                                {cita.estado === 'confirmada' && (
-                                                    <>
-                                                        <motion.button
-                                                            whileHover={{ scale: 1.1 }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                            onClick={(e) => { e.stopPropagation(); actualizarEstadoDirecto(cita.id, 'en_proceso'); }}
-                                                            className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-black transition-all border border-emerald-500/20"
-                                                            title="Iniciar"
-                                                        >
-                                                            <span className="material-icons-round text-sm">play_arrow</span>
-                                                        </motion.button>
-                                                        <motion.button
-                                                            whileHover={{ scale: 1.1 }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                            onClick={(e) => { e.stopPropagation(); setSelectedCita(cita); setActiveModal('move'); }}
-                                                            className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center hover:bg-blue-500 hover:text-black transition-all border border-blue-500/20"
-                                                            title="Mover"
-                                                        >
-                                                            <span className="material-icons-round text-base">event_repeat</span>
-                                                        </motion.button>
-                                                        <motion.button
-                                                            whileHover={{ scale: 1.1 }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                            onClick={(e) => { e.stopPropagation(); setSelectedCita(cita); setActiveModal('cancel'); }}
-                                                            className="w-7 h-7 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-black transition-all border border-red-500/20"
-                                                            title="Cancelar"
-                                                        >
-                                                            <span className="material-icons-round text-base">close</span>
-                                                        </motion.button>
-                                                    </>
-                                                )}
-                                                <motion.button
-                                                    whileHover={{ scale: 1.1 }}
-                                                    whileTap={{ scale: 0.9 }}
-                                                    onClick={(e) => { e.stopPropagation(); setSelectedCita(cita); setActiveModal('details'); }}
-                                                    className="w-7 h-7 rounded-lg bg-white/10 text-white/50 flex items-center justify-center hover:bg-white/20 hover:text-white transition-all"
-                                                    title="Detalles"
-                                                >
-                                                    <span className="material-icons-round text-base">info</span>
-                                                </motion.button>
-                                            </div>
+                                            {/* Quick Actions - Only for Citas */}
+                                            {item.tipo === 'cita' && (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    {item.data.estado === 'confirmada' && (
+                                                        <>
+                                                            <motion.button
+                                                                whileHover={{ scale: 1.1 }}
+                                                                whileTap={{ scale: 0.9 }}
+                                                                onClick={(e) => { e.stopPropagation(); actualizarEstadoDirecto(item.data.id, 'en_proceso'); }}
+                                                                className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-black transition-all border border-emerald-500/20"
+                                                                title="Iniciar"
+                                                            >
+                                                                <span className="material-icons-round text-sm">play_arrow</span>
+                                                            </motion.button>
+                                                            <motion.button
+                                                                whileHover={{ scale: 1.1 }}
+                                                                whileTap={{ scale: 0.9 }}
+                                                                onClick={(e) => { e.stopPropagation(); setSelectedCita(item.data); setActiveModal('move'); }}
+                                                                className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center hover:bg-blue-500 hover:text-black transition-all border border-blue-500/20"
+                                                                title="Mover"
+                                                            >
+                                                                <span className="material-icons-round text-base">event_repeat</span>
+                                                            </motion.button>
+                                                            <motion.button
+                                                                whileHover={{ scale: 1.1 }}
+                                                                whileTap={{ scale: 0.9 }}
+                                                                onClick={(e) => { e.stopPropagation(); setSelectedCita(item.data); setActiveModal('cancel'); }}
+                                                                className="w-7 h-7 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-black transition-all border border-red-500/20"
+                                                                title="Cancelar"
+                                                            >
+                                                                <span className="material-icons-round text-base">close</span>
+                                                            </motion.button>
+                                                        </>
+                                                    )}
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedCita(item.data); setActiveModal('details'); }}
+                                                        className="w-7 h-7 rounded-lg bg-white/10 text-white/50 flex items-center justify-center hover:bg-white/20 hover:text-white transition-all"
+                                                        title="Detalles"
+                                                    >
+                                                        <span className="material-icons-round text-base">info</span>
+                                                    </motion.button>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="h-px w-8 bg-slate-100 ml-1 opacity-50" />
@@ -253,4 +291,4 @@ export function AgendaTimeline({ citas, currentTime, onUpdate }: AgendaTimelineP
             )}
         </div>
     )
-}
+})

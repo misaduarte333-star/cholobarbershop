@@ -49,8 +49,11 @@ function CitasContent() {
     const handleDeleteCita = async (id: string) => {
         if (!confirm('¿Estás seguro de eliminar esta cita?')) return
         try {
-            const { error } = await (supabase.from('citas') as any).delete().eq('id', id)
-            if (error) throw error
+            const res = await fetch(`/api/citas/${id}`, { method: 'DELETE' })
+            if (!res.ok && res.status !== 204) {
+                const body = await res.json()
+                throw new Error(body.message || 'Error al eliminar')
+            }
             cargarCitas()
         } catch (err: any) {
             alert('Error al eliminar: ' + err.message)
@@ -59,12 +62,15 @@ function CitasContent() {
 
     const handleStatusChange = async (cardita: CitaDesdeVista, newStatus: EstadoCita) => {
         try {
-            const { error } = await (supabase
-                .from('citas') as any)
-                .update({ estado: newStatus })
-                .eq('id', cardita.id)
-
-            if (error) throw error
+            const res = await fetch(`/api/citas/${cardita.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: newStatus }),
+            })
+            if (!res.ok) {
+                const body = await res.json()
+                throw new Error(body.message)
+            }
             cargarCitas()
         } catch (err: any) {
             console.error('Error updating status:', err)
@@ -472,15 +478,34 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
     const [servicios, setServicios] = useState<Servicio[]>([])
     const [barberos, setBarberos] = useState<Barbero[]>([])
 
+    // Utilities to keep local time from jumping
+    const extractLocalTime = (isoString: string) => {
+        const d = new Date(isoString)
+        const formatter = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'America/Hermosillo',
+            hour: '2-digit', minute: '2-digit'
+        })
+        return formatter.format(d)
+    }
+
+    const extractLocalDate = (isoString?: string) => {
+        const d = isoString ? new Date(isoString) : new Date()
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Hermosillo',
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        })
+        return formatter.format(d)
+    }
+
     // Form State
     const [formData, setFormData] = useState({
         cliente_nombre: cita?.cliente_nombre || '',
         cliente_telefono: cita?.cliente_telefono || '',
         servicio_id: cita?.servicio_id || (cita ? 'custom' : ''), // If editing and no service, assume custom
         barbero_id: cita?.barbero_id || '',
-        fecha: cita?.timestamp_inicio ? new Date(cita.timestamp_inicio).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        hora: cita?.timestamp_inicio ? new Date(cita.timestamp_inicio).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '10:00',
-        horaFin: cita?.timestamp_fin ? new Date(cita.timestamp_fin).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '10:30',
+        fecha: extractLocalDate(cita?.timestamp_inicio),
+        hora: cita?.timestamp_inicio ? extractLocalTime(cita.timestamp_inicio) : '10:00',
+        horaFin: cita?.timestamp_fin ? extractLocalTime(cita.timestamp_fin) : '10:30',
         notas: cita?.notas || ''
     })
 
@@ -553,56 +578,42 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
         setLoading(true)
 
         try {
-            if (!sucursalId) throw new Error('No se encontró sucursal activa')
+            // Construir string forzando el huso de Hermosillo para evitar saltos UTC
+            const TZ_OFFSET = '-07:00'
+            const startISO = `${formData.fecha}T${formData.hora}:00${TZ_OFFSET}`
+            const endISO = `${formData.fecha}T${formData.horaFin}:00${TZ_OFFSET}`
 
-            // Calculate timestamps
-            // We need to create a proper Date object from the input date/time to send uniform ISO/UTC to DB
-            // Browser creates Date in local timezone by default from these strings
-            const startDate = new Date(`${formData.fecha}T${formData.hora}:00`)
-            const endDate = new Date(`${formData.fecha}T${formData.horaFin}:00`)
-
-            // Send ISO strings (UTC) to DB
-            const timestamp_inicio = startDate.toISOString()
-            const timestamp_fin = endDate.toISOString()
-
-            // Handle "Custom Service"
-            // If the user selected 'custom', we send null to servicio_id
-            const finalServicioId = formData.servicio_id === 'custom' ? null : formData.servicio_id
-
-            const newCita = {
-                sucursal_id: sucursalId, // Use real ID
-                servicio_id: finalServicioId,
-                barbero_id: formData.barbero_id || null, // Optional barber
+            const payload = {
+                sucursal_id: sucursalId,
+                servicio_id: formData.servicio_id === 'custom' ? null : formData.servicio_id || null,
+                barbero_id: formData.barbero_id || null,
                 cliente_nombre: formData.cliente_nombre,
                 cliente_telefono: formData.cliente_telefono,
-                timestamp_inicio,
-                timestamp_fin,
+                timestamp_inicio: startISO,
+                timestamp_fin: endISO,
                 origen: cita ? cita.origen : initialOrigen,
                 estado: cita ? cita.estado : (initialOrigen === 'walkin' ? 'en_espera' : 'confirmada'),
                 notas: formData.notas
             }
 
-            if (cita) {
-                // UPDATE
-                const { error } = await (supabase
-                    .from('citas') as any)
-                    .update(newCita)
-                    .eq('id', cita.id)
-                if (error) throw error
-            } else {
-                // INSERT
-                const { error } = await (supabase
-                    .from('citas') as any)
-                    .insert([newCita])
-                if (error) throw error
+            const url = cita ? `/api/citas/${cita.id}` : '/api/citas'
+            const method = cita ? 'PATCH' : 'POST'
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+
+            if (!res.ok) {
+                const body = await res.json()
+                throw new Error(body.message || 'Error al guardar')
             }
 
             onSave()
         } catch (err) {
             console.error('Error saving cita:', err)
-            // Fallback for "Demo Mode" visualization if DB fails
             alert('Error al guardar cita: ' + (err as any).message)
-            // onSave() // Don't close on error
         } finally {
             setLoading(false)
         }

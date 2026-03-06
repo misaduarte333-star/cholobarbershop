@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
+import { AgendaSemanalMensual } from '@/components/AgendaSemanalMensual'
+import { TabletNuevaCitaModal } from '@/components/TabletNuevaCitaModal'
 import type { CitaDesdeVista } from '@/lib/types'
 
 export default function TabletDashboard() {
@@ -14,18 +16,27 @@ export default function TabletDashboard() {
     const [citas, setCitas] = useState<CitaDesdeVista[]>([])
     const [loading, setLoading] = useState(true)
     const [currentTime, setCurrentTime] = useState(new Date())
-    const [barbero, setBarbero] = useState<{ id: string, nombre: string, estacion_id: number | null } | null>(null)
+    const [barbero, setBarbero] = useState<{ id: string, nombre: string, estacion_id: number | null, sucursal_id?: string } | null>(null)
     const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
     const [newApptAlert, setNewApptAlert] = useState<{ show: boolean, clientName: string }>({ show: false, clientName: '' })
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const [isAudioInitialized, setIsAudioInitialized] = useState(false)
 
+    // Agenda states
+    const [vistaAgenda, setVistaAgenda] = useState<'hoy' | 'semana' | 'mes' | 'dia'>('hoy')
+    const [fechaAgenda, setFechaAgenda] = useState<string>(new Date().toLocaleDateString('en-CA'))
+    const [citasAgenda, setCitasAgenda] = useState<CitaDesdeVista[]>([])
+    const [bloqueosAgenda, setBloqueosAgenda] = useState<any[]>([])
+    const [almuerzoBarbero, setAlmuerzoBarbero] = useState<any>(null)
+    const [loadingAgenda, setLoadingAgenda] = useState(false)
+
     const supabase = createClient()
 
     // Initialize Audio logic
     const initializeAudio = useCallback(() => {
-        if (isAudioInitialized) return
+        if (isAudioInitialized || !audioRef) return
+
         try {
             const audio = new Audio('/notification/notification.mp3')
             audio.volume = 0.5
@@ -46,14 +57,14 @@ export default function TabletDashboard() {
     useEffect(() => {
         const sessionStr = localStorage.getItem('barbero_session')
         if (!sessionStr) {
+            return router.push('/tablet/login')
+        }
+
+        try {
+            const session = JSON.parse(sessionStr)
+            setBarbero(session)
+        } catch {
             router.push('/tablet/login')
-        } else {
-            try {
-                const session = JSON.parse(sessionStr)
-                setBarbero(session)
-            } catch {
-                router.push('/tablet/login')
-            }
         }
         setIsCheckingAuth(false)
     }, [router])
@@ -82,6 +93,63 @@ export default function TabletDashboard() {
         }
     }, [supabase, barbero])
 
+    const cargarAgenda = useCallback(async () => {
+        if (!barbero?.id) return
+        setLoadingAgenda(true)
+
+        // Calculate date range based on vistaAgenda and fechaAgenda
+        let startStr = fechaAgenda
+        let endStr = fechaAgenda
+
+        const d = new Date(`${fechaAgenda}T12:00:00-07:00`)
+        if (vistaAgenda === 'semana') {
+            const dayNum = d.getDay() // 0 is Sunday
+            const diff = d.getDate() - dayNum + (dayNum === 0 ? -6 : 1) // adjust to Monday
+            const startD = new Date(d.setDate(diff))
+            startStr = startD.toLocaleDateString('en-CA')
+            const endD = new Date(startD)
+            endD.setDate(endD.getDate() + 6)
+            endStr = endD.toLocaleDateString('en-CA')
+        } else if (vistaAgenda === 'mes') {
+            const starD = new Date(d.getFullYear(), d.getMonth(), 1)
+            startStr = starD.toLocaleDateString('en-CA')
+            const endD = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+            endStr = endD.toLocaleDateString('en-CA')
+        }
+
+        try {
+            const { data: citasData } = await supabase
+                .from('vista_citas_agente')
+                .select('*')
+                .eq('barbero_id', barbero.id)
+                .gte('fecha_cita_local', startStr)
+                .lte('fecha_cita_local', endStr)
+                .neq('estado', 'cancelada')
+                .order('timestamp_inicio', { ascending: true })
+
+            const { data: bloqueosData } = await supabase
+                .from('bloqueos')
+                .select('*')
+                .eq('barbero_id', barbero.id)
+                .gte('timestamp_inicio', `${startStr}T00:00:00-07:00`)
+                .lte('timestamp_fin', `${endStr}T23:59:59-07:00`)
+
+            const { data: bData } = await (supabase.from('barberos').select('bloqueo_almuerzo').eq('id', barbero.id).single() as any)
+
+            setCitasAgenda(citasData || [])
+            setBloqueosAgenda(bloqueosData || [])
+            setAlmuerzoBarbero(bData?.bloqueo_almuerzo || null)
+        } catch (err) {
+            console.error('Error loading agenda:', err)
+        } finally {
+            setLoadingAgenda(false)
+        }
+    }, [supabase, barbero, vistaAgenda, fechaAgenda])
+
+    useEffect(() => {
+        if (barbero) cargarAgenda()
+    }, [cargarAgenda, barbero, vistaAgenda, fechaAgenda])
+
     useEffect(() => {
         if (!barbero) return
         cargarCitas(true)
@@ -100,6 +168,7 @@ export default function TabletDashboard() {
                     setTimeout(() => setNewApptAlert(prev => ({ ...prev, show: false })), 5000)
                 }
                 cargarCitas()
+                cargarAgenda()
             })
             .subscribe()
         return () => { supabase.removeChannel(channel) }
@@ -110,15 +179,16 @@ export default function TabletDashboard() {
         return () => clearInterval(interval)
     }, [])
 
-    const totalDinero = citas
+    const totalDinero = useMemo(() => citas
         .filter(c => c.estado === 'finalizada')
-        .reduce((acc, current) => acc + (current.monto_pagado ?? current.servicio_precio ?? 0), 0)
+        .reduce((acc, current) => acc + (current.monto_pagado ?? current.servicio_precio ?? 0), 0), [citas])
 
-    const citasPendientes = citas.filter(c => ['confirmada', 'en_espera', 'en_proceso'].includes(c.estado))
-    const citaEnProceso = citas.find(c => c.estado === 'en_proceso')
-    const citasSiguientes = citasPendientes.filter(c => c.estado !== 'en_proceso')
+    const citasPendientes = useMemo(() => citas.filter(c => ['confirmada', 'en_espera', 'en_proceso'].includes(c.estado)), [citas])
+    const citaEnProceso = useMemo(() => citas.find(c => c.estado === 'en_proceso'), [citas])
+    const citasSiguientes = useMemo(() => citasPendientes.filter((c: CitaDesdeVista) => c.estado !== 'en_proceso'), [citasPendientes])
 
     const [showMobileAppointments, setShowMobileAppointments] = useState(false)
+    const [isNewCitaModalOpen, setIsNewCitaModalOpen] = useState(false)
 
     if (isCheckingAuth) {
         return (
@@ -238,6 +308,12 @@ export default function TabletDashboard() {
 
                         {/* Actions */}
                         <div className="flex items-center gap-1.5 md:gap-2">
+                            <button
+                                onClick={() => setIsNewCitaModalOpen(true)}
+                                className="hidden lg:flex w-9 h-9 md:w-12 md:h-12 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all items-center justify-center border border-primary/30 group active:scale-95"
+                            >
+                                <span className="material-icons-round text-base md:text-xl group-hover:scale-110 transition-transform">add</span>
+                            </button>
                             <Link href="/tablet/galeria" className="w-9 h-9 md:w-12 md:h-12 rounded-xl bg-white/5 text-white/30 hover:text-primary hover:bg-primary/5 hover:border-primary/20 transition-all flex items-center justify-center border border-white/5 group active:scale-95">
                                 <span className="material-icons-round text-base md:text-xl group-hover:scale-110 transition-transform">photo_library</span>
                             </Link>
@@ -307,7 +383,7 @@ export default function TabletDashboard() {
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 gap-3 lg:gap-4">
-                                        {citasSiguientes.map((cita, index) => (
+                                        {citasSiguientes.map((cita: CitaDesdeVista, index: number) => (
                                             <div key={cita.id} className="animate-slide-in" style={{ animationDelay: `${index * 50}ms` }}>
                                                 <CitaCard cita={cita} onUpdate={cargarCitas} currentTime={currentTime} allCitas={citas} />
                                             </div>
@@ -320,20 +396,52 @@ export default function TabletDashboard() {
 
                     {/* Column 2: Full Screen Calendar on Mobile / Sidebar on Desktop */}
                     <div className={`lg:col-span-4 h-full flex flex-col min-h-0 relative ${showMobileAppointments ? 'hidden lg:flex' : 'flex'}`}>
-                        {/* Desktop Header for Timeline */}
-                        <div className="hidden lg:flex items-center gap-3 mb-4 shrink-0 px-2">
-                            <div className="h-1 w-6 bg-primary/20 rounded-full" />
-                            <h2 className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] font-display">Cronograma General</h2>
+                        {/* Desktop Header for Timeline and Mobile View Switcher */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0 px-2">
+                            <div className="flex items-center gap-3">
+                                <div className="h-1 w-6 bg-primary/20 rounded-full" />
+                                <h2 className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] font-display">Cronograma General</h2>
+                            </div>
+
+                            {/* View Switcher Controls */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar w-full sm:w-auto">
+                                <button onClick={() => { setVistaAgenda('hoy'); setFechaAgenda(new Date().toLocaleDateString('en-CA')) }} className={`px-2 md:px-3 py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-colors ${vistaAgenda === 'hoy' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'}`}>Hoy</button>
+                                <button onClick={() => setVistaAgenda('semana')} className={`px-2 md:px-3 py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-colors ${vistaAgenda === 'semana' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'}`}>Sem. <span className="hidden lg:inline">Semana</span></button>
+                                <button onClick={() => setVistaAgenda('mes')} className={`px-2 md:px-3 py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-colors ${vistaAgenda === 'mes' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'}`}>Mes</button>
+
+                                <div className="relative flex items-center bg-white/5 hover:bg-white/10 transition-colors rounded-lg border border-white/5 overflow-hidden ml-1">
+                                    <input type="date" value={fechaAgenda} onChange={(e) => { setFechaAgenda(e.target.value); setVistaAgenda('dia') }} className="bg-transparent border-none outline-none text-[8px] md:text-[9px] font-black text-white/80 p-1 md:p-1.5 uppercase tracking-widest cursor-pointer" style={{ colorScheme: 'dark' }} />
+                                </div>
+                            </div>
                         </div>
 
                         {/* The Calendar View */}
                         <div className="flex-1 bg-black/40 lg:border border-white/5 lg:shadow-[0_30px_90px_rgba(0,0,0,0.5)] lg:rounded-[2.5rem] overflow-hidden relative backdrop-blur-3xl group transition-all duration-700 hover:border-white/10">
                             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-gold opacity-10" />
-                            <AgendaTimeline citas={citas} currentTime={currentTime} onUpdate={cargarCitas} />
+                            {loadingAgenda ? (
+                                <div className="flex items-center justify-center w-full h-full">
+                                    <div className="spinner w-8 h-8 border-t-primary border-slate-700" />
+                                </div>
+                            ) : (vistaAgenda === 'hoy' || vistaAgenda === 'dia') ? (
+                                <AgendaTimeline citas={citasAgenda} bloqueos={bloqueosAgenda} almuerzoBarbero={almuerzoBarbero} currentTime={currentTime} fechaBase={fechaAgenda} onUpdate={() => { cargarCitas(); cargarAgenda(); }} />
+                            ) : (
+                                <div className="p-4 pt-6 h-full overflow-y-auto custom-scrollbar">
+                                    {/* Placeholder for weekly/monthly component */}
+                                    <AgendaSemanalMensual citas={citasAgenda} bloqueos={bloqueosAgenda} almuerzoBarbero={almuerzoBarbero} fecha={fechaAgenda} vista={vistaAgenda} onUpdate={() => { cargarCitas(); cargarAgenda(); }} />
+                                </div>
+                            )}
                         </div>
 
-                        {/* Mobile Floating Action Button (FAB) */}
-                        <div className="lg:hidden fixed bottom-24 right-5 z-[100]">
+                        {/* Mobile Floating Action Buttons (FAB) */}
+                        <div className="lg:hidden fixed bottom-24 right-5 z-[100] flex flex-col gap-4">
+                            {/* Añadir cita Walk-in */}
+                            <button
+                                onClick={() => setIsNewCitaModalOpen(true)}
+                                className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-xl border border-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center text-primary active:scale-95 transition-all hover:bg-black/80 hover:border-primary/40"
+                            >
+                                <span className="material-icons-round text-2xl">person_add</span>
+                            </button>
+                            {/* Ver agenda listado */}
                             <button
                                 onClick={() => setShowMobileAppointments(true)}
                                 className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center text-primary active:scale-95 transition-all hover:bg-black/60 hover:border-primary/30"
@@ -349,6 +457,16 @@ export default function TabletDashboard() {
                     </div>
                 </div>
             </main>
+
+            {/* Modal de Nueva Cita */}
+            <TabletNuevaCitaModal
+                isOpen={isNewCitaModalOpen}
+                onClose={() => setIsNewCitaModalOpen(false)}
+                barberoId={barbero.id}
+                sucursalId={barbero.sucursal_id || ''} // Si no se setea, el backend asignará la activa por defecto
+                citasDelDia={citas}
+                onCitaCreada={() => cargarCitas()}
+            />
         </div>
     )
 }
