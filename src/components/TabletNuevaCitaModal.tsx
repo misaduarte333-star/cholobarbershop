@@ -194,8 +194,11 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
 
             // Exito
             resetForm()
-            onCitaCreada()
-            onClose()
+            // Delay closing to let DB views sync
+            setTimeout(() => {
+                onCitaCreada()
+                onClose()
+            }, 500)
 
         } catch (err: any) {
             setError(err.message || 'Error de conexión. Revisa la disponibilidad de ese horario.')
@@ -251,7 +254,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
             const slotEnd = new Date(slotStart.getTime() + duracionRequeridaMin * 60000)
 
             // Ocupado por Cita
-            const isOccupiedByCita = citasParaFecha.some(c => {
+            const citasOverlap = citasParaFecha.filter(c => {
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
 
@@ -260,6 +263,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
                 const cEnd = new Date(c.timestamp_fin)
                 return slotStart < cEnd && slotEnd > cStart
             })
+            const isOccupiedByCita = citasOverlap.length >= 4
 
             // Ocupado por Bloqueo
             const isOccupiedByBloqueo = bloqueosParaFecha.some(b => {

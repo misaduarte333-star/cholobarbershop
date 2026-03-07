@@ -34,7 +34,7 @@ export async function PATCH(
     }
 
     // Validate estado if provided
-    const validEstados: EstadoCita[] = ['confirmada', 'en_espera', 'en_proceso', 'finalizada', 'cancelada', 'no_show']
+    const validEstados: EstadoCita[] = ['confirmada', 'en_espera', 'en_proceso', 'por_cobrar', 'finalizada', 'cancelada', 'no_show']
     if (body.estado && !validEstados.includes(body.estado as EstadoCita)) {
         return err('InvalidValue', `'estado' debe ser uno de: ${validEstados.join(', ')}`, 400)
     }
@@ -43,6 +43,7 @@ export async function PATCH(
     const allowedFields = [
         'estado', 'monto_pagado', 'metodo_pago', 'notas_crm', 'notas',
         'timestamp_inicio', 'timestamp_fin', 'barbero_id', 'servicio_id',
+        'timestamp_inicio_servicio', 'timestamp_fin_servicio', 'duracion_real_minutos'
     ]
     const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() }
     for (const field of allowedFields) {

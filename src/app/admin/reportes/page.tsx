@@ -20,6 +20,7 @@ export default function ReportesPage() {
     // Data for charts
     const [ingresosPorDia, setIngresosPorDia] = useState<{ dia: string; monto: number }[]>([])
     const [citasPorServicio, setCitasPorServicio] = useState<{ servicio: string; cantidad: number; porcentaje: number }[]>([])
+    const [tiemposBarberos, setTiemposBarberos] = useState<{ barbero: string; promedio: number; totalServicios: number }[]>([])
 
     const supabase = createClient()
 
@@ -74,6 +75,26 @@ export default function ReportesPage() {
                     }))
                     .sort((a, b) => b.cantidad - a.cantidad)
                 )
+
+                // Prepare Chart Data: Tiempos de Barberos
+                const barberosMap = new Map<string, { totalMinutos: number, citasConTiempo: number }>()
+                finalizadas.forEach(c => {
+                    const nombre = c.barbero_nombre || 'Desconocido'
+                    if (c.duracion_real_minutos !== null && c.duracion_real_minutos !== undefined) {
+                        const entry = barberosMap.get(nombre) || { totalMinutos: 0, citasConTiempo: 0 }
+                        entry.totalMinutos += c.duracion_real_minutos
+                        entry.citasConTiempo += 1
+                        barberosMap.set(nombre, entry)
+                    }
+                })
+                setTiemposBarberos(Array.from(barberosMap.entries())
+                    .map(([barbero, data]) => ({
+                        barbero,
+                        promedio: Math.round(data.totalMinutos / data.citasConTiempo),
+                        totalServicios: data.citasConTiempo
+                    }))
+                    .sort((a, b) => b.promedio - a.promedio) // Orden descendente por tiempo real
+                )
             }
         } catch (err) {
             console.error('Error loading reports:', err)
@@ -109,6 +130,11 @@ export default function ReportesPage() {
             { servicio: 'Barba', cantidad: 30, porcentaje: 25 },
             { servicio: 'Combo Completo', cantidad: 25, porcentaje: 20 },
             { servicio: 'Corte Niño', cantidad: 15, porcentaje: 15 }
+        ])
+        setTiemposBarberos([
+            { barbero: 'Mike', promedio: 38, totalServicios: 12 },
+            { barbero: 'Alex', promedio: 45, totalServicios: 9 },
+            { barbero: 'Juan', promedio: 30, totalServicios: 15 }
         ])
     }
 
@@ -215,6 +241,33 @@ export default function ReportesPage() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+
+                {/* Chart: Métricas de Rendimiento por Barbero */}
+                <div className="glass-card p-6 lg:col-span-2">
+                    <h2 className="text-lg font-bold text-white mb-6">Promedio de Tiempo por Barbero</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {tiemposBarberos.length === 0 ? (
+                            <div className="col-span-full text-center py-8 text-slate-400 text-sm">
+                                No hay suficientes datos de servicios finalizados en el rango de fechas para calcular promedios.
+                            </div>
+                        ) : (
+                            tiemposBarberos.map((tb, idx) => (
+                                <div key={idx} className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50 flex flex-col items-center text-center">
+                                    <div className="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center mb-4">
+                                        <span className="material-icons-round text-2xl">timer</span>
+                                    </div>
+                                    <h3 className="text-slate-200 font-bold mb-1">{tb.barbero}</h3>
+                                    <div className="text-3xl font-black text-white font-display my-2">
+                                        {tb.promedio} <span className="text-sm text-slate-400">min</span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mt-auto pt-2 border-t border-slate-700/50 w-full">
+                                        Basado en {tb.totalServicios} {tb.totalServicios === 1 ? 'servicio' : 'servicios'}
+                                    </p>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>

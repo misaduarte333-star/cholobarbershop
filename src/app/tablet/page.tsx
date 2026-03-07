@@ -9,6 +9,7 @@ import { CitaCard } from '@/components/CitaCard'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
 import { AgendaSemanalMensual } from '@/components/AgendaSemanalMensual'
 import { TabletNuevaCitaModal } from '@/components/TabletNuevaCitaModal'
+import { MisEstadisticasModal } from '@/components/MisEstadisticasModal'
 import type { CitaDesdeVista } from '@/lib/types'
 
 export default function TabletDashboard() {
@@ -57,17 +58,40 @@ export default function TabletDashboard() {
     useEffect(() => {
         const sessionStr = localStorage.getItem('barbero_session')
         if (!sessionStr) {
-            return router.push('/tablet/login')
+            router.push('/tablet/login')
+            return
         }
 
         try {
             const session = JSON.parse(sessionStr)
-            setBarbero(session)
+
+            // Validate session against DB (in case barber was deleted)
+            const validarSesion = async () => {
+                const { data, error } = await supabase
+                    .from('barberos')
+                    .select('id, activo')
+                    .eq('id', session.id)
+                    .single()
+
+                const isActivo = data ? (data as any).activo : false
+
+                if (error || !data || !isActivo) {
+                    console.error('Barber session invalid or deleted. Logging out.')
+                    localStorage.removeItem('barbero_session')
+                    router.push('/tablet/login')
+                    return
+                }
+
+                setBarbero(session)
+                setIsCheckingAuth(false)
+            }
+
+            validarSesion()
         } catch {
+            localStorage.removeItem('barbero_session')
             router.push('/tablet/login')
         }
-        setIsCheckingAuth(false)
-    }, [router])
+    }, [router, supabase])
 
     const cargarCitas = useCallback(async (isInitialLoad = false) => {
         if (!barbero?.id) return
@@ -183,12 +207,13 @@ export default function TabletDashboard() {
         .filter(c => c.estado === 'finalizada')
         .reduce((acc, current) => acc + (current.monto_pagado ?? current.servicio_precio ?? 0), 0), [citas])
 
-    const citasPendientes = useMemo(() => citas.filter(c => ['confirmada', 'en_espera', 'en_proceso'].includes(c.estado)), [citas])
-    const citaEnProceso = useMemo(() => citas.find(c => c.estado === 'en_proceso'), [citas])
-    const citasSiguientes = useMemo(() => citasPendientes.filter((c: CitaDesdeVista) => c.estado !== 'en_proceso'), [citasPendientes])
+    const citasPendientes = useMemo(() => citas.filter(c => ['confirmada', 'en_espera', 'en_proceso', 'por_cobrar'].includes(c.estado)), [citas])
+    const citaEnProceso = useMemo(() => citas.find(c => c.estado === 'en_proceso' || c.estado === 'por_cobrar'), [citas])
+    const citasSiguientes = useMemo(() => citasPendientes.filter((c: CitaDesdeVista) => c.estado !== 'en_proceso' && c.estado !== 'por_cobrar'), [citasPendientes])
 
     const [showMobileAppointments, setShowMobileAppointments] = useState(false)
     const [isNewCitaModalOpen, setIsNewCitaModalOpen] = useState(false)
+    const [showStatsModal, setShowStatsModal] = useState(false)
 
     if (isCheckingAuth) {
         return (
@@ -267,17 +292,17 @@ export default function TabletDashboard() {
                                 <h1 className="text-lg md:text-2xl font-black text-white tracking-tight uppercase font-display truncate max-w-[100px] md:max-w-none">
                                     {barbero?.nombre.split(' ')[0] || 'Barbero'}
                                 </h1>
-                                <div className="mt-1 md:mt-3 flex flex-wrap items-center gap-1.5 md:gap-2">
-                                    <div className="flex items-center gap-1 md:gap-2 px-1.5 py-0.5 md:px-2.5 md:py-1 bg-primary/5 rounded-lg border border-primary/10">
-                                        <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(234,179,8,0.4)]" />
-                                        <span className="text-[7px] md:text-[9px] font-black text-primary uppercase tracking-widest">{citasPendientes.length} <span className="hidden xs:inline">Pendientes</span><span className="xs:hidden">P.</span></span>
+                                <div className="mt-2 md:mt-4 flex flex-wrap items-center gap-3 md:gap-4">
+                                    <div className="flex items-center gap-3 md:gap-4 px-4 py-2 md:px-5 md:py-3 bg-primary/5 rounded-2xl border border-primary/20 shadow-sm">
+                                        <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-primary shadow-[0_0_12px_rgba(234,179,8,0.6)]" />
+                                        <span className="text-[11px] md:text-sm font-black text-primary uppercase tracking-widest">{citasPendientes.length} <span className="hidden xs:inline">Pendientes</span><span className="xs:hidden">P.</span></span>
                                     </div>
-                                    <div className="flex items-center gap-1 md:gap-2 px-1.5 py-0.5 md:px-2.5 md:py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                                        <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-                                        <span className="text-[7px] md:text-[9px] font-black text-emerald-500 uppercase tracking-widest">{citas.filter(c => c.estado === 'finalizada').length} <span className="hidden xs:inline">Hechas</span><span className="xs:hidden">H.</span></span>
+                                    <div className="flex items-center gap-3 md:gap-4 px-4 py-2 md:px-5 md:py-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/30 shadow-sm">
+                                        <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
+                                        <span className="text-[11px] md:text-sm font-black text-emerald-500 uppercase tracking-widest">{citas.filter(c => c.estado === 'finalizada').length} <span className="hidden xs:inline">Hechas</span><span className="xs:hidden">H.</span></span>
                                     </div>
-                                    <div className="flex items-center gap-1 md:gap-2 px-1.5 py-0.5 md:px-2.5 md:py-1 bg-white/5 rounded-lg border border-white/10">
-                                        <span className="text-[7px] md:text-[9px] font-black text-white/50 uppercase tracking-widest">${totalDinero}</span>
+                                    <div className="flex items-center gap-2 md:gap-3 px-4 py-2 md:px-5 md:py-3 bg-white/5 rounded-2xl border border-white/20 shadow-sm">
+                                        <span className="text-[11px] md:text-sm font-black text-white/70 uppercase tracking-widest">${totalDinero}</span>
                                     </div>
                                 </div>
                             </div>
@@ -313,6 +338,13 @@ export default function TabletDashboard() {
                                 className="hidden lg:flex w-9 h-9 md:w-12 md:h-12 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all items-center justify-center border border-primary/30 group active:scale-95"
                             >
                                 <span className="material-icons-round text-base md:text-xl group-hover:scale-110 transition-transform">add</span>
+                            </button>
+                            <button
+                                onClick={() => setShowStatsModal(true)}
+                                className="w-9 h-9 md:w-12 md:h-12 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all flex items-center justify-center border border-blue-500/20 group active:scale-95"
+                                title="Métricas de Rendimiento"
+                            >
+                                <span className="material-icons-round text-base md:text-xl group-hover:scale-110 transition-transform">bar_chart</span>
                             </button>
                             <Link href="/tablet/galeria" className="w-9 h-9 md:w-12 md:h-12 rounded-xl bg-white/5 text-white/30 hover:text-primary hover:bg-primary/5 hover:border-primary/20 transition-all flex items-center justify-center border border-white/5 group active:scale-95">
                                 <span className="material-icons-round text-base md:text-xl group-hover:scale-110 transition-transform">photo_library</span>
@@ -463,10 +495,24 @@ export default function TabletDashboard() {
                 isOpen={isNewCitaModalOpen}
                 onClose={() => setIsNewCitaModalOpen(false)}
                 barberoId={barbero.id}
-                sucursalId={barbero.sucursal_id || ''} // Si no se setea, el backend asignará la activa por defecto
+                sucursalId={barbero.sucursal_id || ''}
                 citasDelDia={citas}
-                onCitaCreada={() => cargarCitas()}
+                onCitaCreada={() => {
+                    cargarCitas()
+                    cargarAgenda()
+                }}
             />
+
+            {/* Modal de Rendimiento del Barbero */}
+            <AnimatePresence>
+                {showStatsModal && (
+                    <MisEstadisticasModal
+                        isOpen={showStatsModal}
+                        onClose={() => setShowStatsModal(false)}
+                        citasDelDia={citas.filter(c => c.estado === 'finalizada')}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     )
 }

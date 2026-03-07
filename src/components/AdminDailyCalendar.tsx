@@ -75,6 +75,7 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
             case 'confirmada': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
             case 'en_espera': return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
             case 'en_proceso': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+            case 'por_cobrar': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
             case 'finalizada': return 'bg-slate-500/20 text-slate-400 border-slate-500/30'
             case 'cancelada': case 'no_show': return 'bg-red-500/20 text-red-400 border-red-500/30'
             default: return 'bg-slate-700/50 text-slate-300 border-slate-600'
@@ -91,14 +92,43 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
         const height = Math.max(24, endY - startY)
 
         const isEnProceso = cita.estado === 'en_proceso'
+        const isPorCobrar = cita.estado === 'por_cobrar'
+
+        // Calcular minutos del cronómetro solo para render local sin causar re-renders pesados
+        let activeTimer = null
+        if (isEnProceso && cita.timestamp_inicio_servicio) {
+            const minTrasncurridos = Math.floor((new Date().getTime() - new Date(cita.timestamp_inicio_servicio).getTime()) / 60000)
+            const horas = Math.floor(minTrasncurridos / 60)
+            const mins = minTrasncurridos % 60
+            activeTimer = horas > 0 ? `${horas}H ${mins}M` : `${mins} MIN`
+        } else if (isPorCobrar && cita.duracion_real_minutos) {
+            const horas = Math.floor(cita.duracion_real_minutos / 60)
+            const mins = cita.duracion_real_minutos % 60
+            activeTimer = horas > 0 ? `${horas}H ${mins}M` : `${mins} MIN`
+        }
+
+        const extraClasses = isEnProceso ? 'shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse-glow border-emerald-500/50' :
+            isPorCobrar ? 'shadow-[0_0_15px_rgba(168,85,247,0.3)] border-purple-500/50' : ''
 
         return (
             <div
                 key={cita.id}
-                className={`absolute left-1 right-1 rounded-xl border p-2 overflow-hidden shadow-lg backdrop-blur-sm transition-transform hover:scale-[1.02] hover:z-20 ${getStatusColor(cita.estado)} ${isEnProceso ? 'shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse-glow border-emerald-500/50' : ''}`}
+                className={`absolute left-1 right-1 rounded-xl border p-2 overflow-hidden shadow-lg backdrop-blur-sm transition-transform hover:scale-[1.02] hover:z-20 ${getStatusColor(cita.estado)} ${extraClasses}`}
                 style={{ top: `${startY}px`, height: `${height}px` }}
             >
-                <p className="text-[10px] font-black uppercase tracking-tight leading-tight truncate">{cita.cliente_nombre}</p>
+                <div className="flex justify-between items-start gap-1">
+                    <p className="text-[10px] font-black uppercase tracking-tight leading-tight truncate">{cita.cliente_nombre}</p>
+                    {(isEnProceso || isPorCobrar) && activeTimer && (
+                        <div className={`px-1.5 py-0.5 rounded text-[8px] font-black flex-shrink-0 flex items-center gap-1 border ${isEnProceso ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                                'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                            }`}>
+                            <span className={`material-icons-round text-[9px] ${isEnProceso ? 'animate-spin-slow' : ''}`}>
+                                {isEnProceso ? 'hourglass_top' : 'done_all'}
+                            </span>
+                            <span className={isEnProceso ? 'animate-pulse' : ''}>{activeTimer}</span>
+                        </div>
+                    )}
+                </div>
                 {height >= 40 && (
                     <p className="text-[9px] opacity-70 uppercase truncate mt-0.5">{cita.servicio_nombre}</p>
                 )}
@@ -276,6 +306,7 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
             <div className="p-3 flex flex-wrap items-center justify-center gap-4 text-[9px] font-black uppercase tracking-widest text-slate-400">
                 <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />Confirmada</div>
                 <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />En Proceso</div>
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500" />Por Cobrar</div>
                 <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500/50" />Bloqueo</div>
                 <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500/50" />Almuerzo</div>
             </div>

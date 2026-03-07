@@ -25,7 +25,7 @@ export type HorarioLaboralSemana = Partial<Record<DiasSemana, HorarioLaboral>>
 
 // Enums
 export type OrigenCita = 'whatsapp' | 'walkin' | 'telefono'
-export type EstadoCita = 'confirmada' | 'en_espera' | 'en_proceso' | 'finalizada' | 'cancelada' | 'no_show'
+export type EstadoCita = 'confirmada' | 'en_espera' | 'en_proceso' | 'por_cobrar' | 'finalizada' | 'cancelada' | 'no_show'
 export type TipoBloqueo = 'almuerzo' | 'vacaciones' | 'dia_festivo' | 'emergencia'
 export type RolAdmin = 'admin' | 'secretaria'
 
@@ -77,13 +77,16 @@ export interface Cita {
     timestamp_inicio: string
     timestamp_fin: string
     origen: 'manual' | 'walkin' | 'whatsapp' | 'telefono'
-    estado: 'confirmada' | 'en_espera' | 'en_proceso' | 'finalizada' | 'cancelada' | 'no_show'
+    estado: EstadoCita
     notas?: string | null
     monto_pagado?: number | null
     metodo_pago?: 'efectivo' | 'tarjeta' | 'transferencia' | null
     notas_crm?: string | null
     recordatorio_24h_enviado?: boolean | null
     recordatorio_1h_enviado?: boolean | null
+    timestamp_inicio_servicio?: string | null
+    timestamp_fin_servicio?: string | null
+    duracion_real_minutos?: number | null
     updated_at?: string
     created_at: string
 }
@@ -131,6 +134,7 @@ export interface CitaDesdeVista {
     fecha_cita_local: string
     barbero_nombre: string
     servicio_nombre: string
+    servicio_duracion?: number
     servicio_precio: number
     estado: EstadoCita
     origen: OrigenCita
@@ -139,6 +143,11 @@ export interface CitaDesdeVista {
     notas: string | null
     recordatorio_24h_enviado?: boolean | null
     recordatorio_1h_enviado?: boolean | null
+    timestamp_inicio_servicio?: string | null
+    timestamp_fin_servicio?: string | null
+    duracion_real_minutos?: number | null
+    timestamp_inicio_servicio_local?: string | null
+    timestamp_fin_servicio_local?: string | null
     created_at?: string
     updated_at?: string
 }

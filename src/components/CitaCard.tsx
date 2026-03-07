@@ -35,6 +35,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
     const [showLateWarning, setShowLateWarning] = useState(false)
     const [newHour, setNewHour] = useState('')
     const [agreedCancel, setAgreedCancel] = useState(false)
+    const [showEarlyWarning, setShowEarlyWarning] = useState(false)
 
     // Checkout states
     const [montoFinal, setMontoFinal] = useState<number>(cita.servicio_precio || 0)
@@ -57,15 +58,44 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
 
         try {
             console.log('🛰️ Enviando a Supabase...', { id: cita.id, estado: nuevoEstado })
+
+            const payload: any = { estado: nuevoEstado }
+
+            // Set timestamp_inicio_servicio when Atender is clicked
+            if (nuevoEstado === 'en_proceso') {
+                payload.timestamp_inicio_servicio = new Date().toISOString()
+            }
+
+            // Set timestamp_fin_servicio and duration when Finalizar Corte is clicked
+            if (nuevoEstado === 'por_cobrar') {
+                const now = new Date()
+                payload.timestamp_fin_servicio = now.toISOString()
+
+                if (cita.timestamp_inicio_servicio) {
+                    const start = new Date(cita.timestamp_inicio_servicio)
+                    const diffMs = now.getTime() - start.getTime()
+                    payload.duracion_real_minutos = Math.round(diffMs / 60000)
+                } else {
+                    const scheduledStart = new Date(cita.timestamp_inicio)
+                    const diffMs = now.getTime() - scheduledStart.getTime()
+                    payload.duracion_real_minutos = Math.max(0, Math.round(diffMs / 60000))
+                }
+            }
+
             const res = await fetch(`/api/citas/${cita.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ estado: nuevoEstado }),
+                body: JSON.stringify(payload),
             })
+
+            console.log('📡 Response API:', res.status)
 
             if (!res.ok) {
                 const body = await res.json()
-                return alert(`Error en Base de Datos: ${body.message}`)
+                console.error('❌ Error API:', body)
+                alert(`Error en Base de Datos: ${body.message}`)
+                setLoading(false)
+                return
             }
 
             console.log('✅ ACTUALIZACION EXITOSA:', nuevoEstado)
@@ -175,6 +205,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
         confirmada: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-primary', badge: 'bg-primary/20 text-primary border border-primary/30', label: 'Confirmada' },
         en_espera: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-primary', badge: 'bg-primary/20 text-primary border border-primary/30', label: 'En Sucursal' },
         en_proceso: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-emerald-500', badge: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30', label: 'En Proceso' },
+        por_cobrar: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-blue-500', badge: 'bg-blue-500/20 text-blue-400 border border-blue-500/30', label: 'Por Cobrar' },
         finalizada: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-slate-500', badge: 'bg-slate-500/20 text-slate-400 border border-slate-500/30', label: 'Finalizada' },
         cancelada: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-red-500', badge: 'bg-red-500/20 text-red-400 border border-red-500/30', label: 'Cancelada' },
         no_show: { bg: 'bg-slate-800/40', border: 'border-slate-700/50', accent: 'border-l-red-500', badge: 'bg-red-500/20 text-red-400 border border-red-500/30', label: 'No Show' }
@@ -182,11 +213,11 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
 
     const citaStartTime = new Date(cita.timestamp_inicio)
     const minutosDiferencia = Math.floor((currentTime.getTime() - citaStartTime.getTime()) / 60000)
+    const minHastaCita = -minutosDiferencia
     const esNoShow = minutosDiferencia > 15
-    const canConfirm = currentTime.getTime() >= (citaStartTime.getTime() - 5 * 60 * 1000)
+    const isEarly = minHastaCita >= 30
 
     const isEnSucursal = cita.estado === 'en_espera'
-    const minHastaCita = Math.floor((citaStartTime.getTime() - currentTime.getTime()) / 60000)
     const isTiempoCorto = cita.estado === 'confirmada' && minHastaCita >= 0 && minHastaCita <= 15
     const hasUpdatedAt = cita.updated_at && cita.created_at && new Date(cita.updated_at).getTime() > new Date(cita.created_at).getTime() + 60000
     const isReprogramada = hasUpdatedAt && cita.estado === 'confirmada'
@@ -211,7 +242,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
             const ampm = h >= 12 ? 'PM' : 'AM'
             const label = `${hour12}:00 ${ampm}`
             const isPast = h < currentH || (h === currentH && 0 < currentM)
-            const isOccupied = allCitas.some(c => {
+            const overlapping = allCitas.filter(c => {
                 if (c.id === cita.id || c.estado === 'cancelada') return false
                 const start = new Date(c.timestamp_inicio)
                 const end = new Date(c.timestamp_fin)
@@ -220,13 +251,34 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                 const slotEnd = new Date(slotStart.getTime() + (new Date(cita.timestamp_fin).getTime() - new Date(cita.timestamp_inicio).getTime()))
                 return slotStart < end && slotEnd > start
             })
+            const isOccupied = overlapping.length >= 4
             slots.push({ value: hourValue, label, isPast, isOccupied })
         }
         return slots
     }
 
-    const isAnyModalOpen = showDetails || showMove || showCancel || showCheckout || showLateWarning
-    const isInProcess = cita.estado === 'en_proceso'
+    const isAnyModalOpen = showDetails || showMove || showCancel || showCheckout || showLateWarning || showEarlyWarning
+    const isInProcess = cita.estado === 'en_proceso' || cita.estado === 'por_cobrar'
+
+    // Timer logic for the active service
+    const [elapsedMinutes, setElapsedMinutes] = useState(0)
+
+    useEffect(() => {
+        if (cita.estado === 'en_proceso' && cita.timestamp_inicio_servicio) {
+            const calculateElapsed = () => {
+                const start = new Date(cita.timestamp_inicio_servicio!).getTime()
+                const now = new Date().getTime()
+                setElapsedMinutes(Math.max(0, Math.floor((now - start) / 60000)))
+            }
+
+            calculateElapsed() // Run once immediately
+            const interval = setInterval(calculateElapsed, 60000) // Update every minute
+
+            return () => clearInterval(interval)
+        } else if (cita.estado === 'por_cobrar' && cita.duracion_real_minutos !== undefined && cita.duracion_real_minutos !== null) {
+            setElapsedMinutes(cita.duracion_real_minutos)
+        }
+    }, [cita.estado, cita.timestamp_inicio_servicio, cita.duracion_real_minutos])
 
     return (
         <div
@@ -269,6 +321,19 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                                     {cita.servicio_nombre}
                                 </span>
                             </div>
+                            {(cita.estado === 'en_proceso' || cita.estado === 'por_cobrar') && (
+                                <div className="mt-2 flex items-center gap-2">
+                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${cita.estado === 'en_proceso' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'} border`}>
+                                        <span className={`material-icons-round text-[10px] ${cita.estado === 'en_proceso' ? 'animate-pulse' : ''}`}>timer</span>
+                                        <span className="text-[10px] font-black tracking-widest leading-none mt-0.5">
+                                            {elapsedMinutes} MIN
+                                        </span>
+                                    </div>
+                                    {cita.estado === 'por_cobrar' && (
+                                        <span className="text-[8px] uppercase tracking-widest text-blue-400/60 font-bold">Tiempo Final</span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -297,18 +362,19 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                                         if (loading) return
                                         if (esNoShow) {
                                             setShowLateWarning(true)
+                                        } else if (isEarly) {
+                                            setShowEarlyWarning(true)
                                         } else {
                                             actualizarEstado('en_proceso')
                                         }
                                     }}
-                                    disabled={loading || !canConfirm}
-                                    className={`px-5 py-2.5 md:px-7 md:py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] shadow-xl transition-all flex items-center gap-2 border active:scale-95 ${!canConfirm ? 'bg-white/5 text-white/20 cursor-not-allowed border-white/5' :
-                                        esNoShow ? 'bg-amber-500 text-white hover:bg-amber-400 border-amber-300 shadow-[0_10px_30px_rgba(245,158,11,0.3)] animate-pulse' :
+                                    disabled={loading}
+                                    className={`px-5 py-2.5 md:px-7 md:py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] shadow-xl transition-all flex items-center gap-2 border active:scale-95 ${esNoShow ? 'bg-amber-500 text-white hover:bg-amber-400 border-amber-300 shadow-[0_10px_30px_rgba(245,158,11,0.3)] animate-pulse' :
                                             'bg-gradient-gold text-black hover:scale-[1.03] border-primary shadow-[0_10px_30px_rgba(234,179,8,0.2)]'
                                         }`}
                                 >
-                                    <span className="material-icons-round text-sm md:text-base">{!canConfirm ? 'timer' : 'play_arrow'}</span>
-                                    <span className="font-display">{!canConfirm ? `${Math.abs(minutosDiferencia)} MIN` : esNoShow ? 'Tardío' : 'Atender'}</span>
+                                    <span className="material-icons-round text-sm md:text-base">play_arrow</span>
+                                    <span className="font-display">{esNoShow ? 'Tardío' : 'Atender'}</span>
                                 </button>
                                 {esNoShow && (
                                     <span className="text-[8px] md:text-[9px] font-black text-primary animate-pulse text-center uppercase tracking-[0.3em]">
@@ -339,12 +405,23 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
 
                     {cita.estado === 'en_proceso' && (
                         <button
+                            onClick={() => actualizarEstado('por_cobrar')}
+                            disabled={loading}
+                            className="px-10 py-5 rounded-[1.5rem] font-black text-[12px] uppercase tracking-[0.3em] bg-blue-500 text-white hover:bg-blue-400 shadow-[0_15px_40px_rgba(59,130,246,0.3)] transition-all flex items-center gap-4 border-2 border-blue-400 active:scale-95"
+                        >
+                            <span className="material-icons-round text-xl">content_cut</span>
+                            Finalizar Corte
+                        </button>
+                    )}
+
+                    {cita.estado === 'por_cobrar' && (
+                        <button
                             onClick={() => setShowCheckout(true)}
                             disabled={loading}
                             className="px-10 py-5 rounded-[1.5rem] font-black text-[12px] uppercase tracking-[0.3em] bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_20px_50px_rgba(16,185,129,0.3)] transition-all flex items-center gap-4 border-2 border-emerald-300 active:scale-95"
                         >
-                            <span className="material-icons-round text-xl">receipt_long</span>
-                            Cobrar y Finalizar
+                            <span className="material-icons-round text-xl">point_of_sale</span>
+                            Cobrar
                         </button>
                     )}
 
@@ -359,6 +436,35 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
             {/* MODALS - Fixed position and high z-index to prevent clipping */}
             {mounted && typeof document !== 'undefined' ? createPortal(
                 <AnimatePresence>
+                    {showEarlyWarning && (
+                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                className="bg-[#0A0C10] rounded-[2.5rem] w-full max-w-sm shadow-[0_30px_90px_rgba(0,0,0,0.8)] overflow-hidden relative border border-white/10 text-center"
+                            >
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold opacity-50" />
+                                <div className="p-8 text-white">
+                                    <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                                        <span className="material-icons-round text-3xl text-primary animate-pulse">schedule</span>
+                                    </div>
+                                    <h3 className="text-xl font-black font-display uppercase tracking-tight mb-2">Atención Adelantada</h3>
+                                    <p className="text-white/60 mb-8 text-sm leading-relaxed">
+                                        Faltan <strong>{minHastaCita} minutos</strong> para esta cita. ¿Deseas comenzar el servicio ahora mismo y registrarlo fuera de su horario?
+                                    </p>
+                                    <div className="flex flex-col gap-3">
+                                        <button onClick={() => { setShowEarlyWarning(false); actualizarEstado('en_proceso') }} className="w-full btn-primary py-4 text-sm tracking-[0.2em] shadow-[0_0_20px_rgba(234,179,8,0.2)] font-black uppercase">
+                                            Sí, Atender Ahora
+                                        </button>
+                                        <button onClick={() => setShowEarlyWarning(false)} className="w-full py-4 text-sm font-black uppercase text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                                            No, Esperar
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
                     {showDetails && (
                         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
                             <motion.div

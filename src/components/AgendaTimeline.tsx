@@ -133,6 +133,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             case 'confirmada': return 'bg-primary'
             case 'en_espera': return 'bg-primary'
             case 'en_proceso': return 'bg-emerald-500'
+            case 'por_cobrar': return 'bg-purple-500'
             case 'finalizada': return 'bg-slate-300'
             default: return 'bg-slate-500'
         }
@@ -175,6 +176,32 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 <div className="space-y-0">
                     {slots.map((slot) => {
                         const item = getCitaEnSlot(slot)
+                        let activeTimer = null
+                        let isEnProceso = false
+                        let isPorCobrar = false
+
+                        if (item && item.tipo === 'cita') {
+                            isEnProceso = item.data.estado === 'en_proceso'
+                            isPorCobrar = item.data.estado === 'por_cobrar'
+
+                            if (isEnProceso && item.data.timestamp_inicio_servicio) {
+                                const minTrasncurridos = Math.floor((new Date().getTime() - new Date(item.data.timestamp_inicio_servicio).getTime()) / 60000)
+                                const horas = Math.floor(minTrasncurridos / 60)
+                                const mins = minTrasncurridos % 60
+                                activeTimer = horas > 0 ? `${horas}H ${mins}M` : `${mins} MIN`
+                            } else if (isPorCobrar && item.data.duracion_real_minutos) {
+                                const horas = Math.floor(item.data.duracion_real_minutos / 60)
+                                const mins = item.data.duracion_real_minutos % 60
+                                activeTimer = horas > 0 ? `${horas}H ${mins}M` : `${mins} MIN`
+                            }
+                        }
+
+                        const cardBorder = item?.tipo === 'bloqueo' ? 'border-red-500/30 bg-[#16181D]/90' :
+                            item?.tipo === 'almuerzo' ? 'border-amber-500/30 bg-[#16181D]/90' :
+                                isEnProceso ? 'border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)] bg-emerald-500/5' :
+                                    isPorCobrar ? 'border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)] bg-purple-500/5' :
+                                        'border-white/5 hover:border-white/10 bg-[#16181D]/90'
+
                         return (
                             <div
                                 key={slot}
@@ -186,13 +213,25 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                 </div>
                                 <div className="relative flex-1 py-0.5">
                                     {item ? (
-                                        <div className={`w-full flex items-center justify-between gap-2 animate-fade-in bg-[#16181D]/90 backdrop-blur-sm p-2 rounded-xl border ${item.tipo === 'bloqueo' ? 'border-red-500/30' : item.tipo === 'almuerzo' ? 'border-amber-500/30' : 'border-white/5 hover:border-white/10'} shadow-lg transition-all group/card overflow-hidden`}>
+                                        <div className={`w-full flex items-center justify-between gap-2 animate-fade-in backdrop-blur-sm p-2 rounded-xl border ${cardBorder} shadow-lg transition-all group/card overflow-hidden`}>
                                             <div className="flex items-center gap-2 min-w-0 flex-1">
                                                 <div className={`w-0.5 h-6 rounded-full ${getStatusColor(item.tipo === 'cita' ? item.data.estado : '', item.tipo)} shadow-[0_0_8px_rgba(0,0,0,0.3)] shrink-0`} />
-                                                <div className="min-w-0 flex-1">
-                                                    <p className={`text-[10px] font-black ${item.tipo === 'bloqueo' ? 'text-red-400' : item.tipo === 'almuerzo' ? 'text-amber-400' : 'text-white'} truncate leading-tight font-display uppercase tracking-tight`}>
-                                                        {item.tipo === 'cita' ? item.data.cliente_nombre : item.tipo === 'almuerzo' ? 'Descanso / Almuerzo' : 'Turno Bloqueado'}
-                                                    </p>
+                                                <div className="min-w-0 flex-1 flex flex-col justify-center">
+                                                    <div className="flex justify-between items-center gap-2">
+                                                        <p className={`text-[10px] font-black ${item.tipo === 'bloqueo' ? 'text-red-400' : item.tipo === 'almuerzo' ? 'text-amber-400' : 'text-white'} truncate leading-tight font-display uppercase tracking-tight`}>
+                                                            {item.tipo === 'cita' ? item.data.cliente_nombre : item.tipo === 'almuerzo' ? 'Descanso / Almuerzo' : 'Turno Bloqueado'}
+                                                        </p>
+                                                        {(isEnProceso || isPorCobrar) && activeTimer && (
+                                                            <div className={`px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-black flex-shrink-0 flex items-center gap-1 border ${isEnProceso ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                                                                    'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                                                                }`}>
+                                                                <span className={`material-icons-round text-[10px] sm:text-[11px] ${isEnProceso ? 'animate-spin-slow' : ''}`}>
+                                                                    {isEnProceso ? 'hourglass_top' : 'done_all'}
+                                                                </span>
+                                                                <span className={isEnProceso ? 'animate-pulse' : ''}>{activeTimer}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     <p className={`text-[7px] font-black ${item.tipo === 'cita' ? 'text-slate-500' : item.tipo === 'bloqueo' ? 'text-red-500/50' : 'text-amber-500/50'} uppercase tracking-widest leading-none mt-0.5 truncate`}>
                                                         {item.tipo === 'cita' ? item.data.servicio_nombre : item.tipo === 'almuerzo' ? 'Horario NO disponible' : (item.data.motivo || 'Razón no especificada')}
                                                     </p>
@@ -257,19 +296,19 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
             <div className="shrink-0 bg-slate-900/50 backdrop-blur-md border-t border-slate-800 px-6 py-4">
                 <div className="flex items-center justify-around text-[9px] font-black uppercase tracking-widest text-slate-400 font-display">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-primary" />
                         <span>Confirmada</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-primary opacity-50" />
-                        <span>Espera</span>
-                    </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-500" />
                         <span>Proceso</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 hidden md:flex">
+                        <span className="w-2 h-2 rounded-full bg-purple-500" />
+                        <span>Por Cobrar</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-slate-300" />
                         <span>Hecho</span>
                     </div>

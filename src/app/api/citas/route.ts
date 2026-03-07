@@ -101,7 +101,14 @@ export async function POST(req: NextRequest) {
             .select()
             .single()
 
-        if (error) throw error
+        if (error) {
+            // Handle specifically the case where a deleted barber ID was passed
+            if (error.code === '23503' && error.message.includes('barbero_id')) {
+                return err('InvalidBarber', 'El barbero asignado no existe o fue eliminado.', 400)
+            }
+            throw error
+        }
+
         return ok(data, 201)
     } catch (e: any) {
         console.error('[POST /api/citas]', e)
