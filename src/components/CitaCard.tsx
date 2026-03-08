@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
+import { CheckOutModal } from './CheckOutModal'
 
 interface CitaCardProps {
     cita: CitaDesdeVista
@@ -114,34 +115,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
     }
 
     const liquidarCita = async () => {
-        if (loading) return
-        setLoading(true)
-
-        try {
-            const res = await fetch(`/api/citas/${cita.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    estado: 'finalizada' as EstadoCita,
-                    monto_pagado: montoFinal,
-                    metodo_pago: metodoPago,
-                    notas_crm: notasCrm,
-                }),
-            })
-
-            if (!res.ok) {
-                const body = await res.json()
-                throw new Error(body.message)
-            }
-
-            onUpdate?.()
-            setShowCheckout(false)
-        } catch (err: any) {
-            console.error('Error in checkout:', err)
-            alert('Error al procesar el cobro')
-        } finally {
-            setLoading(false)
-        }
+        // Redundant, handled by CheckOutModal
     }
 
     const moverCita = async () => {
@@ -241,7 +215,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
             const hour12 = h % 12 || 12
             const ampm = h >= 12 ? 'PM' : 'AM'
             const label = `${hour12}:00 ${ampm}`
-            const isPast = h < currentH || (h === currentH && 0 < currentM)
+            const isPast = false // Removido para permitir reasignar en retroactivo
             const overlapping = allCitas.filter(c => {
                 if (c.id === cita.id || c.estado === 'cancelada') return false
                 const start = new Date(c.timestamp_inicio)
@@ -282,7 +256,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
 
     return (
         <div
-            className={`relative rounded-2xl md:rounded-[2rem] p-3 md:p-5 border-l-[3px] md:border-l-[6px] glass-card ${config.bg} ${config.border} ${config.accent} ${isHighlighted || isInProcess ? 'shadow-[0_15px_45px_rgba(234,179,8,0.15)] border-primary/20' : 'border-white/5'} ${isAnyModalOpen ? 'z-[9999]' : (isHighlighted ? 'z-10' : 'z-0')} transition-all duration-700 hover:scale-[1.01] hover:bg-black/60 group animate-fade-in relative overflow-hidden`}
+            className={`relative rounded-2xl md:rounded-[1.5rem] p-2.5 md:p-4 border-l-[3px] md:border-l-[4px] glass-card ${config.bg} ${config.border} ${config.accent} ${isHighlighted || isInProcess ? 'shadow-[0_10px_30px_rgba(234,179,8,0.1)] border-primary/20' : 'border-white/5'} ${isAnyModalOpen ? 'z-[9999]' : (isHighlighted ? 'z-10' : 'z-0')} transition-all duration-700 hover:bg-black/60 group animate-fade-in relative`}
             style={style}
         >
             {/* Interior Glow Overlay for active items */}
@@ -292,15 +266,15 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
 
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-8 text-white relative z-10">
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 md:gap-5 mb-2 md:mb-4">
-                        <div className="w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-black/60 border border-white/10 flex items-center justify-center shrink-0 shadow-xl group-hover:border-primary/40 transition-colors duration-500">
-                            <span className="text-base md:text-2xl font-black text-primary font-display group-hover:scale-110 transition-transform">{cita.cliente_nombre.charAt(0).toUpperCase()}</span>
+                    <div className="flex items-center gap-3 md:gap-4 mb-1.5 md:mb-3">
+                        <div className="w-7 h-7 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-black/60 border border-white/10 flex items-center justify-center shrink-0 shadow-xl group-hover:border-primary/40 transition-colors duration-500">
+                            <span className="text-sm md:text-xl font-black text-primary font-display group-hover:scale-105 transition-transform">{cita.cliente_nombre.charAt(0).toUpperCase()}</span>
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-sm md:text-xl font-black text-white truncate tracking-tight font-display uppercase drop-shadow-md">
+                            <h3 className="text-xs md:text-lg font-black text-white truncate tracking-tight font-display uppercase leading-none">
                                 {cita.cliente_nombre}
                             </h3>
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5 md:mt-1">
                                 <span className={`px-2 py-0.5 rounded-lg text-[9px] uppercase font-black tracking-[0.1em] border ${config.badge}`}>
                                     {config.label}
                                 </span>
@@ -337,12 +311,10 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4 text-white/40 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-[7px] md:text-[9px]">
-                        <div className="flex items-center gap-2 md:gap-3 px-2 md:px-4 py-1 md:py-2 bg-black/40 rounded-lg md:rounded-xl border border-white/5 shadow-inner group-hover:border-primary/20 transition-colors">
-                            <span className="material-icons-round text-primary text-[9px] md:text-xs">schedule</span>
-                            <span className="text-white tracking-[0.05em] md:tracking-[0.1em]">{horaInicio}</span>
-                            <span className="text-white/20">—</span>
-                            <span className="text-white/40">{horaFin}</span>
+                    <div className="flex flex-wrap items-center gap-2 md:gap-4 text-white/40 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-[7px] md:text-[8px]">
+                        <div className="flex items-center gap-2 md:gap-3 px-2 md:px-3 py-1 md:py-1.5 bg-black/40 rounded-lg md:rounded-xl border border-white/5 shadow-inner group-hover:border-primary/20 transition-colors">
+                            <span className="material-icons-round text-primary text-[8px] md:text-xs">schedule</span>
+                            <span className="text-white tracking-[0.05em] md:tracking-[0.1em]">{horaInicio} — {horaFin}</span>
                         </div>
                         {cita.notas && (
                             <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/5 rounded-2xl border border-blue-500/20 max-w-[300px]">
@@ -356,7 +328,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                 <div className="flex flex-wrap gap-2 md:gap-3 shrink-0">
                     {cita.estado === 'confirmada' && (
                         <>
-                            <div className="flex flex-col gap-1.5">
+                            <div className="flex flex-col gap-1 md:gap-2">
                                 <button
                                     onClick={() => {
                                         if (loading) return
@@ -369,25 +341,20 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                                         }
                                     }}
                                     disabled={loading}
-                                    className={`px-5 py-2.5 md:px-7 md:py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] shadow-xl transition-all flex items-center gap-2 border active:scale-95 ${esNoShow ? 'bg-amber-500 text-white hover:bg-amber-400 border-amber-300 shadow-[0_10px_30px_rgba(245,158,11,0.3)] animate-pulse' :
-                                            'bg-gradient-gold text-black hover:scale-[1.03] border-primary shadow-[0_10px_30px_rgba(234,179,8,0.2)]'
+                                    className={`px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl font-black text-[8px] md:text-[9px] uppercase tracking-[0.1em] shadow-xl transition-all flex items-center gap-1.5 border active:scale-95 ${esNoShow ? 'bg-amber-500 text-white hover:bg-amber-400 border-amber-300 shadow-[0_5px_15px_rgba(245,158,11,0.2)] animate-pulse' :
+                                        'bg-gradient-gold text-black hover:scale-[1.02] border-primary shadow-[0_5px_15px_rgba(234,179,8,0.15)]'
                                         }`}
                                 >
-                                    <span className="material-icons-round text-sm md:text-base">play_arrow</span>
+                                    <span className="material-icons-round text-xs md:text-sm">play_arrow</span>
                                     <span className="font-display">{esNoShow ? 'Tardío' : 'Atender'}</span>
                                 </button>
-                                {esNoShow && (
-                                    <span className="text-[8px] md:text-[9px] font-black text-primary animate-pulse text-center uppercase tracking-[0.3em]">
-                                        ⚠️ RETRASO
-                                    </span>
-                                )}
                             </div>
-                            <button onClick={() => setShowMove(true)} className="px-3 md:px-4 py-2.5 md:py-3.5 rounded-lg md:rounded-xl font-black text-[8px] md:text-[10px] uppercase tracking-[0.1em] text-white/60 hover:text-white hover:bg-white/10 border border-white/10 transition-all flex items-center justify-center gap-2 backdrop-blur-sm active:scale-95">
-                                <span className="material-icons-round text-sm md:text-base">event_repeat</span>
+                            <button onClick={() => setShowMove(true)} className="px-2 md:px-3 py-2 md:py-3 rounded-lg md:rounded-xl font-black text-[8px] md:text-[9px] uppercase tracking-[0.1em] text-white/60 hover:text-white hover:bg-white/10 border border-white/10 transition-all flex items-center justify-center gap-1.5 backdrop-blur-sm active:scale-95">
+                                <span className="material-icons-round text-xs md:text-sm">event_repeat</span>
                                 Mover
                             </button>
-                            <button onClick={() => setShowCancel(true)} disabled={loading} className="p-2.5 md:px-4 md:py-3.5 rounded-lg md:rounded-xl font-black text-[8px] md:text-[10px] uppercase tracking-[0.1em] text-red-400/60 hover:text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-all flex items-center justify-center gap-2 backdrop-blur-sm active:scale-95">
-                                <span className="material-icons-round text-sm md:text-base">close</span>
+                            <button onClick={() => setShowCancel(true)} disabled={loading} className="p-2 md:px-3 md:py-3 rounded-lg md:rounded-xl font-black text-[8px] md:text-[9px] uppercase tracking-[0.1em] text-red-400/60 hover:text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-all flex items-center justify-center gap-1.5 backdrop-blur-sm active:scale-95">
+                                <span className="material-icons-round text-xs md:text-sm">close</span>
                             </button>
                         </>
                     )}
@@ -437,7 +404,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
             {mounted && typeof document !== 'undefined' ? createPortal(
                 <AnimatePresence>
                     {showEarlyWarning && (
-                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
+                        <div key="early-warning-modal" className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -466,7 +433,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                         </div>
                     )}
                     {showDetails && (
-                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
+                        <div key="details-modal" className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -503,7 +470,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                     )}
 
                     {showMove && (
-                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
+                        <div key="move-modal" className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -547,99 +514,16 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                         </div>
                     )}
 
-                    {showCheckout && (
-                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl text-white">
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                className="bg-[#050608] border border-white/10 rounded-[3rem] w-full max-w-2xl shadow-[0_0_100px_rgba(234,179,8,0.1)] overflow-hidden flex flex-col max-h-[90vh] relative"
-                            >
-                                <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500" />
-                                {loading && (
-                                    <motion.div
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="absolute inset-0 bg-black/95 z-50 flex flex-col items-center justify-center gap-6"
-                                    >
-                                        <div className="spinner w-16 h-16 border-white/10 border-t-emerald-500" />
-                                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-400 animate-pulse">Finalizando Transacción...</p>
-                                    </motion.div>
-                                )}
-
-                                <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-3xl font-black uppercase tracking-tighter text-white font-display">Check-out</h3>
-                                        <p className="text-xs font-black text-white/30 uppercase tracking-[0.4em] mt-2">Cliente: <span className="text-white">{cita.cliente_nombre}</span></p>
-                                    </div>
-                                    <button onClick={() => { setShowCheckout(false); onClose?.(); }} className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
-                                        <span className="material-icons-round">close</span>
-                                    </button>
-                                </div>
-
-                                <div className="p-10 overflow-y-auto custom-scrollbar flex-1">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                        <div className="space-y-8">
-                                            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 shadow-inner flex flex-col items-center justify-center">
-                                                <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-6">Monto Total</label>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-3xl font-black text-primary">$</span>
-                                                    <input
-                                                        type="number"
-                                                        value={montoFinal}
-                                                        onChange={(e) => setMontoFinal(Number(e.target.value))}
-                                                        className="w-32 bg-transparent text-6xl font-black text-white outline-none font-display tracking-tighter"
-                                                    />
-                                                </div>
-                                                <p className="mt-6 text-[9px] font-black text-white/20 uppercase tracking-widest bg-white/5 px-4 py-2 rounded-lg border border-white/5">Precio Base: ${cita.servicio_precio}</p>
-                                            </div>
-
-                                            <div>
-                                                <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-4 block">Notas de Seguimiento</label>
-                                                <textarea
-                                                    placeholder="Ej: Prefiere corte con máquina #2..."
-                                                    value={notasCrm}
-                                                    onChange={(e) => setNotasCrm(e.target.value)}
-                                                    className="w-full h-32 p-6 bg-white/5 border border-white/5 rounded-[1.5rem] text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:bg-white/10 outline-none resize-none transition-all placeholder:text-white/10 text-white"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-8">
-                                            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] block">Método de Pago</label>
-                                            <div className="grid grid-cols-1 gap-3">
-                                                {(['efectivo', 'tarjeta', 'transferencia'] as const).map(metodo => (
-                                                    <button
-                                                        key={metodo}
-                                                        onClick={() => setMetodoPago(metodo)}
-                                                        className={`p-6 rounded-2xl border-2 font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-between group ${metodoPago === metodo ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40 shadow-xl' : 'bg-white/5 text-white/20 border-white/5 hover:bg-white/10 hover:border-white/10'}`}
-                                                    >
-                                                        <div className="flex items-center gap-4">
-                                                            <span className="material-icons-round text-xl opacity-50">
-                                                                {metodo === 'efectivo' ? 'payments' : metodo === 'tarjeta' ? 'credit_card' : 'account_balance'}
-                                                            </span>
-                                                            {metodo}
-                                                        </div>
-                                                        <div className={`w-3 h-3 rounded-full border-2 ${metodoPago === metodo ? 'bg-emerald-400 border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'border-white/10'}`} />
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="px-10 py-8 border-t border-white/5 bg-black/40 flex gap-4">
-                                    <button onClick={() => { setShowCheckout(false); onClose?.(); }} className="flex-1 py-5 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-all border border-white/5">Cancelar</button>
-                                    <button onClick={liquidarCita} disabled={loading} className="flex-[2] py-5 bg-emerald-500 text-black rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:bg-emerald-400 shadow-[0_15px_40px_rgba(16,185,129,0.3)] transition-all active:scale-95 flex items-center justify-center gap-3">
-                                        <span className="material-icons-round">check_circle</span>
-                                        Finalizar y Cobrar
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
+                    <CheckOutModal
+                        key="checkout-modal"
+                        cita={cita}
+                        isOpen={showCheckout}
+                        onClose={() => setShowCheckout(false)}
+                        onUpdate={onUpdate}
+                    />
 
                     {showCancel && (
-                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fade-in text-white">
+                        <div key="cancel-modal" className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fade-in text-white">
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -669,7 +553,7 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
                     )}
 
                     {showLateWarning && (
-                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fade-in">
+                        <div key="late-warning-modal" className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fade-in">
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}

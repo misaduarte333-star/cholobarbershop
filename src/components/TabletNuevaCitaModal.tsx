@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 
@@ -22,6 +22,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
     const [loading, setLoading] = useState(false)
     const [servicios, setServicios] = useState<Servicio[]>([])
     const [error, setError] = useState('')
+    const [showPastConfirm, setShowPastConfirm] = useState(false)
 
     // Form state
     const [nombre, setNombre] = useState('')
@@ -41,26 +42,30 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
     const [citasParaFecha, setCitasParaFecha] = useState<any[]>(citasDelDia)
     const [bloqueosParaFecha, setBloqueosParaFecha] = useState<any[]>([])
     const [almuerzoBarbero, setAlmuerzoBarbero] = useState<any>(null)
+    const [horarioSucursal, setHorarioSucursal] = useState<any>(null)
+    const [isRefreshing, setIsRefreshing] = useState(false)
 
     useEffect(() => {
         if (!isOpen) return
 
         const fetchDatosDia = async () => {
+            setIsRefreshing(true)
             const supabase = createClient()
 
-            // Citas
-            if (fecha === getHoyStr()) {
-                setCitasParaFecha(barberoId ? citasDelDia.filter((c: any) => String(c.barbero_id) === String(barberoId)) : citasDelDia)
+            // Citas: Always fetch from API to ensure real-time data when modal opens
+            const { data: citasData } = await supabase.from('vista_citas_agente').select('*').eq('fecha_cita_local', fecha)
+            if (citasData) {
+                const filtered = barberoId ? citasData.filter((c: any) => String(c.barbero_id) === String(barberoId)) : citasData
+                setCitasParaFecha(filtered)
             } else {
-                const { data } = await supabase.from('vista_citas_agente').select('*').eq('fecha_cita_local', fecha)
-                if (data) setCitasParaFecha(barberoId ? data.filter((c: any) => String(c.barbero_id) === String(barberoId)) : data)
-                else setCitasParaFecha([])
+                setCitasParaFecha([])
             }
 
-            // Bloqueos y Almuerzo
-            const [bloqueosRes, barberoRes] = await Promise.all([
+            // Bloqueos, Almuerzo y Sucursal
+            const [bloqueosRes, barberoRes, sucursalRes] = await Promise.all([
                 supabase.from('bloqueos').select('*').gte('timestamp_inicio', `${fecha}T00:00:00-07:00`).lte('timestamp_fin', `${fecha}T23:59:59-07:00`),
-                barberoId ? supabase.from('barberos').select('bloqueo_almuerzo').eq('id', barberoId).single() : Promise.resolve({ data: null } as any)
+                barberoId ? supabase.from('barberos').select('bloqueo_almuerzo').eq('id', barberoId).single() : Promise.resolve({ data: null } as any),
+                sucursalId ? supabase.from('sucursales').select('horario_apertura').eq('id', sucursalId).single() : Promise.resolve({ data: null } as any)
             ])
 
             if (bloqueosRes.data) {
@@ -72,10 +77,15 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
             if (barberoRes.data) {
                 setAlmuerzoBarbero(barberoRes.data.bloqueo_almuerzo)
             }
+
+            if (sucursalRes.data) {
+                setHorarioSucursal(sucursalRes.data.horario_apertura)
+            }
+            setIsRefreshing(false)
         }
 
         fetchDatosDia()
-    }, [fecha, isOpen, barberoId, citasDelDia])
+    }, [fecha, isOpen, barberoId]) // Elimino citasDelDia de deps para evitar bucles si el padre cambia pero no necesitamos refrescar nosotros mismos
 
     const formato12h = (hora24: string) => {
         if (!hora24) return 'Ninguna'
@@ -88,7 +98,40 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
 
     // Custom Dropdown State
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    // Date Navigation
+    const shiftFecha = (days: number) => {
+        const current = new Date(`${fecha}T12:00:00-07:00`)
+        current.setDate(current.getDate() + days)
+        setFecha(current.toISOString().split('T')[0])
+    }
+
+    const getRelativeLabel = (fechaStr: string) => {
+        if (fechaStr === getHoyStr()) return 'HOY'
+
+        const target = new Date(`${fechaStr}T12:00:00-07:00`)
+        const hoy = new Date(`${getHoyStr()}T12:00:00-07:00`)
+
+        const diffTime = target.getTime() - hoy.getTime()
+        const diffDays = Math.round(diffTime / (1000 * 3600 * 24))
+
+        if (diffDays === 1) return 'MAÑANA'
+        if (diffDays === -1) return 'AYER'
+        return target.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    }
+
     const dropdownRef = useRef<HTMLDivElement>(null)
+    const dateInputRef = useRef<HTMLInputElement>(null)
+
+    // Double Tap State for Mobile compatibility
+    const lastTap = useRef<number>(0)
+    const handleDoubleTap = () => {
+        const now = Date.now()
+        const DOUBLE_PRESS_DELAY = 300
+        if (now - lastTap.current < DOUBLE_PRESS_DELAY) {
+            setFecha(getHoyStr())
+        }
+        lastTap.current = now
+    }
 
     // Click outside handler para el Dropdown
     useEffect(() => {
@@ -129,12 +172,23 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
         fetchServicios()
     }, [isOpen])
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleSubmit = async (e?: React.FormEvent, isConfirmedPast = false) => {
+        if (e) e.preventDefault()
         setError('')
 
         if (!nombre || !servicioId || !horaInicio) {
             setError('Nombre, Servicio y Hora son requeridos.')
+            return
+        }
+
+        // --- VALIDACIÓN DE PASADO ---
+        const ahora = new Date()
+        const TZ_OFFSET = '-07:00'
+        const selectedDateTime = new Date(`${fecha}T${horaInicio}:00${TZ_OFFSET}`)
+
+        // Si el tiempo seleccionado es antes que 'ahora' y no está confirmado, mostrar modal
+        if (selectedDateTime < ahora && !isConfirmedPast) {
+            setShowPastConfirm(true)
             return
         }
 
@@ -222,70 +276,95 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
         onClose()
     }
 
-    // Horarios para generar botones (solo horas enteras, todo el día)
-    const generarHorariosPrevios = () => {
+    // Horarios para generar botones (ajustado al horario de la sucursal) - MEMOIZED for performance
+    const slotsParaCita = useMemo(() => {
         const slots = []
-
         const isToday = fecha === getHoyStr()
-        const isPastDay = fecha < getHoyStr()
 
-        const now = new Date()
-        const timeFormatter = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Hermosillo', hour: '2-digit', minute: '2-digit' })
-        const parts = timeFormatter.formatToParts(now)
-        const p = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {} as any)
-        const currentH = parseInt(p.hour, 10)
-        const currentM = parseInt(p.minute, 10)
+        // Determinar día de la semana para el horario de sucursal
+        const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+        const targetDate = new Date(`${fecha}T12:00:00-07:00`)
+        const indiceDia = targetDate.getDay()
+        const nombreDia = dias[indiceDia]
 
-        // Asumimos que la duracion mínima seleccionada bloquea el slot
-        const svc = servicios.find(s => String(s.id) === String(servicioId))
-        const duracionRequeridaMin = svc ? svc.duracion_minutos : 30
+        let horaApertura = 8
+        let horaCierre = 20
 
-        for (let h = 8; h <= 21; h++) {
-            const hourValue = `${h.toString().padStart(2, '0')}:00`
-            const hour12 = h % 12 || 12
-            const ampm = h >= 12 ? 'PM' : 'AM'
-            const label = `${hour12}:00 ${ampm}`
+        if (horarioSucursal && horarioSucursal[nombreDia]) {
+            const hA = horarioSucursal[nombreDia].apertura
+            const hC = horarioSucursal[nombreDia].cierre
+            if (hA) horaApertura = parseInt(hA.split(':')[0], 10)
+            if (hC) {
+                const parts = hC.split(':')
+                horaCierre = parseInt(parts[0], 10)
+                if (parseInt(parts[1], 10) === 0) horaCierre -= 1
+            }
+        } else if (horarioSucursal) {
+            return []
+        }
 
-            // Pasado
-            const isPast = isPastDay ? true : (isToday ? (h < currentH || (h === currentH && currentM > 0)) : false)
+        // La partición de horas es fija de 30 minutos (el usuario prefiere ignorar la duración del servicio para mostrar disponibilidad)
+        const duracionSlotMin = 30
 
-            // Ocupado: Simulamos un evento agendado de esa hora + duracionRequerida
-            const slotStart = new Date(`${fecha}T${hourValue}:00-07:00`)
-            const slotEnd = new Date(slotStart.getTime() + duracionRequeridaMin * 60000)
+        const getSlotStatus = (start: Date, end: Date) => {
+            const ahora = new Date()
+            if (start < ahora && fecha === getHoyStr()) return 'past'
 
-            // Ocupado por Cita
             const citasOverlap = citasParaFecha.filter(c => {
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
-
-                // Si la cita tiene el ID o estado de "bloqueo", también ocupa el slot
                 const cStart = new Date(c.timestamp_inicio)
                 const cEnd = new Date(c.timestamp_fin)
-                return slotStart < cEnd && slotEnd > cStart
+                return start < cEnd && end > cStart
             })
-            const isOccupiedByCita = citasOverlap.length >= 4
+            if (citasOverlap.length > 0) return 'ocupado'
 
-            // Ocupado por Bloqueo
-            const isOccupiedByBloqueo = bloqueosParaFecha.some(b => {
+            const bloqueado = bloqueosParaFecha.some(b => {
                 const bStart = new Date(b.timestamp_inicio)
                 const bEnd = new Date(b.timestamp_fin)
-                return slotStart < bEnd && slotEnd > bStart
+                return start < bEnd && end > bStart
             })
+            if (bloqueado) return 'bloqueado'
 
-            // Ocupado por Almuerzo
-            let isOccupiedByAlmuerzo = false
             if (almuerzoBarbero && almuerzoBarbero.inicio && almuerzoBarbero.fin) {
                 const almuerzoStart = new Date(`${fecha}T${almuerzoBarbero.inicio}:00-07:00`)
                 const almuerzoEnd = new Date(`${fecha}T${almuerzoBarbero.fin}:00-07:00`)
-                isOccupiedByAlmuerzo = slotStart < almuerzoEnd && slotEnd > almuerzoStart
+                if (start < almuerzoEnd && end > almuerzoStart) return 'bloqueado'
+            }
+            return 'libre'
+        }
+
+        for (let h = horaApertura; h <= horaCierre; h++) {
+            const hourValue = `${h.toString().padStart(2, '0')}:00`
+            const h12 = h % 12 || 12
+            const ampm = h >= 12 ? 'PM' : 'AM'
+            const label = `${h12}:00 ${ampm}`
+
+            const slotStart = new Date(`${fecha}T${hourValue}:00-07:00`)
+            const slotEnd = new Date(slotStart.getTime() + duracionSlotMin * 60000)
+            const status = getSlotStatus(slotStart, slotEnd)
+
+            slots.push({ value: hourValue, label, status })
+
+            const halfHourValue = `${h.toString().padStart(2, '0')}:30`
+            const halfLabel = `${h12}:30 ${ampm}`
+            const halfSlotStart = new Date(`${fecha}T${halfHourValue}:00-07:00`)
+            const halfSlotEnd = new Date(halfSlotStart.getTime() + duracionSlotMin * 60000)
+
+            let isWithinClosing = true
+            if (horarioSucursal && horarioSucursal[nombreDia]) {
+                const hC = horarioSucursal[nombreDia].cierre
+                const [cieseH, cierreM] = hC.split(':').map(Number)
+                if (h > cieseH || (h === cieseH && cierreM < 30)) isWithinClosing = false
             }
 
-            const isOccupied = isOccupiedByCita || isOccupiedByBloqueo || isOccupiedByAlmuerzo
-
-            slots.push({ value: hourValue, label, isPast, isOccupied })
+            if (isWithinClosing) {
+                const halfStatus = getSlotStatus(halfSlotStart, halfSlotEnd)
+                slots.push({ value: halfHourValue, label: halfLabel, status: halfStatus })
+            }
         }
         return slots
-    }
+    }, [fecha, citasParaFecha, bloqueosParaFecha, almuerzoBarbero, horarioSucursal, servicioId, servicios])
 
     return (
         <AnimatePresence>
@@ -297,15 +376,16 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={handleClose}
-                        className="fixed inset-0 bg-black/80 backdrop-blur-md overflow-y-auto h-full w-full z-[100] flex items-center justify-center p-4 md:p-6"
+                        className="fixed inset-0 bg-black/60 backdrop-blur-[2px] overflow-y-auto h-full w-full z-[100] flex items-center justify-center p-4 md:p-6"
                     />
 
                     {/* Modal */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] md:w-[480px] max-h-[85vh] flex flex-col bg-black border border-white/10 rounded-[2rem] shadow-[0_30px_100px_rgba(0,0,0,1)] z-[101] overflow-hidden"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] md:w-[480px] max-h-[88vh] flex flex-col bg-[#0A0C10] border border-white/10 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_30px_100px_rgba(0,0,0,1)] z-[101] overflow-hidden"
                     >
                         {/* Custom CSS overrides for native date picker icon avoiding white backgrounds */}
                         <style dangerouslySetInnerHTML={{
@@ -344,7 +424,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
                             </div>
                         </div>
 
-                        <div className="p-3 md:p-4 flex-1 relative z-10 overflow-y-auto custom-scrollbar">
+                        <div className="p-3 md:p-4 flex-1 relative z-10 overflow-y-auto custom-scrollbar-thin scroll-smooth">
 
                             {/* Errores */}
                             {error && (
@@ -465,61 +545,112 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-5 gap-3">
-                                    <div className="space-y-1 relative col-span-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1 relative">
                                         <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1">Fecha de la Cita</label>
-                                        <div className="relative group flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/5 rounded-xl focus-within:border-primary/50 focus-within:bg-black transition-all">
-                                            <span className="material-icons-round text-white/20 text-[14px] group-focus-within:text-primary z-10 pointer-events-none">event</span>
+                                        <div
+                                            onClick={() => dateInputRef.current?.showPicker()}
+                                            className="relative group flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/5 rounded-xl hover:border-primary/50 hover:bg-black/40 transition-all cursor-pointer overflow-hidden"
+                                        >
+                                            <span className="material-icons-round text-white/20 text-[14px] group-hover:text-primary z-10 pointer-events-none">event</span>
                                             {/* Texto simulado con formato en español */}
                                             <span className="absolute left-9 font-black text-xs text-white pointer-events-none uppercase z-10 truncate translate-y-[1px]">
                                                 {new Date(`${fecha}T12:00:00-07:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'long' }).replace(',', '')}
                                             </span>
-                                            {/* Input real superpuesto */}
+                                            {/* Input real superpuesto pero oculto */}
                                             <input
+                                                ref={dateInputRef}
                                                 type="date"
                                                 value={fecha}
                                                 onChange={(e) => setFecha(e.target.value)}
-                                                className="bg-transparent border-none outline-none w-full text-transparent cursor-pointer custom-date-input absolute inset-0 opacity-0 z-20"
+                                                className="absolute inset-0 opacity-0 cursor-pointer pointer-events-none"
                                                 style={{ colorScheme: 'dark' }}
-                                                min={getHoyStr()}
                                                 required
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-1 relative flex flex-col justify-end col-span-2">
-                                        {/* Un aviso corto visual indicando de qué día son las horas. Usando la fecha como visual. */}
-                                        <div className="flex bg-white/5 p-2 rounded-xl border border-primary/20 bg-primary/5 flex-col items-center justify-center h-[36px]">
-                                            <span className="text-[7px] font-black text-primary/60 uppercase tracking-[0.2em]">{fecha === getHoyStr() ? 'Horarios' : 'Día Seleccionado'}</span>
-                                            <span className="text-white text-[10px] sm:text-[11px] font-black uppercase tracking-tight">{fecha === getHoyStr() ? 'HOY' : new Date(`${fecha}T12:00:00-07:00`).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                                    <div className="space-y-1 relative flex flex-col justify-end">
+                                        <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1 text-center">Día</label>
+                                        <div
+                                            onClick={handleDoubleTap}
+                                            onDoubleClick={() => setFecha(getHoyStr())}
+                                            className="flex items-center justify-between bg-white/5 p-1 rounded-xl border border-primary/20 bg-primary/5 h-[36px] cursor-pointer hover:bg-primary/10 transition-colors select-none"
+                                            title="Doble clic para volver a Hoy"
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => shiftFecha(-1)}
+                                                className="w-7 h-full flex items-center justify-center text-primary/60 hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
+                                            >
+                                                <span className="material-icons-round text-[16px]">chevron_left</span>
+                                            </button>
+                                            <span className="text-white text-[10px] font-black uppercase tracking-tight flex-1 text-center px-1 truncate">
+                                                {getRelativeLabel(fecha)}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => shiftFecha(1)}
+                                                className="w-7 h-full flex items-center justify-center text-primary/60 hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
+                                            >
+                                                <span className="material-icons-round text-[16px]">chevron_right</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-1 relative">
-                                    <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1">Hora de Inicio: <span className="text-primary">{formato12h(horaInicio)}</span></label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1">Hora: <span className="text-primary">{formato12h(horaInicio)}</span></label>
+                                            {isRefreshing && (
+                                                <div className="flex items-center gap-1">
+                                                    <div className="w-1.5 h-1.5 border border-primary/40 border-t-primary rounded-full animate-spin" />
+                                                    <span className="text-[6px] text-primary/40 font-black uppercase tracking-widest">Sincronizando...</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">{slotsParaCita.filter(s => s.status === 'libre').length} LIBRES</span>
+                                    </div>
 
-                                    {/* Botones rápidos de horario (Solo Horas) */}
-                                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-1 pt-0.5">
-                                        {generarHorariosPrevios().map(slot => {
-                                            const btnClass = slot.isPast ? "opacity-30 cursor-not-allowed grayscale border-white/5" :
-                                                slot.isOccupied ? "bg-red-500/10 text-red-500/40 border-red-500/10 cursor-not-allowed" :
-                                                    horaInicio === slot.value ? "bg-primary/20 text-primary border-primary/40" :
-                                                        "bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white/60"
+                                    {/* Botones rápidos de horario */}
+                                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1.5 pt-0.5">
+                                        {slotsParaCita.length > 0 ? (
+                                            slotsParaCita.map(slot => {
+                                                const isPast = slot.status === 'past'
+                                                const isOccupied = slot.status === 'ocupado'
+                                                const isBlocked = slot.status === 'bloqueado'
+                                                const isSelected = horaInicio === slot.value
 
-                                            return (
-                                                <button
-                                                    key={slot.value}
-                                                    type="button"
-                                                    disabled={slot.isPast || slot.isOccupied}
-                                                    onClick={() => setHoraInicio(slot.value)}
-                                                    className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-colors border flex flex-col items-center justify-center min-w-[50px] ${btnClass}`}
-                                                    style={{ height: '32px' }}
-                                                >
-                                                    <span>{slot.label.split(' ')[0]}</span>
-                                                    <span className="text-[7px] -mt-0.5">{slot.isOccupied ? 'OCUPADO' : slot.label.split(' ')[1]}</span>
-                                                </button>
-                                            )
-                                        })}
+                                                const btnClass = isPast ? "opacity-30 grayscale border-white/5 active:scale-95" :
+                                                    isOccupied ? "bg-red-500/10 text-red-500/40 border-red-500/10 cursor-not-allowed" :
+                                                        isBlocked ? "bg-white/5 text-white/20 border-white/10 cursor-not-allowed" :
+                                                            isSelected ? "bg-primary/20 text-primary border-primary/40 shadow-[0_0_15px_rgba(245,200,66,0.1)]" :
+                                                                "bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white/60 hover:border-white/10"
+
+                                                const labelText = isOccupied ? 'OCUPADO' :
+                                                    isBlocked ? 'NO DISPONIBLE' :
+                                                        isPast ? 'PASADO' : 'LIBRE'
+
+                                                return (
+                                                    <button
+                                                        key={slot.value}
+                                                        type="button"
+                                                        disabled={isOccupied || isBlocked}
+                                                        onClick={() => setHoraInicio(slot.value)}
+                                                        className={`px-1 py-1 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all border flex flex-col items-center justify-center min-w-[55px] active:scale-95 ${btnClass}`}
+                                                        style={{ height: '38px' }}
+                                                    >
+                                                        <span className="leading-none text-[10px]">{slot.label.split(' ')[0]}</span>
+                                                        <span className="text-[6px] opacity-60 leading-none mt-1 truncate max-w-full px-0.5">{labelText}</span>
+                                                    </button>
+                                                )
+                                            })
+                                        ) : (
+                                            <div className="col-span-full py-4 bg-white/5 rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2">
+                                                <span className="material-icons-round text-white/20 text-xl">event_busy</span>
+                                                <span className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em]">Cerrado o Sin Disponibilidad</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -549,6 +680,51 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
                                 </div>
                             </form>
                         </div>
+
+                        {/* Modal de Confirmación Retroactiva */}
+                        <AnimatePresence>
+                            {showPastConfirm && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 z-[110] flex items-center justify-center p-6"
+                                >
+                                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowPastConfirm(false)} />
+                                    <motion.div
+                                        initial={{ scale: 0.9, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0.9, opacity: 0 }}
+                                        className="relative bg-[#1A1D23] border border-white/10 rounded-2xl p-6 w-full max-w-[320px] shadow-2xl overflow-hidden"
+                                    >
+                                        <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
+                                            <span className="material-icons-round text-amber-500 text-2xl">history</span>
+                                        </div>
+                                        <h3 className="text-white text-base font-black text-center mb-2 uppercase tracking-tight leading-none">Cita en el Pasado</h3>
+                                        <p className="text-white/60 text-[10px] text-center mb-6 leading-relaxed">
+                                            Estás agendando una cita para una hora que ya pasó. ¿Deseas registrarla de todas formas?
+                                        </p>
+                                        <div className="flex flex-col gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setShowPastConfirm(false)
+                                                    handleSubmit(undefined, true)
+                                                }}
+                                                className="w-full py-3 bg-primary text-black font-black text-[10px] uppercase tracking-widest rounded-xl active:scale-[0.98] transition-all"
+                                            >
+                                                Sí, Registrar Cita
+                                            </button>
+                                            <button
+                                                onClick={() => setShowPastConfirm(false)}
+                                                className="w-full py-3 bg-white/5 text-white/60 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-white/10 active:scale-[0.98] transition-all"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </motion.div>
                 </>
             )}

@@ -22,43 +22,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
     const [isAdmin, setIsAdmin] = useState(false)
-    const SUCURSAL_ID = '1' // Todo: load from user profile
+    const SUCURSAL_ID = '1'
 
     const supabase = createClient()
 
     useEffect(() => {
-        const checkUser = async () => {
-            try {
-                const { data: { user } } = await supabase.auth.getUser()
-                setUser(user)
+        // PERF: Start auth check and subscription in parallel
+        const initAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            const currentUser = session?.user ?? null
+            setUser(currentUser)
 
-                if (user && user.email) {
-                    // Check if admin
-                    const { data } = await supabase
-                        .from('usuarios_admin')
-                        .select('rol')
-                        .eq('email', user.email)
-                        .single()
+            if (currentUser?.email) {
+                const { data } = await supabase
+                    .from('usuarios_admin')
+                    .select('rol')
+                    .eq('email', currentUser.email)
+                    .maybeSingle()
 
-                    if (data) setIsAdmin(true)
-                }
-            } catch (error) {
-                console.error('Auth check error:', error)
-            } finally {
-                setLoading(false)
+                if (data) setIsAdmin(true)
             }
+            setLoading(false)
         }
 
-        checkUser()
+        initAuth()
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null)
+            const newUser = session?.user ?? null
+            setUser(newUser)
             setLoading(false)
+
+            // Re-check admin if user changed
+            if (newUser?.email) {
+                supabase.from('usuarios_admin')
+                    .select('rol')
+                    .eq('email', newUser.email)
+                    .maybeSingle()
+                    .then(({ data }) => setIsAdmin(!!data))
+            }
         })
 
         return () => subscription.unsubscribe()
     }, [supabase])
 
+    // PERF: Don't block the entire app tree if possible, 
+    // but the layout needs the context to avoid flickering.
     return (
         <AuthContext.Provider value={{ user, loading, sucursalId: SUCURSAL_ID, isAdmin }}>
             {children}

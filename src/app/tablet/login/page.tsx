@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
@@ -14,12 +14,33 @@ export default function TabletLoginPage() {
 
     const supabase = createClient()
 
+    // 1. Auto-login check (Atomic)
+    useEffect(() => {
+        const session = localStorage.getItem('barbero_session')
+        if (session) {
+            try {
+                const parsed = JSON.parse(session)
+                if (parsed?.id) {
+                    console.log('⚡ Session detected, redirecting to dashboard...')
+                    router.replace('/tablet')
+                }
+            } catch (e) {
+                localStorage.removeItem('barbero_session')
+            }
+        }
+    }, [router])
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
+        e.stopPropagation()
+
+        if (loading) return
+
         setLoading(true)
         setError('')
 
         try {
+            console.log('📡 Attempting login for:', usuario)
             const { data: barberos, error: dbError } = await supabase
                 .from('barberos')
                 .select('*')
@@ -31,8 +52,9 @@ export default function TabletLoginPage() {
             const barbero = barberos?.[0] as any
 
             if (barbero && barbero.password_hash === password) {
+                console.log('✅ Login successful, saving session...')
                 localStorage.setItem('barbero_session', JSON.stringify(barbero))
-                router.push('/tablet')
+                router.replace('/tablet')
             } else {
                 setError('Usuario o contraseña incorrectos')
             }
