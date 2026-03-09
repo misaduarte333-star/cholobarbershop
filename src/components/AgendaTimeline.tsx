@@ -11,18 +11,18 @@ interface AgendaTimelineProps {
     citas: CitaDesdeVista[]
     bloqueos?: any[]
     almuerzoBarbero?: any
+    horarioSucursal?: any
     fechaBase?: string
     currentTime: Date
     onUpdate?: () => void
 }
 
-const HORA_INICIO = 8
-const HORA_FIN = 21 // Till 9 PM
+
 const SLOT_HEIGHT = 60 // More compact height
 
-function generarSlots(): string[] {
+function generarSlots(inicio: number, fin: number): string[] {
     const slots: string[] = []
-    for (let hora = HORA_INICIO; hora < HORA_FIN; hora++) {
+    for (let hora = inicio; hora < fin; hora++) {
         const ampm = hora >= 12 ? 'PM' : 'AM'
         const hour12 = hora % 12 || 12
         slots.push(`${hour12}:00 ${ampm}`)
@@ -31,8 +31,37 @@ function generarSlots(): string[] {
     return slots
 }
 
-export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, fechaBase, currentTime, onUpdate }: AgendaTimelineProps) {
-    const slots = useMemo(() => generarSlots(), [])
+export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, onUpdate }: AgendaTimelineProps) {
+    // Determinar día de la semana para el horario de sucursal
+    const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+    const todayLocalStr = new Date().toLocaleDateString('en-CA')
+    const viewDate = fechaBase || todayLocalStr
+    const targetDate = new Date(`${viewDate}T12:00:00-07:00`)
+    const nombreDia = dias[targetDate.getDay()]
+
+    const { horaInicio, horaFin } = useMemo(() => {
+        let inicio = 8
+        let fin = 21
+
+        if (horarioSucursal && horarioSucursal[nombreDia]) {
+            const hA = horarioSucursal[nombreDia].apertura
+            const hC = horarioSucursal[nombreDia].cierre
+            if (hA) {
+                const parts = hA.split(':')
+                inicio = parseInt(parts[0], 10) - 1
+                if (inicio < 0) inicio = 0
+            }
+            if (hC) {
+                const parts = hC.split(':')
+                fin = parseInt(parts[0], 10) + 1
+                if (parseInt(parts[1], 10) > 0) fin += 1
+                if (fin > 24) fin = 24
+            }
+        }
+        return { horaInicio: inicio, horaFin: fin }
+    }, [horarioSucursal, nombreDia])
+
+    const slots = useMemo(() => generarSlots(horaInicio, horaFin), [horaInicio, horaFin])
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const [selectedCita, setSelectedCita] = useState<CitaDesdeVista | null>(null)
     const [isManualScroll, setIsManualScroll] = useState(false)
@@ -65,9 +94,9 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
     // Position in pixels: (Hour offset * height) + (Minutes proportional to height)
     // Now SLOT_HEIGHT is for 30 mins, so double the hour offset and (mins/30)
-    const currentTimePosition = ((currentHour - HORA_INICIO) * 2 * SLOT_HEIGHT) + (currentMinute / 30 * SLOT_HEIGHT)
+    const currentTimePosition = ((currentHour - horaInicio) * 2 * SLOT_HEIGHT) + (currentMinute / 30 * SLOT_HEIGHT)
 
-    const targetScrollPosition = Math.max(0, ((currentHour - 1 - HORA_INICIO) * 2 * SLOT_HEIGHT))
+    const targetScrollPosition = Math.max(0, ((currentHour - 1 - horaInicio) * 2 * SLOT_HEIGHT))
 
     // Auto-center: only scroll to current time when viewing TODAY
     const todayLocal = new Date().toLocaleDateString('en-CA')
@@ -385,7 +414,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         }
     }
 
-    const dentroHorario = currentHour >= HORA_INICIO && currentHour < HORA_FIN
+    const dentroHorario = currentHour >= horaInicio && currentHour < horaFin
 
     return (
         <div className="absolute inset-0 flex flex-col">
@@ -410,8 +439,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 )}
 
                 <div className="divide-y divide-slate-700/10">
-                    {Array.from({ length: HORA_FIN - HORA_INICIO }).map((_, i) => {
-                        const hour24 = HORA_INICIO + i
+                    {Array.from({ length: horaFin - horaInicio }).map((_, i) => {
+                        const hour24 = horaInicio + i
                         const ampm = hour24 >= 12 ? 'PM' : 'AM'
                         const hour12 = hour24 % 12 || 12
 

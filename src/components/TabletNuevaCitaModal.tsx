@@ -14,11 +14,12 @@ interface TabletNuevaCitaModalProps {
     onClose: () => void
     barberoId: string
     sucursalId?: string
+    horarioSucursalProps?: any
     citasDelDia: any[] // Array of CitaDesdeVista
     onCitaCreada: () => void
 }
 
-export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, citasDelDia, onCitaCreada }: TabletNuevaCitaModalProps) {
+export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, horarioSucursalProps, citasDelDia, onCitaCreada }: TabletNuevaCitaModalProps) {
     const [loading, setLoading] = useState(false)
     const [servicios, setServicios] = useState<Servicio[]>([])
     const [error, setError] = useState('')
@@ -42,7 +43,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
     const [citasParaFecha, setCitasParaFecha] = useState<any[]>(citasDelDia)
     const [bloqueosParaFecha, setBloqueosParaFecha] = useState<any[]>([])
     const [almuerzoBarbero, setAlmuerzoBarbero] = useState<any>(null)
-    const [horarioSucursal, setHorarioSucursal] = useState<any>(null)
+    const [horarioSucursal, setHorarioSucursal] = useState<any>(horarioSucursalProps || null)
     const [isRefreshing, setIsRefreshing] = useState(false)
 
     useEffect(() => {
@@ -80,6 +81,8 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
 
             if (sucursalRes.data) {
                 setHorarioSucursal(sucursalRes.data.horario_apertura)
+            } else if (horarioSucursalProps) {
+                setHorarioSucursal(horarioSucursalProps)
             }
             setIsRefreshing(false)
         }
@@ -293,11 +296,20 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
         if (horarioSucursal && horarioSucursal[nombreDia]) {
             const hA = horarioSucursal[nombreDia].apertura
             const hC = horarioSucursal[nombreDia].cierre
-            if (hA) horaApertura = parseInt(hA.split(':')[0], 10)
+            if (hA) {
+                horaApertura = parseInt(hA.split(':')[0], 10) - 1
+                if (horaApertura < 0) horaApertura = 0
+            }
             if (hC) {
                 const parts = hC.split(':')
-                horaCierre = parseInt(parts[0], 10)
-                if (parseInt(parts[1], 10) === 0) horaCierre -= 1
+                horaCierre = parseInt(parts[0], 10) + 1
+                if (parseInt(parts[1], 10) === 0) {
+                    // Si cierra a las 19:00, la horaCierre base era 19, extendida es 20.
+                    // Pero queremos permitir citas QUE EMPIECEN a las 19:30 si extendemos 1 hora?
+                    // El requerimiento dice "mostrar una hora antes y despues".
+                    // Si cierra a las 19:00, permitimos slots hasta las 20:00.
+                }
+                if (horaCierre > 23) horaCierre = 23
             }
         } else if (horarioSucursal) {
             return []
@@ -354,8 +366,13 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, c
             let isWithinClosing = true
             if (horarioSucursal && horarioSucursal[nombreDia]) {
                 const hC = horarioSucursal[nombreDia].cierre
-                const [cieseH, cierreM] = hC.split(':').map(Number)
-                if (h > cieseH || (h === cieseH && cierreM < 30)) isWithinClosing = false
+                const [cierreH, cierreM] = hC.split(':').map(Number)
+                const extendedCierreH = cierreH + 1
+                // Permitimos slot de :30 si la hora es menor al cierre extendido, 
+                // o si es igual al cierre extendido y tiene al menos 30min de margen (aunque 30 es el final)
+                if (h > extendedCierreH || (h === extendedCierreH && cierreM < 30 && cierreH === extendedCierreH)) isWithinClosing = false
+                // Simplificado: si h es < horaCierre (que ya es cierre+1), permitimos el :30
+                if (h > horaCierre) isWithinClosing = false
             }
 
             if (isWithinClosing) {

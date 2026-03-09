@@ -19,9 +19,6 @@ const TabletNuevaCitaModal = dynamic(() => import('@/components/TabletNuevaCitaM
     ssr: false
 })
 
-const MisEstadisticasModal = dynamic(() => import('@/components/MisEstadisticasModal').then(mod => mod.MisEstadisticasModal), {
-    ssr: false
-})
 
 export default function TabletDashboard() {
     const router = useRouter()
@@ -46,6 +43,7 @@ export default function TabletDashboard() {
     const [citasAgenda, setCitasAgenda] = useState<CitaDesdeVista[]>([])
     const [bloqueosAgenda, setBloqueosAgenda] = useState<any[]>([])
     const [almuerzoBarbero, setAlmuerzoBarbero] = useState<any>(null)
+    const [sucursal, setSucursal] = useState<any>(null)
     const [loadingAgenda, setLoadingAgenda] = useState(false)
     const lastTapAgenda = useRef<number>(0)
     const datePickerRef = useRef<HTMLInputElement>(null)
@@ -222,6 +220,19 @@ export default function TabletDashboard() {
 
                 // SUCCESS: Only now we allow the dashboard to show
                 console.log('✅ Session verified. Welcome!')
+
+                // Fetch sucursal data if available
+                if (currentBarbero.sucursal_id) {
+                    const { data: sucursalData } = await supabase
+                        .from('sucursales')
+                        .select('*')
+                        .eq('id', currentBarbero.sucursal_id)
+                        .single()
+                    if (sucursalData) {
+                        setSucursal(sucursalData)
+                    }
+                }
+
                 setIsCheckingAuth(false)
 
             } catch (err) {
@@ -365,7 +376,6 @@ export default function TabletDashboard() {
     const citasSiguientes = useMemo(() => citasPendientes.filter((c: CitaDesdeVista) => c.estado !== 'en_proceso' && c.estado !== 'por_cobrar'), [citasPendientes])
     const [showMobileAppointments, setShowMobileAppointments] = useState(false)
     const [isNewCitaModalOpen, setIsNewCitaModalOpen] = useState(false)
-    const [showStatsModal, setShowStatsModal] = useState(false)
 
     // If we have NO barbero and we are checking auth, we will redirect soon.
     // Don't show the heavy skeleton to avoid "flash" if not logged in.
@@ -511,13 +521,13 @@ export default function TabletDashboard() {
                             >
                                 <span className="material-icons-round text-sm md:text-base group-hover:scale-110 transition-transform">add</span>
                             </button>
-                            <button
-                                onClick={() => setShowStatsModal(true)}
+                            <Link
+                                href="/tablet/reportes"
                                 className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all flex items-center justify-center border border-blue-500/20 group active:scale-95"
                                 title="Métricas"
                             >
                                 <span className="material-icons-round text-sm md:text-base group-hover:scale-110 transition-transform">bar_chart</span>
-                            </button>
+                            </Link>
                             <button
                                 onClick={() => setShowSettings(true)}
                                 className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60 transition-all flex items-center justify-center border border-white/10 group active:scale-95"
@@ -675,7 +685,15 @@ export default function TabletDashboard() {
                             ) : (
                                 <div className="w-full h-full animate-fade-in relative z-10 flex flex-col">
                                     {(vistaAgenda === 'hoy' || vistaAgenda === 'dia') ? (
-                                        <AgendaTimeline citas={citasAgenda} bloqueos={bloqueosAgenda} almuerzoBarbero={almuerzoBarbero} currentTime={currentTime!} fechaBase={fechaAgenda} onUpdate={() => cargarAgenda()} />
+                                        <AgendaTimeline
+                                            citas={citasAgenda}
+                                            bloqueos={bloqueosAgenda}
+                                            almuerzoBarbero={almuerzoBarbero}
+                                            horarioSucursal={sucursal?.horario_apertura}
+                                            currentTime={currentTime!}
+                                            fechaBase={fechaAgenda}
+                                            onUpdate={() => cargarAgenda()}
+                                        />
                                     ) : (
                                         <div className="p-4 pt-6 h-full overflow-y-auto custom-scrollbar">
                                             <AgendaSemanalMensual citas={citasAgenda} bloqueos={bloqueosAgenda} almuerzoBarbero={almuerzoBarbero} fecha={fechaAgenda} vista={vistaAgenda} onUpdate={() => cargarAgenda()} />
@@ -717,21 +735,11 @@ export default function TabletDashboard() {
                 onClose={() => setIsNewCitaModalOpen(false)}
                 barberoId={barbero.id}
                 sucursalId={barbero.sucursal_id || ''}
+                horarioSucursalProps={sucursal?.horario_apertura}
                 citasDelDia={citas}
                 onCitaCreada={() => cargarAgenda()}
             />
 
-            {/* Modal de Rendimiento del Barbero */}
-            <AnimatePresence>
-                {showStatsModal && (
-                    <MisEstadisticasModal
-                        key="stats-modal"
-                        isOpen={showStatsModal}
-                        onClose={() => setShowStatsModal(false)}
-                        citasDelDia={citas.filter(c => c.estado === 'finalizada')}
-                    />
-                )}
-            </AnimatePresence>
 
             {/* ── Settings Bottom-Sheet ── always-mounted CSS portal */}
             {
