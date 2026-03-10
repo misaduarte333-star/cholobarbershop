@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase'
 import { useSearchParams, useRouter } from 'next/navigation'
 import type { CitaDesdeVista, EstadoCita, Servicio, Barbero } from '@/lib/types'
 import { ClientAutocomplete } from '@/components/ClientAutocomplete'
+import { AlertTriangle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 function CitasContent() {
     // 1. Hydration mismatch fix: Start with a stable state or wait for mount
@@ -487,6 +489,7 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
     const [loading, setLoading] = useState(false)
     const [servicios, setServicios] = useState<Servicio[]>([])
     const [barberos, setBarberos] = useState<Barbero[]>([])
+    const [originalTelefono, setOriginalTelefono] = useState<string | null>(cita?.cliente_telefono || null)
 
     // Utilities to keep local time from jumping
     const extractLocalTime = (isoString: string) => {
@@ -509,6 +512,7 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
 
     // Form State
     const [formData, setFormData] = useState({
+        cliente_id: cita?.cliente_id || null,
         cliente_nombre: cita?.cliente_nombre || '',
         cliente_telefono: cita?.cliente_telefono || '',
         servicio_id: cita?.servicio_id || (cita ? 'custom' : ''), // If editing and no service, assume custom
@@ -588,6 +592,16 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
         setLoading(true)
 
         try {
+            // --- ACTUALIZACIÓN DE PERFIL DE CLIENTE ---
+            if (formData.cliente_id && formData.cliente_telefono !== (originalTelefono || "") && formData.cliente_telefono !== "Sin registro de numero celular") {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const updateQuery = (supabase as any).from('clientes').update({ telefono: formData.cliente_telefono || null }).eq('id', formData.cliente_id)
+                const { error: updateError } = await updateQuery
+
+                if (updateError) console.error('⚠️ [Sync] Error:', updateError)
+                else console.log('✅ [Sync] Perfil actualizado')
+            }
+
             // Construir string forzando el huso de Hermosillo para evitar saltos UTC
             const TZ_OFFSET = '-07:00'
             const startISO = `${formData.fecha}T${formData.hora}:00${TZ_OFFSET}`
@@ -595,6 +609,7 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
 
             const payload = {
                 sucursal_id: sucursalId,
+                cliente_id: formData.cliente_id,
                 servicio_id: formData.servicio_id === 'custom' ? null : formData.servicio_id || null,
                 barbero_id: formData.barbero_id || null,
                 cliente_nombre: formData.cliente_nombre,
@@ -650,13 +665,23 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
                             <label className="block text-sm font-medium text-slate-300 mb-2">Cliente</label>
                             <ClientAutocomplete
                                 value={formData.cliente_nombre}
-                                onChange={(val) => setFormData({ ...formData, cliente_nombre: val })}
+                                onChange={(val) => {
+                                    const updates: any = { cliente_nombre: val }
+                                    if (formData.cliente_id) {
+                                        updates.cliente_id = null
+                                        updates.cliente_telefono = ""
+                                        setOriginalTelefono(null)
+                                    }
+                                    setFormData({ ...formData, ...updates })
+                                }}
                                 onSelect={(cliente) => {
                                     setFormData({
                                         ...formData,
+                                        cliente_id: cliente.id,
                                         cliente_nombre: cliente.nombre,
-                                        cliente_telefono: cliente.telefono || formData.cliente_telefono
+                                        cliente_telefono: cliente.telefono || "Sin registro de numero celular"
                                     })
+                                    setOriginalTelefono(cliente.telefono)
                                 }}
                                 placeholder="Nombre completo"
                             />
@@ -665,11 +690,32 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
                             <label className="block text-sm font-medium text-slate-300 mb-2">Teléfono</label>
                             <input
                                 type="tel"
-                                className="input-field"
+                                className={cn(
+                                    "input-field",
+                                    formData.cliente_telefono === "Sin registro de numero celular" && "text-slate-500 italic opacity-60"
+                                )}
                                 placeholder="+52..."
                                 value={formData.cliente_telefono}
+                                onFocus={() => {
+                                    if (formData.cliente_telefono === "Sin registro de numero celular") {
+                                        setFormData({ ...formData, cliente_telefono: "" })
+                                    }
+                                }}
+                                onBlur={() => {
+                                    if (formData.cliente_telefono === "" && !originalTelefono && formData.cliente_id) {
+                                        setFormData({ ...formData, cliente_telefono: "Sin registro de numero celular" })
+                                    }
+                                }}
                                 onChange={e => setFormData({ ...formData, cliente_telefono: e.target.value })}
                             />
+                            {formData.cliente_id && (formData.cliente_telefono !== (originalTelefono || "")) && (formData.cliente_telefono !== "Sin registro de numero celular" && formData.cliente_telefono !== "") && (
+                                <div className="flex items-center gap-1.5 mt-2 animate-in fade-in slide-in-from-top-1">
+                                    <AlertTriangle className="w-4 h-4 text-amber-500" />
+                                    <span className="text-xs font-bold text-amber-500 uppercase tracking-tighter">
+                                        Se actualizará el perfil del cliente en la base de datos
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
 

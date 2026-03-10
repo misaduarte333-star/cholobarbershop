@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 interface ClientAutocompleteProps {
     value: string
     onChange: (value: string) => void
-    onSelect: (cliente: { nombre: string; telefono: string | null }) => void
+    onSelect: (cliente: { id: string; nombre: string; telefono: string | null }) => void
     placeholder?: string
     className?: string
 }
@@ -23,6 +23,7 @@ export function ClientAutocomplete({ value, onChange, onSelect, placeholder, cla
 
     const supabase = createClient()
     const containerRef = useRef<HTMLDivElement>(null)
+    const skipFetchRef = useRef(false)
 
     const fetchSuggestions = useCallback(async (query: string) => {
         if (!query || query.length < 2) {
@@ -51,8 +52,11 @@ export function ClientAutocomplete({ value, onChange, onSelect, placeholder, cla
     }, [supabase])
 
     useEffect(() => {
+        if (skipFetchRef.current) {
+            skipFetchRef.current = false
+            return
+        }
         const timer = setTimeout(() => {
-            // Only fetch if the current value is different from the last selection or if we are typing
             fetchSuggestions(value)
         }, 300)
         return () => clearTimeout(timer)
@@ -81,7 +85,8 @@ export function ClientAutocomplete({ value, onChange, onSelect, placeholder, cla
         } else if (e.key === 'Enter' && selectedIndex >= 0) {
             e.preventDefault()
             const chosen = suggestions[selectedIndex]
-            onSelect({ nombre: chosen.nombre, telefono: chosen.telefono })
+            skipFetchRef.current = true
+            onSelect({ id: chosen.id, nombre: chosen.nombre, telefono: chosen.telefono })
             setOpen(false)
         } else if (e.key === 'Escape') {
             setOpen(false)
@@ -116,7 +121,8 @@ export function ClientAutocomplete({ value, onChange, onSelect, placeholder, cla
                                 key={cliente.id}
                                 type="button"
                                 onClick={() => {
-                                    onSelect({ nombre: cliente.nombre, telefono: cliente.telefono })
+                                    skipFetchRef.current = true
+                                    onSelect({ id: cliente.id, nombre: cliente.nombre, telefono: cliente.telefono })
                                     setOpen(false)
                                 }}
                                 className={cn(
@@ -131,12 +137,14 @@ export function ClientAutocomplete({ value, onChange, onSelect, placeholder, cla
                                     )}>
                                         {cliente.nombre}
                                     </span>
-                                    {cliente.telefono && (
-                                        <div className="flex items-center gap-2 text-[10px] text-white/40 mt-0.5">
-                                            <Phone className="w-3 h-3" />
-                                            <span>{cliente.telefono}</span>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-2 text-[10px] mt-0.5">
+                                        <Phone className={cn("w-3 h-3", cliente.telefono ? "text-primary/60" : "text-white/20")} />
+                                        <span className={cn(
+                                            cliente.telefono ? "text-white/40" : "text-amber-500/50 italic font-medium"
+                                        )}>
+                                            {cliente.telefono || "Sin registro de numero celular"}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="px-3 py-1 rounded-lg bg-white/5 text-[9px] font-black text-white/30 uppercase tracking-widest">
                                     {cliente.total_citas} Citas

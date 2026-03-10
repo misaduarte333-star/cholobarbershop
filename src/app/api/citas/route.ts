@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
         sucursal_id: sucursalId,
         barbero_id: body.barbero_id || null,
         servicio_id: (body.servicio_id === 'custom' ? null : body.servicio_id) || null,
+        cliente_id: body.cliente_id || null,
         cliente_nombre: body.cliente_nombre,
         cliente_telefono: body.cliente_telefono || '',
         timestamp_inicio: body.timestamp_inicio,

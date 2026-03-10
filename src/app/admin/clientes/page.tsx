@@ -13,8 +13,20 @@ import {
     Phone,
     Mail,
     Edit2,
-    History
+    History,
+    Trash2,
+    AlertCircle
 } from 'lucide-react'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
     Table,
     TableBody,
@@ -43,7 +55,11 @@ export default function ClientesPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
     const [showEditModal, setShowEditModal] = useState(false)
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const [showConfirmEditDialog, setShowConfirmEditDialog] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [isNewClient, setIsNewClient] = useState(false)
 
     const supabase = createClient()
 
@@ -84,25 +100,39 @@ export default function ClientesPage() {
         }).length
     }
 
-    const handleSaveCliente = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
+    const handleSaveCliente = async () => {
         if (!selectedCliente) return
 
         setIsSaving(true)
         try {
-            const { error } = await (supabase
-                .from('clientes') as any)
-                .update({
-                    nombre: selectedCliente.nombre,
-                    telefono: selectedCliente.telefono,
-                    email: selectedCliente.email,
-                    notas_internas: selectedCliente.notas_internas
-                })
-                .eq('id', selectedCliente.id)
+            if (isNewClient) {
+                const { error } = await (supabase
+                    .from('clientes') as any)
+                    .insert({
+                        nombre: selectedCliente.nombre,
+                        telefono: selectedCliente.telefono,
+                        email: selectedCliente.email,
+                        notas_internas: selectedCliente.notas_internas,
+                        total_citas: 0
+                    })
 
-            if (error) throw error
+                if (error) throw error
+            } else {
+                const { error } = await (supabase
+                    .from('clientes') as any)
+                    .update({
+                        nombre: selectedCliente.nombre,
+                        telefono: selectedCliente.telefono,
+                        email: selectedCliente.email,
+                        notas_internas: selectedCliente.notas_internas
+                    })
+                    .eq('id', selectedCliente.id)
+
+                if (error) throw error
+            }
 
             setShowEditModal(false)
+            setShowConfirmEditDialog(false)
             cargarClientes()
         } catch (err) {
             console.error('Error guardando cliente:', err)
@@ -110,6 +140,49 @@ export default function ClientesPage() {
         } finally {
             setIsSaving(false)
         }
+    }
+
+    const handleDeleteCliente = async () => {
+        if (!selectedCliente) return
+        setIsDeleting(true)
+        try {
+            const { error } = await supabase
+                .from('clientes')
+                .delete()
+                .eq('id', selectedCliente.id)
+
+            if (error) throw error
+
+            setShowDeleteDialog(false)
+            setShowEditModal(false)
+            cargarClientes()
+        } catch (err) {
+            console.error('Error eliminando cliente:', err)
+            alert('No se pudo eliminar el cliente. Verifique que no tenga citas asociadas.')
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    const openNewClientModal = () => {
+        setIsNewClient(true)
+        setSelectedCliente({
+            id: '',
+            nombre: '',
+            telefono: '',
+            email: '',
+            notas_internas: '',
+            total_citas: 0,
+            ultima_cita: null,
+            created_at: new Date().toISOString()
+        } as Cliente)
+        setShowEditModal(true)
+    }
+
+    const openEditClientModal = (cliente: Cliente) => {
+        setIsNewClient(false)
+        setSelectedCliente({ ...cliente })
+        setShowEditModal(true)
     }
 
     return (
@@ -134,7 +207,13 @@ export default function ClientesPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    {/* Add manual client button if needed, but the user wants auto-registration primarily */}
+                    <Button
+                        onClick={openNewClientModal}
+                        className="btn-primary rounded-xl px-4 font-black uppercase tracking-widest text-[10px] shadow-[0_10px_20px_rgba(234,179,8,0.2)]"
+                    >
+                        <UserPlus data-icon="inline-start" className="size-4" />
+                        Nuevo Cliente
+                    </Button>
                 </div>
             </div>
 
@@ -261,10 +340,7 @@ export default function ClientesPage() {
                                         variant="ghost"
                                         size="sm"
                                         className="rounded-xl hover:bg-primary/20 text-white/40 hover:text-primary active:scale-95 transition-all"
-                                        onClick={() => {
-                                            setSelectedCliente(cliente)
-                                            setShowEditModal(true)
-                                        }}
+                                        onClick={() => openEditClientModal(cliente)}
                                     >
                                         <Edit2 className="size-4" />
                                     </Button>
@@ -280,15 +356,29 @@ export default function ClientesPage() {
                 <DialogContent className="glass-card border-white/10 bg-black/90 text-white max-w-md rounded-[2rem]">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-black font-display text-gradient-gold tracking-tight uppercase">
-                            Perfil del Cliente
+                            {isNewClient ? 'Nuevo Cliente' : 'Perfil del Cliente'}
                         </DialogTitle>
                         <DialogDescription className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
-                            Ver y editar información de fidelidad
+                            {isNewClient ? 'Registrar nuevo cliente en el CRM' : 'Ver y editar información de fidelidad'}
                         </DialogDescription>
                     </DialogHeader>
 
                     {selectedCliente && (
-                        <form onSubmit={handleSaveCliente} className="space-y-6 pt-4">
+                        <div className="space-y-6 pt-4">
+                            {!isNewClient && (
+                                <div className="flex justify-end">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg text-[10px] font-black uppercase tracking-widest gap-2"
+                                        onClick={() => setShowDeleteDialog(true)}
+                                    >
+                                        <Trash2 className="size-3" />
+                                        Eliminar Cliente
+                                    </Button>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Nombre Completo</label>
@@ -342,7 +432,7 @@ export default function ClientesPage() {
                                 </div>
                             </div>
 
-                            <DialogFooter className="gap-2 sm:gap-0">
+                            <DialogFooter className="gap-2 sm:gap-0 mt-6">
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -352,17 +442,74 @@ export default function ClientesPage() {
                                     Cancelar
                                 </Button>
                                 <Button
-                                    type="submit"
+                                    type="button"
                                     disabled={isSaving}
+                                    onClick={() => isNewClient ? handleSaveCliente() : setShowConfirmEditDialog(true)}
                                     className="btn-primary rounded-xl px-8 font-black uppercase tracking-widest text-[10px] shadow-[0_10px_20px_rgba(234,179,8,0.2)]"
                                 >
-                                    {isSaving ? 'Guardando...' : 'Guardar Perfil'}
+                                    {isSaving ? 'Guardando...' : isNewClient ? 'Crear Cliente' : 'Guardar Perfil'}
                                 </Button>
                             </DialogFooter>
-                        </form>
+                        </div>
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent className="glass-card border-white/10 bg-black/95 text-white rounded-[2rem]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-black text-red-500 uppercase tracking-tight flex items-center gap-3">
+                            <AlertCircle className="size-5" />
+                            ¿Eliminar Cliente?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-white/60 font-medium">
+                            Esta acción es irreversible. Se eliminará el historial del cliente y sus notas del sistema.
+                            <br /><br />
+                            <span className="text-red-400 font-bold uppercase text-[10px] tracking-widest">Atención:</span> Si el cliente tiene citas activas, la eliminación podría fallar o dejar registros huérfanos.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2 sm:gap-0">
+                        <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl font-black uppercase tracking-widest text-[10px]">
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteCliente}
+                            disabled={isDeleting}
+                            className="bg-red-600 hover:bg-red-700 text-white border-none rounded-xl font-black uppercase tracking-widest text-[10px]"
+                        >
+                            {isDeleting ? 'Eliminando...' : 'Sí, Eliminar Permanentemente'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Edit Confirmation Dialog */}
+            <AlertDialog open={showConfirmEditDialog} onOpenChange={setShowConfirmEditDialog}>
+                <AlertDialogContent className="glass-card border-white/10 bg-black/95 text-white rounded-[2rem]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-black text-gradient-gold uppercase tracking-tight flex items-center gap-3">
+                            <Edit2 className="size-5 text-primary" />
+                            ¿Confirmar Cambios?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-white/60 font-medium">
+                            Estás a punto de modificar la información de este cliente. Asegúrate de que los datos sean correctos para mantener la integridad del CRM.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2 sm:gap-0">
+                        <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl font-black uppercase tracking-widest text-[10px]">
+                            Revisar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleSaveCliente}
+                            disabled={isSaving}
+                            className="btn-primary border-none rounded-xl font-black uppercase tracking-widest text-[10px]"
+                        >
+                            {isSaving ? 'Guardando...' : 'Confirmar y Guardar'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

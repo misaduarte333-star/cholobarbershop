@@ -628,7 +628,16 @@ export default function TabletDashboard() {
                                     </div>
                                     <div className="relative">
                                         <div className="absolute -inset-4 bg-emerald-500/5 rounded-[2.5rem] lg:rounded-[3rem] blur-2xl opacity-40 pointer-events-none" />
-                                        <CitaCard cita={citaEnProceso} onUpdate={cargarCitas} isHighlighted currentTime={currentTime!} allCitas={citas} />
+                                        <CitaCard
+                                            cita={citaEnProceso}
+                                            onUpdate={cargarCitas}
+                                            isHighlighted
+                                            currentTime={currentTime!}
+                                            allCitas={citas}
+                                            bloqueos={bloqueosAgenda}
+                                            almuerzoBarbero={almuerzoBarbero}
+                                            horarioSucursal={sucursal}
+                                        />
                                     </div>
                                 </div>
                             )}
@@ -658,7 +667,15 @@ export default function TabletDashboard() {
                                     <div className="grid grid-cols-1 gap-3 lg:gap-4">
                                         {citasSiguientes.map((cita: CitaDesdeVista, index: number) => (
                                             <div key={`cita-next-${cita.id || index}`} className="animate-slide-in" style={{ animationDelay: `${index * 50}ms` }}>
-                                                <CitaCard cita={cita} onUpdate={cargarCitas} currentTime={currentTime!} allCitas={citas} />
+                                                <CitaCard
+                                                    cita={cita}
+                                                    onUpdate={cargarCitas}
+                                                    currentTime={currentTime!}
+                                                    allCitas={citas}
+                                                    bloqueos={bloqueosAgenda}
+                                                    almuerzoBarbero={almuerzoBarbero}
+                                                    horarioSucursal={sucursal}
+                                                />
                                             </div>
                                         ))}
                                     </div>

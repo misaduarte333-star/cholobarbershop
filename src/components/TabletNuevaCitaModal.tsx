@@ -56,6 +56,8 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
 
     // Form state
     const [nombre, setNombre] = useState('')
+    const [clienteId, setClienteId] = useState<string | null>(null)
+    const [originalTelefono, setOriginalTelefono] = useState<string | null>(null)
     const [telefono, setTelefono] = useState('')
     const [servicioId, setServicioId] = useState('')
     const [horaInicio, setHoraInicio] = useState('')
@@ -254,6 +256,22 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
 
         setLoading(true)
         try {
+            // --- ACTUALIZACIÓN DE PERFIL DE CLIENTE ---
+            // Si el cliente existe y el teléfono ha sido modificado (y no es la leyenda de vacío)
+            if (clienteId && telefono !== (originalTelefono || "") && telefono !== "Sin registro de numero celular") {
+                const supabase = createClient()
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const updateQuery = (supabase as any).from('clientes').update({ telefono: telefono || null }).eq('id', clienteId)
+                const { error: updateError } = await updateQuery
+
+                if (updateError) {
+                    console.error('⚠️ [Sync] Error al actualizar el perfil del cliente:', updateError)
+                    // No bloqueamos la cita por un error en el perfil, pero lo registramos
+                } else {
+                    console.log('✅ [Sync] Perfil del cliente actualizado con éxito')
+                }
+            }
+
             // Construir el timestamp combinando el día (local) con la hora seleccionada
             // Forzamos el uso de la zona local de Hermosillo Sonora México agregando el offset.
             const fechaStr = fecha // YYYY-MM-DD
@@ -282,8 +300,9 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             // API Payload
             const payload = {
                 barbero_id: barberoId,
+                cliente_id: clienteId,
                 cliente_nombre: nombre,
-                cliente_telefono: telefono,
+                cliente_telefono: telefono === "Sin registro de numero celular" ? null : telefono,
                 servicio_id: servicioId,
                 timestamp_inicio: timestampCompleto,
                 timestamp_fin: timestampFinCompleto,
@@ -322,6 +341,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
 
     const resetForm = () => {
         setNombre('')
+        setClienteId(null)
         setTelefono('')
         setServicioId('')
         setOrigen('walkin')
@@ -381,6 +401,10 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             const startMins = start.getHours() * 60 + start.getMinutes()
             const endMins = end.getHours() * 60 + end.getMinutes()
 
+            const estadosFinalizados = ['completada', 'finalizada', 'cobrada', 'por_cobrar']
+
+            // 1. Buscar cita en el slot PRIMERO (antes de evaluar 'past')
+            //    Así detectamos correctamente las citas finalizadas en el pasado
             const citaOcupada = citasParaFecha.find(c => {
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
@@ -402,13 +426,16 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                 // Una cita solo bloquea el slot de 30 minutos donde COMIENZA.
                 // Ignoramos la duración del servicio para dejar libres los "siguientes horarios".
                 if (cSMins >= startMins && cSMins < endMins) {
-                    console.log(`📍 Slot ${startMins}-${endMins} bloqueado por COMIENZO de cita:`, c.cliente_nombre, `${c.hora_cita_local} (${cSMins})`)
                     return true
                 }
                 return false
             })
 
+            // 2. Slot del pasado con cita ya finalizada/cobrada → verde inhabilitado 'HECHO'
+            if (citaOcupada && estadosFinalizados.includes(citaOcupada.estado) && start < ahora) return 'finalizada'
+            // 3. Slot ocupado por cita pendiente/en curso → rojo 'OCUPADO'
             if (citaOcupada) return 'ocupado'
+            // 4. Slot del pasado sin cita → atenuado pero seleccionable (solo hoy)
             if (start < ahora && fecha === getHoyStr()) return 'past'
 
             const bloqueado = bloqueosParaFecha.some(b => {
@@ -553,10 +580,19 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                             <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-2 block">Nombre del Cliente</Label>
                             <ClientAutocomplete
                                 value={nombre}
-                                onChange={setNombre}
+                                onChange={(val) => {
+                                    setNombre(val)
+                                    if (clienteId) {
+                                        setClienteId(null)
+                                        setTelefono("")
+                                        setOriginalTelefono(null)
+                                    }
+                                }}
                                 onSelect={(cliente) => {
                                     setNombre(cliente.nombre)
-                                    if (cliente.telefono) setTelefono(cliente.telefono)
+                                    setClienteId(cliente.id)
+                                    setOriginalTelefono(cliente.telefono)
+                                    setTelefono(cliente.telefono || "Sin registro de numero celular")
                                 }}
                                 placeholder="Nombre del Cliente"
                             />
@@ -572,10 +608,29 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                 <Input
                                     type="tel"
                                     value={telefono}
+                                    onFocus={() => {
+                                        if (telefono === "Sin registro de numero celular") setTelefono("")
+                                    }}
+                                    onBlur={() => {
+                                        if (telefono === "" && !originalTelefono && clienteId) {
+                                            setTelefono("Sin registro de numero celular")
+                                        }
+                                    }}
                                     onChange={(e) => setTelefono(e.target.value)}
-                                    className="pl-11 h-12 bg-white/5 border-white/10 rounded-2xl text-sm font-bold focus-visible:ring-primary/50 focus-visible:bg-black/40 transition-all placeholder:text-white/10"
+                                    className={cn(
+                                        "pl-11 h-12 bg-white/5 border-white/10 rounded-2xl text-sm font-bold focus-visible:ring-primary/50 focus-visible:bg-black/40 transition-all",
+                                        telefono === "Sin registro de numero celular" ? "text-amber-500/40 italic font-normal" : "text-white placeholder:text-white/10"
+                                    )}
                                     placeholder="Teléfono del Cliente"
                                 />
+                                {clienteId && (telefono !== (originalTelefono || "") && (telefono !== "Sin registro de numero celular" && telefono !== "")) && (
+                                    <div className="absolute -bottom-6 left-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-300">
+                                        <AlertTriangle className="w-3 h-3 text-amber-500" />
+                                        <span className="text-[9px] font-bold text-amber-500/80 uppercase tracking-tight">
+                                            Se actualizará este dato en el perfil del cliente
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -692,34 +747,44 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                         const isPast = slot.status === 'past'
                                         const isOccupied = slot.status === 'ocupado'
                                         const isBlocked = slot.status === 'bloqueado'
+                                        const isFinalized = slot.status === 'finalizada'
                                         const isSelected = horaInicio === slot.value
+                                        // 'past' sigue seleccionable para registro retroactivo
+                                        const isDisabled = isOccupied || isBlocked || isFinalized
 
                                         return (
                                             <Button
                                                 key={slot.value}
                                                 variant="outline"
-                                                disabled={isOccupied || isBlocked}
+                                                disabled={isDisabled}
                                                 onClick={() => setHoraInicio(slot.value)}
                                                 className={cn(
                                                     "h-11 sm:h-12 rounded-xl text-[10px] font-bold flex flex-col items-center justify-center border transition-all active:scale-[0.98] group relative px-0 overflow-hidden",
-                                                    isOccupied
-                                                        ? "bg-red-500/5 text-red-500 border-red-500/20 opacity-100 shadow-none"
-                                                        : (isPast ? "opacity-60 bg-white/5 border-white/5 text-white/40" : "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10"),
-                                                    isSelected && !isOccupied && "bg-primary/20 text-primary border-primary/50 shadow-[0_0_20px_rgba(245,200,66,0.1)]",
-                                                    isBlocked && "bg-white/5 text-white/20 border-white/5 opacity-50"
+                                                    // Ocupado por cita activa (futura/en curso): rojo
+                                                    isOccupied && "bg-red-500/5 text-red-500 border-red-500/20 opacity-100 shadow-none",
+                                                    // Cita ya finalizada/cobrada en el pasado: verde apagado, inhabilitado
+                                                    isFinalized && "bg-emerald-500/5 text-emerald-600/60 border-emerald-500/15 opacity-70 cursor-not-allowed",
+                                                    // Pasado sin cita: atenuado pero seleccionable
+                                                    isPast && !isFinalized && "opacity-60 bg-white/5 border-white/5 text-white/40",
+                                                    // Bloqueado manual
+                                                    isBlocked && "bg-white/5 text-white/20 border-white/5 opacity-50",
+                                                    // Libre disponible
+                                                    !isDisabled && !isPast && "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10",
+                                                    // Seleccionado
+                                                    isSelected && !isDisabled && "bg-primary/20 text-primary border-primary/50 shadow-[0_0_20px_rgba(245,200,66,0.1)]",
                                                 )}
                                             >
                                                 <span className={cn(
                                                     "text-xs tracking-tighter leading-none font-black mb-0.5 z-10",
-                                                    isOccupied ? "text-red-500" : ""
+                                                    isOccupied ? "text-red-500" : isFinalized ? "text-emerald-600/70" : ""
                                                 )}>
                                                     {slot.label.split(' ')[0]}
                                                 </span>
                                                 <span className={cn(
                                                     "text-[5px] sm:text-[6px] uppercase tracking-tighter font-black transition-colors z-10",
-                                                    isOccupied ? "text-red-500/80" : "opacity-20"
+                                                    isOccupied ? "text-red-500/80" : isFinalized ? "text-emerald-600/60" : "opacity-20"
                                                 )}>
-                                                    {isOccupied ? 'OCUPADO' : isBlocked ? 'BLOQUEADO' : isPast ? 'PASADO' : 'LIBRE'}
+                                                    {isOccupied ? 'OCUPADO' : isFinalized ? 'HECHO' : isBlocked ? 'BLOQUEADO' : isPast ? 'PASADO' : 'LIBRE'}
                                                 </span>
                                             </Button>
                                         )

@@ -648,6 +648,9 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                         onUpdate={() => { setSelectedCita(null); setActiveModal(null); onUpdate?.(); }}
                         onClose={() => { setSelectedCita(null); setActiveModal(null); }}
                         autoOpen={activeModal}
+                        bloqueos={bloqueos}
+                        almuerzoBarbero={almuerzoBarbero}
+                        horarioSucursal={horarioSucursal}
                     />
                 </div>
             )}

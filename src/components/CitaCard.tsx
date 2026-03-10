@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect, memo, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import {
     Play,
     RotateCcw,
+    RefreshCcw,
     X,
     PlayCircle,
     Scissors,
@@ -21,7 +22,11 @@ import {
     UserCheck,
     Timer,
     AlertTriangle,
-    CalendarClock
+    CalendarClock,
+    Calendar as CalendarIcon,
+    Store,
+    MessageCircle,
+    Phone
 } from 'lucide-react'
 import {
     Dialog,
@@ -31,6 +36,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 interface CitaCardProps {
     cita: CitaDesdeVista
@@ -41,9 +47,45 @@ interface CitaCardProps {
     currentTime: Date
     allCitas: CitaDesdeVista[]
     autoOpen?: 'move' | 'cancel' | 'details' | null
+    bloqueos?: any[]
+    almuerzoBarbero?: any
+    horarioSucursal?: any
 }
 
-export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHighlighted, style, currentTime, allCitas, autoOpen }: CitaCardProps) {
+const parse12hToMins = (hora12: string) => {
+    if (!hora12) return 0
+    const matches = hora12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+    if (!matches) return 0
+    let [_, h, m, ampm] = matches
+    let hours = parseInt(h, 10)
+    const minutes = parseInt(m, 10)
+    if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12
+    if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0
+    return hours * 60 + minutes
+}
+
+const formato12h = (hora24: string) => {
+    if (!hora24) return 'Ninguna'
+    const [h, m] = hora24.split(':')
+    const hNum = parseInt(h, 10)
+    const ampm = hNum >= 12 ? 'PM' : 'AM'
+    const h12 = hNum % 12 || 12
+    return `${h12.toString().padStart(2, '0')}:${m} ${ampm}`
+}
+
+export const CitaCard = memo(function CitaCard({
+    cita,
+    onUpdate,
+    onClose,
+    isHighlighted,
+    style,
+    currentTime,
+    allCitas,
+    autoOpen,
+    bloqueos = [],
+    almuerzoBarbero = null,
+    horarioSucursal
+}: CitaCardProps) {
     const [mounted, setMounted] = useState(false)
     useEffect(() => {
         setMounted(true)
@@ -230,31 +272,127 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
     const horaInicio = citaStartTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
     const horaFin = new Date(cita.timestamp_fin).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
 
-    const generateTimeSlots = () => {
+    // Horarios para generar botones (ajustado al horario de la sucursal) - MEMOIZED for parity with Nueva Cita
+    const slotsParaCita = useMemo(() => {
         const slots = []
-        const currentH = currentTime.getHours()
-        const currentM = currentTime.getMinutes()
+        const fechaCita = new Date(cita.timestamp_inicio).toLocaleDateString('en-CA')
 
-        for (let h = 8; h <= 20; h++) {
-            const hourValue = `${h.toString().padStart(2, '0')}:00`
-            const hour12 = h % 12 || 12
-            const ampm = h >= 12 ? 'PM' : 'AM'
-            const label = `${hour12}:00 ${ampm}`
-            const isPast = false // Removido para permitir reasignar en retroactivo
-            const overlapping = allCitas.filter(c => {
-                if (c.id === cita.id || c.estado === 'cancelada') return false
-                const start = new Date(c.timestamp_inicio)
-                const end = new Date(c.timestamp_fin)
-                const slotStart = new Date(currentTime)
-                slotStart.setHours(h, 0, 0, 0)
-                const slotEnd = new Date(slotStart.getTime() + (new Date(cita.timestamp_fin).getTime() - new Date(cita.timestamp_inicio).getTime()))
-                return slotStart < end && slotEnd > start
+        // Determinar día de la semana para el horario de sucursal
+        const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+        const targetDate = new Date(`${fechaCita}T12:00:00-07:00`)
+        const indiceDia = targetDate.getDay()
+        const nombreDia = dias[indiceDia]
+
+        let horaApertura = 8
+        let horaCierre = 20
+
+        if (horarioSucursal && horarioSucursal[nombreDia]) {
+            const hA = horarioSucursal[nombreDia].apertura
+            const hC = horarioSucursal[nombreDia].cierre
+            if (hA) {
+                horaApertura = parseInt(hA.split(':')[0], 10) - 1
+                if (horaApertura < 0) horaApertura = 0
+            }
+            if (hC) {
+                const parts = hC.split(':')
+                horaCierre = parseInt(parts[0], 10) + 1
+                if (horaCierre > 23) horaCierre = 23
+            }
+        }
+
+        const duracionSlotMin = 30
+        const duracionCitaActual = Math.round((new Date(cita.timestamp_fin).getTime() - new Date(cita.timestamp_inicio).getTime()) / 60000)
+
+        // La hora exacta de inicio de la cita actual (para bloquear ese mismo slot)
+        const citaActualMins = (() => {
+            const d = new Date(cita.timestamp_inicio)
+            return d.getHours() * 60 + d.getMinutes()
+        })()
+
+        const getSlotStatus = (start: Date, end: Date) => {
+            const ahora = new Date()
+            const startMins = start.getHours() * 60 + start.getMinutes()
+            const endMins = end.getHours() * 60 + end.getMinutes()
+
+            // 1. Bloquear el slot exacto donde ya está la cita (no reagendar al mismo)
+            if (startMins === citaActualMins) return 'actual'
+
+            const estadosFinalizados = ['completada', 'finalizada', 'cobrada', 'por_cobrar']
+            const esFechaHoy = fechaCita === new Date().toLocaleDateString('en-CA')
+
+            // 2. Buscar cita en el slot (ANTES de evaluar 'past' para detectar finalizadas correctamente)
+            const citaEnSlot = allCitas.find(c => {
+                if (c.id === cita.id) return false
+                const cancelados = ['cancelada', 'no_show']
+                if (cancelados.includes(c.estado)) return false
+
+                let cSMins, cEMins
+                if (c.hora_cita_local && c.hora_fin_local) {
+                    cSMins = parse12hToMins(c.hora_cita_local)
+                    cEMins = parse12hToMins(c.hora_fin_local)
+                } else {
+                    const cStart = new Date(c.timestamp_inicio)
+                    const cEnd = new Date(c.timestamp_fin)
+                    cSMins = cStart.getHours() * 60 + cStart.getMinutes()
+                    cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
+                }
+
+                if (cSMins >= startMins && cSMins < endMins) return true
+                return false
             })
-            const isOccupied = overlapping.length >= 4
-            slots.push({ value: hourValue, label, isPast, isOccupied })
+
+            // 3. Slot pasado con cita ya finalizada/cobrada → inhabilitado en verde
+            if (citaEnSlot && estadosFinalizados.includes(citaEnSlot.estado) && start < ahora) return 'finalizada'
+            // 4. Slot ocupado por cita activa (futura o en curso)
+            if (citaEnSlot) return 'ocupado'
+
+            // 5. Slot del pasado sin cita: atenuado pero seleccionable (solo hoy, para retroactivos)
+            if (start < ahora && esFechaHoy) return 'past'
+
+            const bloqueado = (bloqueos || []).some(b => {
+                const bStart = new Date(b.fecha_inicio)
+                const bEnd = new Date(b.fecha_fin)
+                return start < bEnd && end > bStart
+            })
+            if (bloqueado) return 'bloqueado'
+
+            if (almuerzoBarbero && almuerzoBarbero.inicio && almuerzoBarbero.fin) {
+                const almuerzoStart = new Date(`${fechaCita}T${almuerzoBarbero.inicio}:00-07:00`)
+                const almuerzoEnd = new Date(`${fechaCita}T${almuerzoBarbero.fin}:00-07:00`)
+                if (start < almuerzoEnd && end > almuerzoStart) return 'bloqueado'
+            }
+
+            return 'libre'
+        }
+
+        for (let h = horaApertura; h <= horaCierre; h++) {
+            const hourValue = `${h.toString().padStart(2, '0')}:00`
+            const h12 = h % 12 || 12
+            const ampm = h >= 12 ? 'PM' : 'AM'
+            const label = `${h12}:00 ${ampm}`
+
+            const slotStart = new Date(`${fechaCita}T${hourValue}:00-07:00`)
+            const slotEnd = new Date(slotStart.getTime() + duracionSlotMin * 60000)
+            slots.push({ value: hourValue, label, status: getSlotStatus(slotStart, slotEnd) })
+
+            const halfHourValue = `${h.toString().padStart(2, '0')}:30`
+            const halfLabel = `${h12}:30 ${ampm}`
+            const halfSlotStart = new Date(`${fechaCita}T${halfHourValue}:00-07:00`)
+            const halfSlotEnd = new Date(halfSlotStart.getTime() + duracionSlotMin * 60000)
+
+            let isWithinClosing = true
+            if (horarioSucursal && horarioSucursal[nombreDia]) {
+                const hC = horarioSucursal[nombreDia].cierre
+                const [cierreH] = hC.split(':').map(Number)
+                if (h > cierreH + 1) isWithinClosing = false
+            }
+
+            if (isWithinClosing) {
+                slots.push({ value: halfHourValue, label: halfLabel, status: getSlotStatus(halfSlotStart, halfSlotEnd) })
+            }
         }
         return slots
-    }
+    }, [cita.timestamp_inicio, cita.timestamp_fin, allCitas, bloqueos, almuerzoBarbero, horarioSucursal])
 
     const isAnyModalOpen = showDetails || showMove || showCancel || showCheckout || showLateWarning || showEarlyWarning
     const isInProcess = cita.estado === 'en_proceso' || cita.estado === 'por_cobrar'
@@ -519,44 +657,119 @@ export const CitaCard = memo(function CitaCard({ cita, onUpdate, onClose, isHigh
 
             {/* Move/Reschedule Dialog */}
             <Dialog open={showMove} onOpenChange={(open) => { setShowMove(open); if (!open) onClose?.(); }}>
-                <DialogContent className="bg-[#0A0C10] border-white/10 text-white rounded-[2.5rem] sm:max-w-2xl w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold opacity-50" />
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter font-display">Reprogramar</DialogTitle>
-                        <DialogDescription className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mt-2">
-                            Selecciona un nuevo horario disponible
-                        </DialogDescription>
+                <DialogContent showCloseButton={false} className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] p-0 overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,1)] w-[95vw] sm:max-w-lg max-h-[96vh] flex flex-col border outline-none">
+                    {/* Status Bar */}
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold z-50 shrink-0" />
+
+                    {/* Decorative background light */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
+
+                    <DialogHeader className="px-6 sm:px-8 py-5 sm:py-6 border-b border-white/5 bg-black/40 flex flex-row items-center justify-between space-y-0 relative z-10 shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 shadow-inner">
+                                <CalendarIcon className="w-6 h-6 text-primary" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white font-display">
+                                    Reagendar Cita
+                                </DialogTitle>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <div className="h-1 w-6 bg-primary rounded-full shadow-[0_0_10px_rgba(245,200,66,0.5)]" />
+                                    <p className="text-[9px] sm:text-[10px] text-primary/60 font-black uppercase tracking-[0.2em]">{cita.cliente_nombre}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => { setShowMove(false); onClose?.(); }}
+                            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white"
+                        >
+                            <X className="w-5 h-5" />
+                        </Button>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 py-6 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
-                        {generateTimeSlots().map((slot) => {
-                            const isSelected = newHour === slot.value
-                            return (
-                                <Button
-                                    key={slot.value}
-                                    variant="outline"
-                                    disabled={slot.isPast || slot.isOccupied}
-                                    onClick={() => setNewHour(slot.value)}
-                                    className={cn(
-                                        "h-auto py-6 rounded-2xl text-[10px] font-black flex flex-col items-center justify-center gap-1 border transition-all",
-                                        slot.isPast && "opacity-20 grayscale",
-                                        slot.isOccupied && "bg-red-500/10 text-red-500/40 border-red-500/10",
-                                        isSelected ? "bg-primary text-black border-primary shadow-[0_0_20px_rgba(234,179,8,0.3)] scale-105" : "bg-white/5 border-white/5 text-white/40 hover:text-white"
-                                    )}
-                                >
-                                    <span className="text-sm tracking-tighter">{slot.label}</span>
-                                    <span className="opacity-40 uppercase tracking-widest text-[7px]">{slot.isOccupied ? "Ocupado" : "Libre"}</span>
-                                </Button>
-                            )
-                        })}
+                    <div className="p-6 flex-1 overflow-y-auto custom-scrollbar min-h-0 relative z-10">
+                        <div className="grid grid-cols-5 sm:grid-cols-6 gap-1.5 overflow-visible">
+                            {slotsParaCita.map((slot) => {
+                                const isSelected = newHour === slot.value
+                                const isOcupado = slot.status === 'ocupado'
+                                const isBloqueado = slot.status === 'bloqueado'
+                                const isPast = slot.status === 'past'
+                                const isActual = slot.status === 'actual'
+                                const isTerminada = slot.status === 'finalizada'
+                                // past es seleccionable para registro retroactivo; el resto no
+                                const isDisabled = isOcupado || isBloqueado || isActual || isTerminada
+
+                                return (
+                                    <Button
+                                        key={slot.value}
+                                        variant="outline"
+                                        disabled={isDisabled}
+                                        onClick={() => setNewHour(slot.value)}
+                                        className={cn(
+                                            "h-11 sm:h-12 rounded-xl text-[10px] font-bold flex flex-col items-center justify-center border transition-all active:scale-[0.98] group relative px-0 overflow-hidden",
+                                            // Slot actual (donde ya está la cita): ámbar
+                                            isActual && "bg-amber-500/10 text-amber-400 border-amber-500/30 opacity-80 cursor-not-allowed",
+                                            // Ocupado activo (futura/en curso): rojo
+                                            isOcupado && "bg-red-500/5 text-red-500 border-red-500/20 opacity-100 shadow-none",
+                                            // Pasado con cita finalizada/cobrada: verde apagado inhabilitado
+                                            isTerminada && "bg-emerald-500/5 text-emerald-600/60 border-emerald-500/15 opacity-70 cursor-not-allowed",
+                                            // Pasado sin cita: atenuado pero seleccionable
+                                            isPast && "opacity-60 bg-white/5 border-white/5 text-white/40",
+                                            // Bloqueado manual
+                                            isBloqueado && "bg-white/5 text-white/20 border-white/5 opacity-50",
+                                            // Libre disponible
+                                            !isDisabled && !isPast && "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10",
+                                            // Seleccionado
+                                            isSelected && !isDisabled && "bg-primary/20 text-primary border-primary/50 shadow-[0_0_20px_rgba(245,200,66,0.1)]",
+                                        )}
+                                    >
+                                        <span className={cn(
+                                            "text-xs tracking-tighter leading-none font-black mb-0.5 z-10",
+                                            isOcupado ? "text-red-500" : isActual ? "text-amber-400" : isTerminada ? "text-emerald-600/70" : ""
+                                        )}>
+                                            {slot.label.split(' ')[0]}
+                                        </span>
+                                        <span className={cn(
+                                            "text-[5px] sm:text-[6px] uppercase tracking-tighter font-black transition-colors z-10",
+                                            isOcupado ? "text-red-500/80" : isActual ? "text-amber-400/80" : isTerminada ? "text-emerald-600/60" : "opacity-20"
+                                        )}>
+                                            {isActual ? 'ACTUAL' : isOcupado ? 'OCUPADO' : isTerminada ? 'HECHO' : isBloqueado ? 'BLOQUEADO' : isPast ? 'PASADO' : 'LIBRE'}
+                                        </span>
+                                    </Button>
+                                )
+                            })}
+                        </div>
                     </div>
 
-                    <DialogFooter className="flex gap-4 mt-4">
-                        <Button variant="ghost" onClick={() => { setShowMove(false); onClose?.(); }} className="flex-1 py-6 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]">
+                    <DialogFooter className="px-6 sm:px-8 py-5 sm:py-6 border-t border-white/5 bg-black/40 relative z-10 shrink-0 flex flex-col-reverse sm:flex-row gap-3">
+                        <Button
+                            variant="ghost"
+                            onClick={() => { setShowMove(false); onClose?.(); }}
+                            className="h-12 sm:h-14 sm:flex-1 bg-white/5 text-white/60 rounded-xl sm:rounded-2xl font-semibold text-sm hover:text-white hover:bg-white/10 transition-all border border-white/10"
+                        >
                             Cancelar
                         </Button>
-                        <Button onClick={moverCita} disabled={!newHour || loading} className={cn("flex-1 py-6 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl", !newHour ? "bg-white/5 text-white/10" : "bg-gradient-gold text-black")}>
-                            {loading ? 'Procesando...' : 'Confirmar Cambio'}
+                        <Button
+                            onClick={moverCita}
+                            disabled={!newHour || loading}
+                            className={cn(
+                                "h-12 sm:h-14 sm:flex-[2] rounded-xl sm:rounded-2xl font-semibold text-sm transition-all",
+                                !newHour || loading
+                                    ? "bg-primary/50 text-black/50"
+                                    : "bg-primary text-black hover:bg-amber-400 shadow-lg shadow-primary/20 active:scale-[0.98]"
+                            )}
+                        >
+                            {loading ? (
+                                <div className="flex items-center gap-2">
+                                    <RefreshCcw className="w-4 h-4 animate-spin" />
+                                    <span>Procesando...</span>
+                                </div>
+                            ) : (
+                                <span>Confirmar Cambio</span>
+                            )}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
