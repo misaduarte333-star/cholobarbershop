@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import type { CitaDesdeVista } from '@/lib/types'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Ban, Utensils } from 'lucide-react'
 
 interface AgendaSemanalMensualProps {
     citas: CitaDesdeVista[]
@@ -138,7 +139,7 @@ function VistaSemanal({ citas, bloqueos, almuerzoBarbero, days }: { citas: CitaD
                                             const style = calculateStyles(start, end)
                                             return (
                                                 <div key={bloqueo.id} className="absolute left-0.5 right-0.5 rounded-lg border border-red-500/50 bg-red-500/10 p-1 overflow-hidden flex flex-col justify-center items-center text-center z-[5] backdrop-blur-md" style={style}>
-                                                    <span className="material-icons-round text-xs md:text-sm text-red-500/80 mb-0.5 mt-0.5">block</span>
+                                                    <Ban className="w-3 h-3 md:w-4 md:h-4 text-red-500/80 mb-0.5 mt-0.5" />
                                                     <p className="text-[7px] md:text-[8px] font-black text-red-400/80 uppercase tracking-widest truncate w-full">Bloqueado</p>
                                                 </div>
                                             )
@@ -147,7 +148,7 @@ function VistaSemanal({ citas, bloqueos, almuerzoBarbero, days }: { citas: CitaD
                                         {/* Almuerzo */}
                                         {hasAlmuerzo && (
                                             <div className="absolute left-0.5 right-0.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-1 overflow-hidden flex flex-col justify-center items-center text-center z-[5] backdrop-blur-md striped-bg-amber" style={calculateStyles(parseTimeStr(day.dateStr, almuerzoBarbero.inicio), parseTimeStr(day.dateStr, almuerzoBarbero.fin))}>
-                                                <span className="material-icons-round text-xs md:text-sm text-amber-500/80 mb-0.5 mt-0.5">restaurant</span>
+                                                <Utensils className="w-3 h-3 md:w-4 md:h-4 text-amber-500/80 mb-0.5 mt-0.5" />
                                                 <p className="text-[7px] md:text-[8px] font-black text-amber-400/80 uppercase tracking-widest truncate w-full">Almuerzo</p>
                                             </div>
                                         )}

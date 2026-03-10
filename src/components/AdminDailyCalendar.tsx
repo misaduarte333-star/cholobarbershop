@@ -120,7 +120,7 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
                     <p className="text-[10px] font-black uppercase tracking-tight leading-tight truncate">{cita.cliente_nombre}</p>
                     {(isEnProceso || isPorCobrar) && activeTimer && (
                         <div className={`px-1.5 py-0.5 rounded text-[8px] font-black flex-shrink-0 flex items-center gap-1 border ${isEnProceso ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                                'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                            'bg-purple-500/20 text-purple-400 border-purple-500/30'
                             }`}>
                             <span className={`material-icons-round text-[9px] ${isEnProceso ? 'animate-spin-slow' : ''}`}>
                                 {isEnProceso ? 'hourglass_top' : 'done_all'}
@@ -137,8 +137,8 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
     }
 
     const renderBloqueoProp = (bloqueo: Bloqueo) => {
-        const start = new Date(bloqueo.timestamp_inicio)
-        const end = new Date(bloqueo.timestamp_fin)
+        const start = new Date(bloqueo.fecha_inicio)
+        const end = new Date(bloqueo.fecha_fin)
 
         const startY = getTimeY(start.getHours(), start.getMinutes())
         const endY = getTimeY(end.getHours(), end.getMinutes())

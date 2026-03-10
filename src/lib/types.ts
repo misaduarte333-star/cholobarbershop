@@ -72,6 +72,7 @@ export interface Cita {
     sucursal_id: string
     barbero_id: string
     servicio_id: string
+    cliente_id?: string | null
     cliente_nombre: string
     cliente_telefono: string | null
     timestamp_inicio: string
@@ -94,10 +95,22 @@ export interface Cita {
 export interface Bloqueo {
     id: string
     barbero_id: string
-    timestamp_inicio: string
-    timestamp_fin: string
+    fecha_inicio: string
+    fecha_fin: string
     motivo: string | null
     created_at: string
+}
+
+export interface Cliente {
+    id: string
+    nombre: string
+    telefono: string | null
+    email: string | null
+    notas_internas: string | null
+    ultima_cita: string | null
+    total_citas: number
+    created_at: string
+    updated_at: string
 }
 
 export interface UsuarioAdmin {
@@ -125,6 +138,7 @@ export interface CitaDesdeVista {
     sucursal_id: string
     barbero_id: string
     servicio_id: string
+    cliente_id?: string | null
     cliente_nombre: string
     cliente_telefono: string | null
     timestamp_inicio: string
@@ -134,13 +148,14 @@ export interface CitaDesdeVista {
     fecha_cita_local: string
     barbero_nombre: string
     servicio_nombre: string
-    servicio_duracion?: number
+    servicio_duracion: number
     servicio_precio: number
     estado: EstadoCita
     origen: OrigenCita
     monto_pagado: number | null
     metodo_pago: string | null
     notas: string | null
+    notas_crm: string | null
     recordatorio_24h_enviado?: boolean | null
     recordatorio_1h_enviado?: boolean | null
     timestamp_inicio_servicio?: string | null
@@ -235,6 +250,12 @@ export interface Database {
                 Row: UsuarioAdmin
                 Insert: Omit<UsuarioAdmin, 'id' | 'created_at'>
                 Update: Partial<Omit<UsuarioAdmin, 'id' | 'created_at'>>
+                Relationships: []
+            }
+            clientes: {
+                Row: Cliente
+                Insert: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>
+                Update: Partial<Omit<Cliente, 'id' | 'created_at' | 'updated_at'>>
                 Relationships: []
             }
         }

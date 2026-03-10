@@ -107,6 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <nav className="space-y-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
                         <NavItem href="/admin" icon="dashboard" label="Dashboard" active={isLinkActive('/admin')} onClick={() => setIsSidebarOpen(false)} />
                         <NavItem href="/admin/citas" icon="event_note" label="Agenda" active={isLinkActive('/admin/citas')} onClick={() => setIsSidebarOpen(false)} />
+                        <NavItem href="/admin/clientes" icon="person_search" label="Clientes" active={isLinkActive('/admin/clientes')} onClick={() => setIsSidebarOpen(false)} />
                         <NavItem href="/admin/barberos" icon="groups" label="Barberos" active={isLinkActive('/admin/barberos')} onClick={() => setIsSidebarOpen(false)} />
                         <NavItem href="/admin/servicios" icon="content_cut" label="Servicios" active={isLinkActive('/admin/servicios')} onClick={() => setIsSidebarOpen(false)} />
                         <NavItem href="/admin/reportes" icon="analytics" label="Análisis" active={isLinkActive('/admin/reportes')} onClick={() => setIsSidebarOpen(false)} />

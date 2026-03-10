@@ -28,7 +28,7 @@ export default function ReportesPage() {
         setLoading(true)
         try {
             const { data: citas, error } = await supabase
-                .from('vista_citas_agente')
+                .from('vista_general_citas')
                 .select('*')
                 .gte('fecha_cita_local', dateRange.start)
                 .lte('fecha_cita_local', dateRange.end)

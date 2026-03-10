@@ -1,6 +1,35 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
+import { ClientAutocomplete } from './ClientAutocomplete'
+import {
+    Store,
+    MessageCircle,
+    Phone,
+    User,
+    Scissors,
+    Calendar as CalendarIcon,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    ArrowRight,
+    History,
+    X,
+    CheckCircle2,
+    Search,
+    RefreshCcw,
+    AlertTriangle
+} from 'lucide-react'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 
 interface Servicio {
     id: string | number
@@ -46,6 +75,10 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
     const [horarioSucursal, setHorarioSucursal] = useState<any>(horarioSucursalProps || null)
     const [isRefreshing, setIsRefreshing] = useState(false)
 
+    const selectedService = useMemo(() =>
+        servicios.find(s => String(s.id) === String(servicioId)),
+        [servicios, servicioId])
+
     useEffect(() => {
         if (!isOpen) return
 
@@ -54,23 +87,31 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             const supabase = createClient()
 
             // Citas: Always fetch from API to ensure real-time data when modal opens
-            const { data: citasData } = await supabase.from('vista_citas_agente').select('*').eq('fecha_cita_local', fecha)
+            const { data: citasData } = await supabase.from('vista_general_citas').select('*').eq('fecha_cita_local', fecha)
             if (citasData) {
                 const filtered = barberoId ? citasData.filter((c: any) => String(c.barbero_id) === String(barberoId)) : citasData
+                console.log(`📡 [TabletNuevaCitaModal] Citas encontradas (${fecha}):`, filtered.length)
                 setCitasParaFecha(filtered)
             } else {
+                console.log(`📡 [TabletNuevaCitaModal] No se encontraron citas para ${fecha}`)
                 setCitasParaFecha([])
             }
 
-            // Bloqueos, Almuerzo y Sucursal
+            // Bloqueos y Almuerzo
             const [bloqueosRes, barberoRes, sucursalRes] = await Promise.all([
-                supabase.from('bloqueos').select('*').gte('timestamp_inicio', `${fecha}T00:00:00-07:00`).lte('timestamp_fin', `${fecha}T23:59:59-07:00`),
+                supabase.from('bloqueos').select('*').gte('fecha_inicio', `${fecha}T00:00:00`).lte('fecha_inicio', `${fecha}T23:59:59`),
                 barberoId ? supabase.from('barberos').select('bloqueo_almuerzo').eq('id', barberoId).single() : Promise.resolve({ data: null } as any),
                 sucursalId ? supabase.from('sucursales').select('horario_apertura').eq('id', sucursalId).single() : Promise.resolve({ data: null } as any)
             ])
 
+            if (bloqueosRes.error) {
+                console.error('❌ [TabletNuevaCitaModal] Error al obtener bloqueos:', bloqueosRes.error)
+            }
+
             if (bloqueosRes.data) {
-                setBloqueosParaFecha(bloqueosRes.data.filter((b: any) => !b.barbero_id || String(b.barbero_id) === String(barberoId)))
+                const filteredBloqueos = bloqueosRes.data.filter((b: any) => !b.barbero_id || String(b.barbero_id) === String(barberoId))
+                console.log(`📡 [TabletNuevaCitaModal] Bloqueos encontrados:`, filteredBloqueos.length)
+                setBloqueosParaFecha(filteredBloqueos)
             } else {
                 setBloqueosParaFecha([])
             }
@@ -97,6 +138,22 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
         const ampm = hNum >= 12 ? 'PM' : 'AM'
         const h12 = hNum % 12 || 12
         return `${h12.toString().padStart(2, '0')}:${m} ${ampm}`
+    }
+
+    // Nueva función para parsear el formato "HH:MI AM/PM" de la vista a minutos
+    const parse12hToMins = (hora12: string) => {
+        if (!hora12) return 0
+        const matches = hora12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+        if (!matches) return 0
+
+        let hours = parseInt(matches[1], 10)
+        const minutes = parseInt(matches[2], 10)
+        const ampm = matches[3].toUpperCase()
+
+        if (ampm === 'PM' && hours < 12) hours += 12
+        if (ampm === 'AM' && hours === 12) hours = 0
+
+        return hours * 60 + minutes
     }
 
     // Custom Dropdown State
@@ -204,8 +261,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             const timestampCompleto = `${fechaStr}T${horaInicio}:00${TZ_OFFSET}`
 
             // Encontrar duración del servicio seleccionado
-            const svc = servicios.find(s => String(s.id) === String(servicioId))
-            const duracion = svc ? svc.duracion_minutos : 30 // Fallback genérico
+            const duracion = selectedService ? selectedService.duracion_minutos : 30 // Fallback genérico
 
             // Calcular timestamp final sumando duración
             const fechaInicioObj = new Date(timestampCompleto)
@@ -320,20 +376,44 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
 
         const getSlotStatus = (start: Date, end: Date) => {
             const ahora = new Date()
-            if (start < ahora && fecha === getHoyStr()) return 'past'
 
-            const citasOverlap = citasParaFecha.filter(c => {
+            // Comparar minutos totales del día para mayor precisión
+            const startMins = start.getHours() * 60 + start.getMinutes()
+            const endMins = end.getHours() * 60 + end.getMinutes()
+
+            const citaOcupada = citasParaFecha.find(c => {
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
-                const cStart = new Date(c.timestamp_inicio)
-                const cEnd = new Date(c.timestamp_fin)
-                return start < cEnd && end > cStart
+
+                // Usamos las horas locales de la vista si están disponibles para máxima precisión
+                let cSMins, cEMins
+                if (c.hora_cita_local && c.hora_fin_local) {
+                    // La vista devuelve formato "HH:MI AM" (ej: "06:00 PM")
+                    cSMins = parse12hToMins(c.hora_cita_local)
+                    cEMins = parse12hToMins(c.hora_fin_local)
+                } else {
+                    const cStart = new Date(c.timestamp_inicio)
+                    const cEnd = new Date(c.timestamp_fin)
+                    cSMins = cStart.getHours() * 60 + cStart.getMinutes()
+                    cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
+                }
+
+                // LÓGICA DE SLOT ÚNICO (Petición del usuario):
+                // Una cita solo bloquea el slot de 30 minutos donde COMIENZA.
+                // Ignoramos la duración del servicio para dejar libres los "siguientes horarios".
+                if (cSMins >= startMins && cSMins < endMins) {
+                    console.log(`📍 Slot ${startMins}-${endMins} bloqueado por COMIENZO de cita:`, c.cliente_nombre, `${c.hora_cita_local} (${cSMins})`)
+                    return true
+                }
+                return false
             })
-            if (citasOverlap.length > 0) return 'ocupado'
+
+            if (citaOcupada) return 'ocupado'
+            if (start < ahora && fecha === getHoyStr()) return 'past'
 
             const bloqueado = bloqueosParaFecha.some(b => {
-                const bStart = new Date(b.timestamp_inicio)
-                const bEnd = new Date(b.timestamp_fin)
+                const bStart = new Date(b.fecha_inicio)
+                const bEnd = new Date(b.fecha_fin)
                 return start < bEnd && end > bStart
             })
             if (bloqueado) return 'bloqueado'
@@ -384,367 +464,346 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
     }, [fecha, citasParaFecha, bloqueosParaFecha, almuerzoBarbero, horarioSucursal, servicioId, servicios])
 
     return (
-        <AnimatePresence>
-            {isOpen && (
-                <>
-                    {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+        <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+            <DialogContent showCloseButton={false} className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] p-0 overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,1)] w-[95vw] sm:max-w-lg max-h-[96vh] flex flex-col border outline-none">
+                {/* Status Bar */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-amber-600 z-50 shrink-0" />
+
+                {/* Decorative background light */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
+
+                <DialogHeader className="px-6 sm:px-8 py-5 sm:py-6 border-b border-white/5 bg-black/40 flex flex-row items-center justify-between space-y-0 relative z-10 shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 shadow-inner">
+                            <CalendarIcon className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white font-display">
+                                Añadir Cita
+                            </DialogTitle>
+                            <div className="flex items-center gap-2 mt-1">
+                                <div className="h-1 w-6 bg-primary rounded-full shadow-[0_0_10px_rgba(245,200,66,0.5)]" />
+                                <p className="text-[9px] sm:text-[10px] text-primary/60 font-black uppercase tracking-[0.2em]">Registro Manual</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={handleClose}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-[2px] overflow-y-auto h-full w-full z-[100] flex items-center justify-center p-4 md:p-6"
-                    />
-
-                    {/* Modal */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] md:w-[480px] max-h-[88vh] flex flex-col bg-[#0A0C10] border border-white/10 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_30px_100px_rgba(0,0,0,1)] z-[101] overflow-hidden"
+                        className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
                     >
-                        {/* Custom CSS overrides for native date picker icon avoiding white backgrounds */}
-                        <style dangerouslySetInnerHTML={{
-                            __html: `
-                            input[type="date"]::-webkit-calendar-picker-indicator {
-                                filter: invert(1) sepia(100%) saturate(500%) hue-rotate(350deg) brightness(80%) contrast(150%);
-                                opacity: 0.8;
-                                cursor: pointer;
-                                transition: 0.2s;
-                            }
-                            input[type="date"]::-webkit-calendar-picker-indicator:hover {
-                                opacity: 1;
-                                filter: invert(1) sepia(100%) saturate(1000%) hue-rotate(350deg) brightness(120%) contrast(150%);
-                            }
-                        `}} />
+                        <X className="w-5 h-5" />
+                    </Button>
+                </DialogHeader>
 
-                        {/* Decorative background light */}
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-24 bg-primary/5 blur-3xl rounded-full pointer-events-none" />
+                <div className="p-6 sm:p-8 space-y-5 sm:space-y-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+                    {/* Errores */}
+                    {error && (
+                        <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 animate-shake">
+                            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+                            <span className="font-bold uppercase tracking-widest text-[9px] text-red-400">{error}</span>
+                        </div>
+                    )}
 
-                        <div className="p-3 md:p-4 shrink-0 border-b border-white/5 relative z-10">
-                            {/* Header */}
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight font-display">Añadir Cita</h2>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <div className="h-1 w-6 bg-primary rounded-full" />
-                                        <p className="text-[9px] text-primary/60 font-black uppercase tracking-[0.2em]">Registro Manual</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={handleClose}
-                                    className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-colors border border-white/5 active:scale-95"
-                                >
-                                    <span className="material-icons-round text-lg">close</span>
-                                </button>
+                    {/* Selector de Origen */}
+                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 shrink-0">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setOrigen('walkin')}
+                            className={cn(
+                                "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
+                                origen === 'walkin' ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                            )}
+                        >
+                            <Store className="w-4 h-4" />
+                            Local
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setOrigen('whatsapp')}
+                            className={cn(
+                                "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
+                                origen === 'whatsapp' ? 'bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                            )}
+                        >
+                            <MessageCircle className="w-4 h-4" />
+                            WP
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setOrigen('telefono')}
+                            className={cn(
+                                "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
+                                origen === 'telefono' ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                            )}
+                        >
+                            <Phone className="w-4 h-4" />
+                            Llamada
+                        </Button>
+                    </div>
+
+                    <div className="space-y-6">
+                        {/* Cliente Input */}
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-2 block">Nombre del Cliente</Label>
+                            <ClientAutocomplete
+                                value={nombre}
+                                onChange={setNombre}
+                                onSelect={(cliente) => {
+                                    setNombre(cliente.nombre)
+                                    if (cliente.telefono) setTelefono(cliente.telefono)
+                                }}
+                                placeholder="Nombre del Cliente"
+                            />
+                        </div>
+
+                        {/* Teléfono Input */}
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1">
+                                Teléfono <span className="text-white/20">(Opcional)</span>
+                            </Label>
+                            <div className="group relative flex items-center">
+                                <Phone className="absolute left-4 w-4 h-4 text-white/20 group-focus-within:text-primary transition-colors" />
+                                <Input
+                                    type="tel"
+                                    value={telefono}
+                                    onChange={(e) => setTelefono(e.target.value)}
+                                    className="pl-11 h-12 bg-white/5 border-white/10 rounded-2xl text-sm font-bold focus-visible:ring-primary/50 focus-visible:bg-black/40 transition-all placeholder:text-white/10"
+                                    placeholder="Teléfono del Cliente"
+                                />
                             </div>
                         </div>
 
-                        <div className="p-3 md:p-4 flex-1 relative z-10 overflow-y-auto custom-scrollbar-thin scroll-smooth">
-
-                            {/* Errores */}
-                            {error && (
-                                <div className="mb-4 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-2 animate-shake">
-                                    <span className="material-icons-round text-red-400 text-xs">error</span>
-                                    <span className="font-bold uppercase tracking-widest text-[8px] text-red-400">{error}</span>
-                                </div>
-                            )}
-
-                            {/* Formulario */}
-                            <form onSubmit={handleSubmit} className="space-y-3">
-                                {/* Selector de Origen */}
-                                <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
-                                    <button
-                                        type="button"
-                                        onClick={() => setOrigen('walkin')}
-                                        className={`flex-1 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${origen === 'walkin' ? 'bg-primary/20 text-primary' : 'text-white/40 hover:text-white/70'}`}
-                                    >
-                                        <span className="material-icons-round text-[12px]">storefront</span>
-                                        Local
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setOrigen('whatsapp')}
-                                        className={`flex-1 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${origen === 'whatsapp' ? 'bg-[#25D366]/20 text-[#25D366]' : 'text-white/40 hover:text-white/70'}`}
-                                    >
-                                        <span className="material-icons-round text-[12px]">chat</span>
-                                        WP
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setOrigen('telefono')}
-                                        className={`flex-1 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${origen === 'telefono' ? 'bg-blue-500/20 text-blue-400' : 'text-white/40 hover:text-white/70'}`}
-                                    >
-                                        <span className="material-icons-round text-[12px]">call</span>
-                                        Llamada
-                                    </button>
-                                </div>
-
-                                <div className="space-y-1 relative">
-                                    <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1">Cliente</label>
-                                    <div className="group flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/5 rounded-xl focus-within:border-primary/50 focus-within:bg-black transition-all">
-                                        <span className="material-icons-round text-white/20 text-[16px] group-focus-within:text-primary">person</span>
-                                        <input
-                                            type="text"
-                                            autoFocus
-                                            value={nombre}
-                                            onChange={(e) => setNombre(e.target.value)}
-                                            className="bg-transparent border-none outline-none w-full text-white placeholder:text-white/20 font-bold text-xs"
-                                            placeholder="Nombre del Cliente"
-                                            required
-                                        />
+                        {/* Servicio Selector */}
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1">Servicio</Label>
+                            <Select value={servicioId} onValueChange={(val) => val && setServicioId(val)}>
+                                <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-2xl text-sm font-semibold focus:ring-primary/50 focus:bg-black/40 transition-all px-4">
+                                    <div className="flex items-center gap-3 w-full overflow-hidden">
+                                        <Scissors className="w-4 h-4 text-primary shrink-0" />
+                                        {selectedService ? (
+                                            <div className="flex items-center justify-between flex-1 truncate pr-2">
+                                                <span className="truncate">{selectedService.nombre}</span>
+                                                <span className="text-primary font-bold ml-2 shrink-0">${selectedService.precio}</span>
+                                            </div>
+                                        ) : (
+                                            <SelectValue placeholder="Selecciona el servicio" className="text-white/40" />
+                                        )}
                                     </div>
-                                </div>
-
-                                <div className="space-y-1 relative">
-                                    <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1">Teléfono <span className="text-white/20">(Opcional)</span></label>
-                                    <div className="group flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/5 rounded-xl focus-within:border-primary/50 focus-within:bg-black transition-all">
-                                        <span className="material-icons-round text-white/20 text-[16px] group-focus-within:text-primary">phone</span>
-                                        <input
-                                            type="tel"
-                                            value={telefono}
-                                            onChange={(e) => setTelefono(e.target.value)}
-                                            className="bg-transparent border-none outline-none w-full text-white placeholder:text-white/20 font-bold text-xs"
-                                            placeholder="Teléfono del Cliente"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1 relative">
-                                    <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1">Servicio Solicitado</label>
-                                    <div className="relative" ref={dropdownRef}>
-                                        <div
-                                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                            className={`group flex items-center justify-between px-3 py-2 bg-white/5 border rounded-xl cursor-pointer transition-all ${isDropdownOpen ? 'border-primary/50 bg-black' : 'border-white/5 hover:border-white/10'}`}
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#0A0C10] border-white/10 text-white rounded-2xl w-[var(--radix-select-trigger-width)] min-w-[240px] p-1">
+                                    {servicios.map(s => (
+                                        <SelectItem
+                                            key={s.id}
+                                            value={s.id.toString()}
+                                            className="focus:bg-primary/10 focus:text-primary rounded-xl py-3 px-3 transition-colors group"
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <span className={`material-icons-round text-[16px] transition-colors ${isDropdownOpen ? 'text-primary' : 'text-white/20 group-hover:text-white/40'}`}>cut</span>
-                                                <span className={`font-bold text-xs ${servicioId ? 'text-white' : 'text-white/50'}`}>
-                                                    {servicioId
-                                                        ? `${servicios.find(s => String(s.id) === String(servicioId))?.nombre || 'Desconocido'} ($${servicios.find(s => String(s.id) === String(servicioId))?.precio || '0'})`
-                                                        : 'Selecciona el servicio'
-                                                    }
+                                            <div className="flex items-center justify-between w-full">
+                                                <span className="text-xs sm:text-sm font-semibold truncate group-data-[state=checked]:text-primary transition-colors">
+                                                    {s.nombre}
                                                 </span>
+                                                <Badge variant="outline" className="text-[9px] font-bold bg-white/5 border-white/5 text-white/40 ml-2 shrink-0">
+                                                    ${s.precio}
+                                                </Badge>
                                             </div>
-                                            <span className={`material-icons-round text-white/20 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180 text-primary' : ''}`}>expand_more</span>
-                                        </div>
-
-                                        {/* Custom Dropdown List */}
-                                        <AnimatePresence>
-                                            {isDropdownOpen && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                                    transition={{ duration: 0.15 }}
-                                                    className="absolute top-[110%] left-0 w-full bg-[#0a0a0a] border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-[110] overflow-hidden p-1 flex flex-col gap-0.5 backdrop-blur-2xl"
-                                                >
-                                                    {servicios.map(s => (
-                                                        <div
-                                                            key={s.id}
-                                                            onClick={() => {
-                                                                setServicioId(s.id.toString())
-                                                                setIsDropdownOpen(false)
-                                                            }}
-                                                            className={`px-3 py-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${String(servicioId) === String(s.id) ? 'bg-primary/10 border border-primary/20' : 'hover:bg-white/5 border border-transparent'}`}
-                                                        >
-                                                            <span className={`font-bold text-xs ${String(servicioId) === String(s.id) ? 'text-primary' : 'text-white'}`}>{s.nombre}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{s.duracion_minutos} min</span>
-                                                                <span className={`font-black text-xs ${String(servicioId) === String(s.id) ? 'text-primary' : 'text-emerald-400'}`}>${s.precio}</span>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1 relative">
-                                        <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1">Fecha de la Cita</label>
-                                        <div
-                                            onClick={() => dateInputRef.current?.showPicker()}
-                                            className="relative group flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/5 rounded-xl hover:border-primary/50 hover:bg-black/40 transition-all cursor-pointer overflow-hidden"
-                                        >
-                                            <span className="material-icons-round text-white/20 text-[14px] group-hover:text-primary z-10 pointer-events-none">event</span>
-                                            {/* Texto simulado con formato en español */}
-                                            <span className="absolute left-9 font-black text-xs text-white pointer-events-none uppercase z-10 truncate translate-y-[1px]">
-                                                {new Date(`${fecha}T12:00:00-07:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'long' }).replace(',', '')}
-                                            </span>
-                                            {/* Input real superpuesto pero oculto */}
-                                            <input
-                                                ref={dateInputRef}
-                                                type="date"
-                                                value={fecha}
-                                                onChange={(e) => setFecha(e.target.value)}
-                                                className="absolute inset-0 opacity-0 cursor-pointer pointer-events-none"
-                                                style={{ colorScheme: 'dark' }}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1 relative flex flex-col justify-end">
-                                        <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1 text-center">Día</label>
-                                        <div
-                                            onClick={handleDoubleTap}
-                                            onDoubleClick={() => setFecha(getHoyStr())}
-                                            className="flex items-center justify-between bg-white/5 p-1 rounded-xl border border-primary/20 bg-primary/5 h-[36px] cursor-pointer hover:bg-primary/10 transition-colors select-none"
-                                            title="Doble clic para volver a Hoy"
-                                        >
-                                            <button
-                                                type="button"
-                                                onClick={() => shiftFecha(-1)}
-                                                className="w-7 h-full flex items-center justify-center text-primary/60 hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
-                                            >
-                                                <span className="material-icons-round text-[16px]">chevron_left</span>
-                                            </button>
-                                            <span className="text-white text-[10px] font-black uppercase tracking-tight flex-1 text-center px-1 truncate">
-                                                {getRelativeLabel(fecha)}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => shiftFecha(1)}
-                                                className="w-7 h-full flex items-center justify-center text-primary/60 hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
-                                            >
-                                                <span className="material-icons-round text-[16px]">chevron_right</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1 relative">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <div className="flex items-center gap-2">
-                                            <label className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em] ml-1">Hora: <span className="text-primary">{formato12h(horaInicio)}</span></label>
-                                            {isRefreshing && (
-                                                <div className="flex items-center gap-1">
-                                                    <div className="w-1.5 h-1.5 border border-primary/40 border-t-primary rounded-full animate-spin" />
-                                                    <span className="text-[6px] text-primary/40 font-black uppercase tracking-widest">Sincronizando...</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">{slotsParaCita.filter(s => s.status === 'libre').length} LIBRES</span>
-                                    </div>
-
-                                    {/* Botones rápidos de horario */}
-                                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1.5 pt-0.5">
-                                        {slotsParaCita.length > 0 ? (
-                                            slotsParaCita.map(slot => {
-                                                const isPast = slot.status === 'past'
-                                                const isOccupied = slot.status === 'ocupado'
-                                                const isBlocked = slot.status === 'bloqueado'
-                                                const isSelected = horaInicio === slot.value
-
-                                                const btnClass = isPast ? "opacity-30 grayscale border-white/5 active:scale-95" :
-                                                    isOccupied ? "bg-red-500/10 text-red-500/40 border-red-500/10 cursor-not-allowed" :
-                                                        isBlocked ? "bg-white/5 text-white/20 border-white/10 cursor-not-allowed" :
-                                                            isSelected ? "bg-primary/20 text-primary border-primary/40 shadow-[0_0_15px_rgba(245,200,66,0.1)]" :
-                                                                "bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white/60 hover:border-white/10"
-
-                                                const labelText = isOccupied ? 'OCUPADO' :
-                                                    isBlocked ? 'NO DISPONIBLE' :
-                                                        isPast ? 'PASADO' : 'LIBRE'
-
-                                                return (
-                                                    <button
-                                                        key={slot.value}
-                                                        type="button"
-                                                        disabled={isOccupied || isBlocked}
-                                                        onClick={() => setHoraInicio(slot.value)}
-                                                        className={`px-1 py-1 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all border flex flex-col items-center justify-center min-w-[55px] active:scale-95 ${btnClass}`}
-                                                        style={{ height: '38px' }}
-                                                    >
-                                                        <span className="leading-none text-[10px]">{slot.label.split(' ')[0]}</span>
-                                                        <span className="text-[6px] opacity-60 leading-none mt-1 truncate max-w-full px-0.5">{labelText}</span>
-                                                    </button>
-                                                )
-                                            })
-                                        ) : (
-                                            <div className="col-span-full py-4 bg-white/5 rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2">
-                                                <span className="material-icons-round text-white/20 text-xl">event_busy</span>
-                                                <span className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em]">Cerrado o Sin Disponibilidad</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="pt-2 flex gap-3 mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleClose}
-                                        className="flex-1 py-2.5 font-black text-white/50 uppercase tracking-[0.2em] text-[9px] rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="flex-1 py-2.5 flex items-center justify-center gap-2 font-black text-black uppercase tracking-[0.2em] text-[9px] rounded-lg transition-transform active:scale-95 disabled:opacity-50"
-                                        style={{ background: 'linear-gradient(135deg,#f5c842 0%,#d4941a 100%)', boxShadow: '0 5px 20px -5px rgba(245,200,66,0.5)' }}
-                                    >
-                                        {loading ? (
-                                            <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                        ) : (
-                                            <>
-                                                <span className="material-icons-round text-[12px]">event_available</span>
-                                                Registrar
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </form>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        {/* Modal de Confirmación Retroactiva */}
-                        <AnimatePresence>
-                            {showPastConfirm && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="absolute inset-0 z-[110] flex items-center justify-center p-6"
-                                >
-                                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowPastConfirm(false)} />
-                                    <motion.div
-                                        initial={{ scale: 0.9, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        exit={{ scale: 0.9, opacity: 0 }}
-                                        className="relative bg-[#1A1D23] border border-white/10 rounded-2xl p-6 w-full max-w-[320px] shadow-2xl overflow-hidden"
+                        {/* Fecha y Día */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1 block truncate">Fecha</Label>
+                                <Popover>
+                                    <PopoverTrigger
+                                        className={cn(
+                                            "w-full h-12 justify-start text-left font-bold bg-white/5 border border-white/10 rounded-2xl gap-3 text-xs sm:text-sm transition-all hover:bg-white/10 hover:border-white/20 flex items-center px-4",
+                                            !fecha && "text-white/20"
+                                        )}
                                     >
-                                        <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
-                                            <span className="material-icons-round text-amber-500 text-2xl">history</span>
-                                        </div>
-                                        <h3 className="text-white text-base font-black text-center mb-2 uppercase tracking-tight leading-none">Cita en el Pasado</h3>
-                                        <p className="text-white/60 text-[10px] text-center mb-6 leading-relaxed">
-                                            Estás agendando una cita para una hora que ya pasó. ¿Deseas registrarla de todas formas?
-                                        </p>
-                                        <div className="flex flex-col gap-2">
-                                            <button
-                                                onClick={() => {
-                                                    setShowPastConfirm(false)
-                                                    handleSubmit(undefined, true)
-                                                }}
-                                                className="w-full py-3 bg-primary text-black font-black text-[10px] uppercase tracking-widest rounded-xl active:scale-[0.98] transition-all"
+                                        <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
+                                        <span className="truncate">
+                                            {fecha ? format(new Date(`${fecha}T12:00:00`), "eee, d 'de' MMM", { locale: es }) : "Elegir fecha"}
+                                        </span>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 bg-[#0A0C10] border-white/10 rounded-2xl overflow-hidden shadow-2xl" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={new Date(`${fecha}T12:00:00`)}
+                                            onSelect={(date) => date && setFecha(format(date, "yyyy-MM-dd"))}
+                                            initialFocus
+                                            locale={es}
+                                            className="bg-transparent text-white"
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest text-center block truncate">Acceso Rápido</Label>
+                                <div className="flex items-center justify-between bg-white/5 h-12 rounded-2xl border border-primary/10 bg-primary/5 px-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => shiftFecha(-1)}
+                                        className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-white/10 rounded-xl transition-all"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-white text-[9px] sm:text-[10px] font-black uppercase tracking-tight flex-1 text-center select-none cursor-pointer hover:text-primary transition-colors" onClick={() => setFecha(getHoyStr())}>
+                                        {getRelativeLabel(fecha)}
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => shiftFecha(1)}
+                                        className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-white/10 rounded-xl transition-all"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Horarios */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between px-2">
+                                <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest block truncate">
+                                    Hora: <span className="text-primary font-bold ml-1">{formato12h(horaInicio)}</span>
+                                </Label>
+                                <div className="flex items-center gap-2">
+                                    {isRefreshing && <RefreshCcw className="w-3 h-3 text-primary animate-spin opacity-40" />}
+                                    <Badge variant="outline" className="text-[8px] font-black bg-primary/5 border-primary/20 text-primary/60 uppercase tracking-tighter rounded-full px-2 py-0.5">
+                                        {slotsParaCita.filter(s => s.status === 'libre').length} LIBRES
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-5 sm:grid-cols-6 gap-1.5 overflow-visible">
+                                {slotsParaCita.length > 0 ? (
+                                    slotsParaCita.map(slot => {
+                                        const isPast = slot.status === 'past'
+                                        const isOccupied = slot.status === 'ocupado'
+                                        const isBlocked = slot.status === 'bloqueado'
+                                        const isSelected = horaInicio === slot.value
+
+                                        return (
+                                            <Button
+                                                key={slot.value}
+                                                variant="outline"
+                                                disabled={isOccupied || isBlocked}
+                                                onClick={() => setHoraInicio(slot.value)}
+                                                className={cn(
+                                                    "h-11 sm:h-12 rounded-xl text-[10px] font-bold flex flex-col items-center justify-center border transition-all active:scale-[0.98] group relative px-0 overflow-hidden",
+                                                    isOccupied
+                                                        ? "bg-red-500/5 text-red-500 border-red-500/20 opacity-100 shadow-none"
+                                                        : (isPast ? "opacity-60 bg-white/5 border-white/5 text-white/40" : "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10"),
+                                                    isSelected && !isOccupied && "bg-primary/20 text-primary border-primary/50 shadow-[0_0_20px_rgba(245,200,66,0.1)]",
+                                                    isBlocked && "bg-white/5 text-white/20 border-white/5 opacity-50"
+                                                )}
                                             >
-                                                Sí, Registrar Cita
-                                            </button>
-                                            <button
-                                                onClick={() => setShowPastConfirm(false)}
-                                                className="w-full py-3 bg-white/5 text-white/60 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-white/10 active:scale-[0.98] transition-all"
-                                            >
-                                                Cancelar
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </motion.div>
-                </>
-            )}
-        </AnimatePresence>
+                                                <span className={cn(
+                                                    "text-xs tracking-tighter leading-none font-black mb-0.5 z-10",
+                                                    isOccupied ? "text-red-500" : ""
+                                                )}>
+                                                    {slot.label.split(' ')[0]}
+                                                </span>
+                                                <span className={cn(
+                                                    "text-[5px] sm:text-[6px] uppercase tracking-tighter font-black transition-colors z-10",
+                                                    isOccupied ? "text-red-500/80" : "opacity-20"
+                                                )}>
+                                                    {isOccupied ? 'OCUPADO' : isBlocked ? 'BLOQUEADO' : isPast ? 'PASADO' : 'LIBRE'}
+                                                </span>
+                                            </Button>
+                                        )
+                                    })
+                                ) : (
+                                    <div className="col-span-full py-10 bg-white/5 rounded-[1.5rem] border border-dashed border-white/10 flex flex-col items-center justify-center gap-3">
+                                        <Clock className="w-8 h-8 text-white/10" />
+                                        <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Sin Disponibilidad</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Botones de acción dentro del scroll para maximizar espacio */}
+                        <div className="pt-4 border-t border-white/5 flex flex-col-reverse sm:flex-row gap-3">
+                            <Button
+                                variant="ghost"
+                                onClick={handleClose}
+                                className="h-12 sm:h-14 sm:flex-1 bg-white/5 text-white/60 rounded-xl sm:rounded-2xl font-semibold text-sm hover:text-white hover:bg-white/10 transition-all border border-white/10"
+                            >
+                                <X className="w-4 h-4 mr-2" />
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={(e) => handleSubmit(e)}
+                                disabled={loading}
+                                className={cn(
+                                    "h-12 sm:h-14 sm:flex-[2] rounded-xl sm:rounded-2xl font-semibold text-sm transition-all",
+                                    loading
+                                        ? 'bg-primary/50 text-black/50'
+                                        : 'bg-primary text-black hover:bg-amber-400 shadow-lg shadow-primary/20 active:scale-[0.98]'
+                                )}
+                            >
+                                {loading ? (
+                                    <div className="flex items-center gap-2">
+                                        <RefreshCcw className="w-4 h-4 animate-spin" />
+                                        <span>Procesando...</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle2 className="w-5 h-5" />
+                                        <span>Confirmar Cita</span>
+                                    </div>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+
+                {/* Confirmación Retroactiva Nested Dialog */}
+                {showPastConfirm && (
+                    <div className="absolute inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
+                        <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowPastConfirm(false)} />
+                        <div className="relative bg-[#0A0C10] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 w-full max-w-[calc(100%-2rem)] sm:max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+                            <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-8 mx-auto border border-amber-500/20 shadow-inner">
+                                <History className="w-10 h-10 text-amber-500" />
+                            </div>
+                            <h3 className="text-2xl font-black text-white text-center mb-4 uppercase tracking-tighter">Cita Retroactiva</h3>
+                            <p className="text-white/40 text-[11px] font-bold text-center mb-10 leading-relaxed uppercase tracking-widest">
+                                Estás agendando una cita para una hora que ya pasó. <span className="text-white">¿Deseas registrarla de todas formas?</span>
+                            </p>
+                            <div className="flex flex-col gap-3 sm:gap-4">
+                                <Button
+                                    onClick={() => {
+                                        setShowPastConfirm(false)
+                                        handleSubmit(undefined, true)
+                                    }}
+                                    className="w-full h-12 sm:h-14 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl active:scale-[0.98] shadow-xl shadow-amber-900/10"
+                                >
+                                    Confirmar Registro
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setShowPastConfirm(false)}
+                                    className="w-full h-12 sm:h-14 bg-white/5 text-white/40 font-black uppercase tracking-widest rounded-xl sm:rounded-2xl"
+                                >
+                                    Cancelar
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
     )
 }

@@ -5,10 +5,42 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+    Plus,
+    BarChart3,
+    Settings,
+    Image as ImageIcon,
+    LogOut,
+    Bell,
+    BellRing,
+    ChevronLeft,
+    ChevronRight,
+    Calendar as CalendarIcon,
+    List,
+    UserPlus,
+    CheckCircle2,
+    X,
+    Volume2,
+    VolumeX,
+    LayoutDashboard,
+    Scissors
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
 import type { CitaDesdeVista } from '@/lib/types'
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogDescription,
+} from "@/components/ui/dialog"
+import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
 
 // Heavy components loaded dynamically for better mobile performance
 const AgendaSemanalMensual = dynamic(() => import('@/components/AgendaSemanalMensual').then(mod => mod.AgendaSemanalMensual), {
@@ -281,7 +313,7 @@ export default function TabletDashboard() {
             console.log(`📡 Fetching data for [${syncVista}] range: ${startStr} to ${endStr}`)
             const [citasRes, bloqueosRes, barberoRes] = await Promise.all([
                 supabase
-                    .from('vista_citas_agente')
+                    .from('vista_general_citas')
                     .select('*')
                     .eq('barbero_id', barbero.id)
                     .gte('fecha_cita_local', startStr)
@@ -292,8 +324,8 @@ export default function TabletDashboard() {
                     .from('bloqueos')
                     .select('*')
                     .eq('barbero_id', barbero.id)
-                    .lte('fecha_inicio', `${endStr}T23:59:59-07:00`)
-                    .gte('fecha_fin', `${startStr}T00:00:00-07:00`),
+                    .gte('fecha_inicio', `${startStr}T00:00:00-07:00`)
+                    .lte('fecha_inicio', `${endStr}T23:59:59-07:00`),
                 supabase
                     .from('barberos')
                     .select('bloqueo_almuerzo')
@@ -385,25 +417,31 @@ export default function TabletDashboard() {
 
     if (!isMounted || isCheckingAuth) {
         return (
-            <div className="min-h-screen bg-[#0A0C12] flex flex-col items-center justify-center p-6 text-center space-y-8 overflow-hidden relative">
+            <div className="min-h-screen bg-[#0A0C12] flex flex-col items-center justify-center p-6 text-center space-y-12 overflow-hidden relative">
                 <div className="absolute inset-0 z-0 bg-radial-at-t from-primary/10 via-transparent to-transparent opacity-50"></div>
-                <div className="relative z-10 animate-scale-in">
-                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2rem] bg-black border-2 border-primary/20 flex items-center justify-center mb-8 mx-auto shadow-[0_0_50px_rgba(234,179,8,0.1)] relative group">
-                        <div className="absolute inset-0 rounded-[2rem] border-2 border-primary animate-ping opacity-20" />
-                        <span className="text-4xl md:text-6xl font-black text-primary font-display relative z-10">CB</span>
+                <div className="relative z-10 animate-scale-in flex flex-col items-center">
+                    <div className="w-28 h-28 md:w-36 md:h-36 rounded-[2.5rem] bg-black border border-white/10 flex items-center justify-center mb-10 mx-auto shadow-[0_0_60px_rgba(245,200,66,0.05)] relative group">
+                        <div className="absolute inset-0 rounded-[2.5rem] border border-primary animate-ping opacity-20" />
+                        <span className="text-4xl md:text-5xl font-black text-primary font-display relative z-10">CB</span>
                     </div>
-                    <div className="space-y-4">
-                        <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-[0.2em] font-display">Iniciando Dashboard</h2>
-                        <div className="flex flex-col items-center gap-3">
-                            <div className="w-48 md:w-64 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5 p-[1px]">
+                    <div className="space-y-6 max-w-xs transition-all duration-1000">
+                        <div className="space-y-2">
+                            <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-[0.2em] font-display">Cholo Barbershop</h2>
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Panel del Barbero</p>
+                        </div>
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="w-48 md:w-56 h-1 bg-white/5 rounded-full overflow-hidden p-0 relative">
                                 <motion.div
-                                    initial={{ width: "0%" }}
-                                    animate={{ width: "100%" }}
+                                    initial={{ x: "-100%" }}
+                                    animate={{ x: "100%" }}
                                     transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                    className="h-full bg-gradient-gold rounded-full shadow-[0_0_15px_rgba(234,179,8,0.5)]"
+                                    className="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-transparent via-primary to-transparent"
                                 />
                             </div>
-                            <p className="text-[9px] md:text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse">Sincronizando con Supabase</p>
+                            <div className="flex items-center gap-2">
+                                <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+                                <p className="text-[9px] font-black text-primary/40 uppercase tracking-[0.3em]">Sincronizando sistema</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -422,22 +460,22 @@ export default function TabletDashboard() {
 
             {newApptAlert.show && (
                 <motion.div
-                    initial={{ opacity: 0, x: 50, scale: 0.9 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: 50, scale: 0.9 }}
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.95 }}
                     className="fixed top-24 right-6 z-[99999] pointer-events-none"
                 >
-                    <div className="bg-black/80 backdrop-blur-2xl border-2 border-primary/50 text-white px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(234,179,8,0.2)] flex items-center gap-5">
-                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/40 shadow-[0_0_15px_rgba(234,179,8,0.3)] relative">
-                            <span className="material-icons-round text-primary text-2xl animate-bounce">notifications_active</span>
-                            <div className="absolute inset-0 rounded-full border-2 border-primary animate-ping opacity-20" />
+                    <div className="bg-black/80 backdrop-blur-2xl border border-primary/50 text-white px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(245,200,66,0.1)] flex items-center gap-5">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/30 relative">
+                            <BellRing className="w-6 h-6 text-primary animate-bounce" />
+                            <div className="absolute inset-0 rounded-2xl border border-primary animate-ping opacity-20" />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-1">Nueva Cita Agendada</span>
-                            <span className="text-lg font-black font-display tracking-tight text-white uppercase leading-tight">{newApptAlert.clientName}</span>
-                            <div className="flex items-center gap-2 mt-1">
-                                <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[8px] font-bold text-emerald-500/80 uppercase tracking-widest">Ver en lista</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60 mb-1">Nueva Cita</span>
+                            <span className="text-lg font-black tracking-tight text-white uppercase leading-tight">{newApptAlert.clientName}</span>
+                            <div className="flex items-center gap-2 mt-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[9px] font-black text-emerald-500/80 uppercase tracking-widest">Sincronizado ahora</span>
                             </div>
                         </div>
                     </div>
@@ -446,7 +484,7 @@ export default function TabletDashboard() {
             {/* Audio Init Banner REMOVED — auto-initializes on mount */}
 
             <header className="bg-black/60 backdrop-blur-3xl border-b border-white/5 px-4 md:px-8 py-3 md:py-5 shadow-[0_10px_50px_rgba(0,0,0,0.8)] shrink-0 z-50 relative">
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-gold opacity-30" />
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-primary/30 to-amber-600/30 opacity-30" />
 
                 <div className="flex items-start justify-between max-w-[1920px] mx-auto gap-3">
 
@@ -470,17 +508,17 @@ export default function TabletDashboard() {
 
                             {/* Row 2: Badges */}
                             <div className="flex flex-wrap items-center gap-2">
-                                <div className="flex items-center gap-2 px-3 py-1 bg-primary/5 text-primary rounded-lg border border-primary/20 shadow-sm">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(234,179,8,0.6)]" />
+                                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 px-3 py-1 gap-2 rounded-lg">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(245,200,66,0.6)]" />
                                     <span className="text-[12px] md:text-xs font-black uppercase tracking-widest">{citasPendientes.length} P</span>
-                                </div>
-                                <div className="flex items-center gap-2 px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/30 shadow-sm">
+                                </Badge>
+                                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 px-2 py-1 gap-2 rounded-lg">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                                     <span className="text-[12px] md:text-xs font-black uppercase tracking-widest">{citas.filter(c => c.estado === 'finalizada').length} C</span>
-                                </div>
-                                <div className="flex items-center px-3 py-1 bg-white/5 text-white/70 rounded-lg border border-white/15 shadow-sm">
+                                </Badge>
+                                <Badge variant="outline" className="bg-white/5 text-white/70 border-white/15 px-3 py-1 rounded-lg">
                                     <span className="text-[14px] md:text-xs font-black uppercase tracking-widest">${totalDinero}</span>
-                                </div>
+                                </Badge>
                             </div>
                         </div>
                     </div>
@@ -513,38 +551,51 @@ export default function TabletDashboard() {
                         </div>
 
                         {/* Action Icons — FAR RIGHT */}
-                        <div className="flex items-center gap-1 md:gap-2 pl-2 md:pl-4 border-l border-white/10">
-                            <button
+                        <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-white/10">
+                            <Button
+                                size="icon"
                                 onClick={() => setIsNewCitaModalOpen(true)}
-                                className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all items-center justify-center border border-primary/30 group active:scale-95"
+                                className="w-8 h-8 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 shadow-none"
                                 title="Nueva Cita"
                             >
-                                <span className="material-icons-round text-sm md:text-base group-hover:scale-110 transition-transform">add</span>
-                            </button>
+                                <Plus className="w-4 h-4" />
+                            </Button>
                             <Link
                                 href="/tablet/reportes"
-                                className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all flex items-center justify-center border border-blue-500/20 group active:scale-95"
                                 title="Métricas"
+                                className={cn(
+                                    buttonVariants({ variant: "outline", size: "icon" }),
+                                    "w-8 h-8 bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20 shadow-none p-0 flex items-center justify-center"
+                                )}
                             >
-                                <span className="material-icons-round text-sm md:text-base group-hover:scale-110 transition-transform">bar_chart</span>
+                                <BarChart3 className="w-4 h-4" />
                             </Link>
-                            <button
+                            <Button
+                                size="icon"
                                 onClick={() => setShowSettings(true)}
-                                className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60 transition-all flex items-center justify-center border border-white/10 group active:scale-95"
+                                className="w-8 h-8 bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white shadow-none"
                                 title="Configuración"
                             >
-                                <span className="material-icons-round text-sm md:text-base group-hover:scale-110 transition-transform">settings</span>
-                            </button>
-                            <Link href="/tablet/galeria" className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-all flex items-center justify-center border border-amber-500/20 group active:scale-95" title="Galería">
-                                <span className="material-icons-round text-sm md:text-base group-hover:scale-110 transition-transform">photo_library</span>
+                                <Settings className="w-4 h-4" />
+                            </Button>
+                            <Link
+                                href="/tablet/galeria"
+                                title="Galería"
+                                className={cn(
+                                    buttonVariants({ variant: "outline", size: "icon" }),
+                                    "w-8 h-8 bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20 shadow-none p-0 flex items-center justify-center"
+                                )}
+                            >
+                                <ImageIcon className="w-4 h-4" />
                             </Link>
-                            <button
+                            <Button
+                                size="icon"
                                 onClick={() => setShowLogoutConfirm(true)}
-                                className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all flex items-center justify-center border border-red-500/20 group active:scale-95"
+                                className="w-8 h-8 bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 shadow-none"
                                 title="Cerrar Sesión"
                             >
-                                <span className="material-icons-round text-sm md:text-base group-hover:scale-110 transition-transform">logout</span>
-                            </button>
+                                <LogOut className="w-4 h-4" />
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -593,13 +644,13 @@ export default function TabletDashboard() {
 
                                 {loading ? (
                                     <div className="bg-white/5 p-12 lg:p-20 flex flex-col items-center justify-center border border-white/5 rounded-[2rem] lg:rounded-[2.5rem] shadow-2xl backdrop-blur-sm">
-                                        <div className="spinner w-8 h-8 lg:w-10 lg:h-10 mb-4" />
-                                        <p className="text-[8px] lg:text-[9px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse">Actualizando...</p>
+                                        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse">Actualizando agenda...</p>
                                     </div>
                                 ) : citasSiguientes.length === 0 ? (
                                     <div className="bg-white/2 p-12 lg:p-20 text-center border border-white/5 shadow-2xl rounded-[2rem] lg:rounded-[2.5rem] group transition-all duration-700">
-                                        <div className="w-12 h-12 lg:w-16 lg:h-16 bg-white/5 rounded-xl lg:rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/5 text-white/10 shadow-inner">
-                                            <span className="material-icons-round text-3xl lg:text-4xl">done_all</span>
+                                        <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/5 text-white/10 shadow-inner">
+                                            <CheckCircle2 className="w-10 h-10" />
                                         </div>
                                         <p className="text-white/20 font-black uppercase tracking-[0.2em] text-[10px]">Sin más citas para hoy</p>
                                     </div>
@@ -629,38 +680,63 @@ export default function TabletDashboard() {
                             <div className="flex items-center gap-1 w-full sm:w-auto">
                                 <div
                                     onClick={handleDoubleTapAgenda}
-                                    onDoubleClick={() => { setFechaAgenda(new Date().toLocaleDateString('en-CA')); setVistaAgenda('hoy'); }}
-                                    className={`flex items-center bg-white/5 rounded-xl border transition-all h-[34px] overflow-hidden group/nav shrink-0 ${vistaAgenda === 'hoy' || vistaAgenda === 'dia' ? 'border-primary/30 bg-primary/5' : 'border-white/5'}`}
+                                    className={cn(
+                                        "flex items-center bg-white/5 rounded-xl border transition-all h-[34px] overflow-hidden group/nav shrink-0",
+                                        vistaAgenda === 'hoy' || vistaAgenda === 'dia' ? 'border-primary/30 bg-primary/5' : 'border-white/5'
+                                    )}
                                 >
-                                    <button
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         onClick={(e) => { e.stopPropagation(); shiftFechaAgenda(-1); }}
-                                        className="w-7 h-full flex items-center justify-center text-white/20 hover:text-primary hover:bg-white/5 transition-colors shrink-0"
+                                        className="w-7 h-full text-white/20 hover:text-primary hover:bg-white/5 transition-colors shrink-0 rounded-none shadow-none"
                                     >
-                                        <span className="material-icons-round text-xs">chevron_left</span>
-                                    </button>
+                                        <ChevronLeft className="w-3 h-3" />
+                                    </Button>
 
-                                    <div className="px-2 flex flex-col items-center justify-center min-w-[55px] sm:min-w-[70px] select-none shrink-0">
-                                        <span className={`text-[8px] font-black uppercase tracking-widest leading-none ${vistaAgenda === 'hoy' || vistaAgenda === 'dia' ? 'text-primary' : 'text-white/40'}`}>
+                                    <div className="px-2 flex flex-col items-center justify-center min-w-[55px] sm:min-w-[70px] select-none shrink-0 cursor-pointer">
+                                        <span className={cn(
+                                            "text-[8px] font-black uppercase tracking-widest leading-none",
+                                            (vistaAgenda === 'hoy' || vistaAgenda === 'dia') ? 'text-primary' : 'text-white/40'
+                                        )}>
                                             {getRelativeDateLabel(fechaAgenda)}
                                         </span>
                                     </div>
 
-                                    <button
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         onClick={(e) => { e.stopPropagation(); shiftFechaAgenda(1); }}
-                                        className="w-7 h-full flex items-center justify-center text-white/20 hover:text-primary hover:bg-white/5 transition-colors shrink-0"
+                                        className="w-7 h-full text-white/20 hover:text-primary hover:bg-white/5 transition-colors shrink-0 rounded-none shadow-none"
                                     >
-                                        <span className="material-icons-round text-xs">chevron_right</span>
-                                    </button>
+                                        <ChevronRight className="w-3 h-3" />
+                                    </Button>
                                 </div>
 
-                                <button onClick={() => setVistaAgenda('semana')} className={`px-2 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-colors h-[34px] flex items-center shrink-0 ${vistaAgenda === 'semana' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'}`}>Sem.</button>
-                                <button onClick={() => setVistaAgenda('mes')} className={`px-2 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-colors h-[34px] flex items-center shrink-0 ${vistaAgenda === 'mes' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'}`}>Mes</button>
+                                <Button
+                                    onClick={() => setVistaAgenda('semana')}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-colors h-[34px] flex items-center shrink-0 shadow-none border",
+                                        vistaAgenda === 'semana' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
+                                    )}
+                                >
+                                    Semana
+                                </Button>
+                                <Button
+                                    onClick={() => setVistaAgenda('mes')}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-colors h-[34px] flex items-center shrink-0 shadow-none border",
+                                        vistaAgenda === 'mes' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
+                                    )}
+                                >
+                                    Mes
+                                </Button>
 
                                 <div
                                     onClick={() => datePickerRef.current?.showPicker()}
                                     className="relative flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors rounded-lg border border-white/5 w-[34px] h-[34px] cursor-pointer group/cal shrink-0"
                                 >
-                                    <span className="material-icons-round text-xs text-white/30 group-hover/cal:text-primary transition-colors">calendar_today</span>
+                                    <CalendarIcon className="w-3 h-3 text-white/30 group-hover/cal:text-primary transition-colors" />
                                     <input
                                         ref={datePickerRef}
                                         type="date"
@@ -706,24 +782,28 @@ export default function TabletDashboard() {
                         {/* Mobile Floating Action Buttons (FAB) */}
                         <div className="lg:hidden fixed bottom-24 right-5 z-[100] flex flex-col gap-4">
                             {/* Añadir cita Walk-in */}
-                            <button
+                            <Button
+                                size="icon"
                                 onClick={() => setIsNewCitaModalOpen(true)}
-                                className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-xl border border-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center text-primary active:scale-95 transition-all hover:bg-black/80 hover:border-primary/40"
+                                className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-xl border border-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-primary hover:bg-black/80 hover:border-primary/40"
                             >
-                                <span className="material-icons-round text-2xl">person_add</span>
-                            </button>
+                                <UserPlus className="w-6 h-6" />
+                            </Button>
                             {/* Ver agenda listado */}
-                            <button
-                                onClick={() => setShowMobileAppointments(true)}
-                                className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center text-primary active:scale-95 transition-all hover:bg-black/60 hover:border-primary/30"
-                            >
-                                <span className="material-icons-round text-2xl">list_alt</span>
+                            <div className="relative">
+                                <Button
+                                    size="icon"
+                                    onClick={() => setShowMobileAppointments(true)}
+                                    className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-primary hover:bg-black/60 hover:border-primary/30"
+                                >
+                                    <List className="w-6 h-6" />
+                                </Button>
                                 {citasSiguientes.length > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-black rounded-full flex items-center justify-center text-[9px] font-black border-2 border-black">
+                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-black rounded-full flex items-center justify-center text-[9px] font-black border-2 border-black pointer-events-none">
                                         {citasSiguientes.length}
                                     </span>
                                 )}
-                            </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -740,130 +820,93 @@ export default function TabletDashboard() {
                 onCitaCreada={() => cargarAgenda()}
             />
 
+            {/* Settings Dialog */}
+            <Dialog open={showSettings} onOpenChange={setShowSettings}>
+                <DialogContent className="bg-[#111216] border-white/10 p-0 overflow-hidden shadow-2xl max-w-sm rounded-t-[2rem] sm:rounded-[2rem]">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-amber-600" />
 
-            {/* ── Settings Bottom-Sheet ── always-mounted CSS portal */}
-            {
-                typeof window !== 'undefined' && (() => {
-                    const { createPortal } = require('react-dom')
-                    return createPortal(
-                        <>
-                            {/* Settings Panel */}
-                            <div
-                                style={{
-                                    position: 'fixed', inset: 0, zIndex: 9100,
-                                    background: 'rgba(0,0,0,0.75)',
-                                    opacity: showSettings ? 1 : 0,
-                                    pointerEvents: showSettings ? 'auto' : 'none',
-                                    transition: 'opacity 0.15s ease',
-                                    isolation: 'isolate',
-                                }}
-                                onClick={() => setShowSettings(false)}
-                            >
-                                <div
-                                    style={{
-                                        position: 'absolute', bottom: 0, left: 0, right: 0,
-                                        transform: showSettings ? 'translateY(0)' : 'translateY(100%)',
-                                        transition: 'transform 0.2s cubic-bezier(0.25,0.46,0.45,0.94)',
-                                        willChange: 'transform',
-                                    }}
-                                    className="bg-[#111216] border-t border-white/10 rounded-t-[2rem] p-6 pb-[max(2rem,env(safe-area-inset-bottom))] shadow-2xl max-w-lg mx-auto w-full"
-                                    onClick={e => e.stopPropagation()}
-                                >
-                                    {/* Handle */}
-                                    <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
-                                    <div className="absolute top-0 left-0 w-full h-0.5 bg-white/10 rounded-t-[2rem]" />
+                    <div className="p-6">
+                        <DialogHeader className="flex flex-row items-center gap-4 mb-8">
+                            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 text-white/40">
+                                <Settings className="w-6 h-6" />
+                            </div>
+                            <div className="text-left">
+                                <DialogTitle className="text-base font-black text-white uppercase tracking-tight">Configuración</DialogTitle>
+                                <DialogDescription className="text-xs font-medium text-white/30">Preferencias del sistema</DialogDescription>
+                            </div>
+                        </DialogHeader>
 
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 text-white/40">
-                                            <span className="material-icons-round text-xl">settings</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-black text-white uppercase tracking-tight">Configuración</h3>
-                                            <p className="text-[10px] text-white/30 font-medium">Preferencias del sistema</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Section: Notificaciones */}
-                                    <div className="mb-2">
-                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-3">Notificaciones</p>
-                                        <div className="bg-white/5 rounded-2xl border border-white/5 p-4">
-                                            <div className="flex items-center justify-between gap-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
-                                                        <span className="material-icons-round text-base">{soundEnabled ? 'volume_up' : 'volume_off'}</span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs font-black text-white">Sonido de notificación</p>
-                                                        <p className="text-[10px] text-white/40">Alerta al agendar una cita</p>
-                                                    </div>
-                                                </div>
-                                                {/* Toggle switch */}
-                                                <button
-                                                    onClick={() => toggleSound(!soundEnabled)}
-                                                    className={`relative w-12 h-6 rounded-full border transition-colors duration-200 ${soundEnabled ? 'bg-primary border-primary/60' : 'bg-white/10 border-white/10'}`}
-                                                    aria-label="Toggle sound"
-                                                >
-                                                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${soundEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                                                </button>
+                        <div className="space-y-6">
+                            <div>
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-4">Notificaciones</p>
+                                <div className="bg-white/5 rounded-2xl border border-white/5 p-5">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
+                                                {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-white leading-tight">Sonido de alerta</p>
+                                                <p className="text-[10px] text-white/40">Al agendar una nueva cita</p>
                                             </div>
                                         </div>
+                                        <Switch
+                                            checked={soundEnabled}
+                                            onCheckedChange={toggleSound}
+                                        />
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Logout Confirmation Modal */}
-                            <div
-                                style={{
-                                    position: 'fixed', inset: 0, zIndex: 9200,
-                                    background: 'rgba(0,0,0,0.80)',
-                                    opacity: showLogoutConfirm ? 1 : 0,
-                                    pointerEvents: showLogoutConfirm ? 'auto' : 'none',
-                                    transition: 'opacity 0.12s ease',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    padding: '1rem',
-                                    isolation: 'isolate',
-                                }}
-                                onClick={() => setShowLogoutConfirm(false)}
+                        <DialogFooter className="mt-8">
+                            <Button
+                                onClick={() => setShowSettings(false)}
+                                className="w-full h-14 bg-white/5 text-white/60 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-white/5 hover:bg-white/10"
                             >
-                                <div
-                                    style={{
-                                        transform: showLogoutConfirm ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(12px)',
-                                        opacity: showLogoutConfirm ? 1 : 0,
-                                        transition: 'opacity 0.12s ease, transform 0.15s cubic-bezier(0.25,0.46,0.45,0.94)',
-                                        willChange: 'transform, opacity',
-                                        width: '100%', maxWidth: '22rem',
-                                    }}
-                                    className="bg-[#111216] border border-red-500/20 rounded-3xl p-6 relative overflow-hidden shadow-2xl"
-                                    onClick={e => e.stopPropagation()}
-                                >
-                                    <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-500 to-rose-500" />
-                                    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-400 mx-auto mb-4">
-                                        <span className="material-icons-round text-2xl">logout</span>
-                                    </div>
-                                    <h3 className="text-sm font-black text-white uppercase tracking-tight text-center mb-1">¿Cerrar Sesión?</h3>
-                                    <p className="text-[11px] text-white/40 text-center mb-5 leading-relaxed">Se eliminará la sesión local. Necesitarás ingresar tu acceso nuevamente.</p>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setShowLogoutConfirm(false)}
-                                            className="flex-1 py-3 bg-white/5 text-white/40 rounded-xl font-black uppercase tracking-widest text-[9px] border border-white/5 active:scale-95 transition-transform"
-                                        >
-                                            Cancelar
-                                        </button>
-                                        <button
-                                            onClick={() => { localStorage.removeItem('barbero_session'); router.replace('/tablet/login'); }}
-                                            className="flex-[2] py-3 bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-1 active:scale-95 transition-transform shadow-[0_4px_12px_rgba(239,68,68,0.3)]"
-                                        >
-                                            <span className="material-icons-round text-sm">logout</span>
-                                            Sí, salir
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </>,
-                        document.body
-                    )
-                })()
-            }
+                                Listo
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Logout Confirm Dialog */}
+            <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+                <DialogContent className="bg-[#111216] border-red-500/20 p-0 overflow-hidden shadow-2xl max-w-sm rounded-[2rem]">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-rose-600" />
+
+                    <div className="p-8">
+                        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-400 mx-auto mb-6">
+                            <LogOut className="w-8 h-8" />
+                        </div>
+
+                        <DialogHeader className="text-center mb-6">
+                            <DialogTitle className="text-lg font-black text-white uppercase tracking-tight text-center">¿Cerrar Sesión?</DialogTitle>
+                            <DialogDescription className="text-xs text-white/40 text-center leading-relaxed mt-2">
+                                Se eliminará la sesión local. Necesitarás ingresar tu acceso nuevamente.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <DialogFooter className="flex flex-row gap-3">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowLogoutConfirm(false)}
+                                className="flex-1 h-12 bg-white/5 text-white/40 rounded-xl font-black uppercase tracking-widest text-[9px] border border-white/5 hover:bg-white/10"
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={() => { localStorage.removeItem('barbero_session'); router.replace('/tablet/login'); }}
+                                className="flex-[2] h-12 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] shadow-[0_4px_12px_rgba(239,68,68,0.3)] flex items-center justify-center gap-2"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Sí, salir
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const barbero_id = searchParams.get('barbero_id')
 
     try {
-        let query = (supabase.from('vista_citas_agente') as any)
+        let query = (supabase.from('vista_general_citas') as any)
             .select('*')
             .order('timestamp_inicio', { ascending: true })
 

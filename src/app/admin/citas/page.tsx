@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useSearchParams, useRouter } from 'next/navigation'
 import type { CitaDesdeVista, EstadoCita, Servicio, Barbero } from '@/lib/types'
+import { ClientAutocomplete } from '@/components/ClientAutocomplete'
 
 function CitasContent() {
     // 1. Hydration mismatch fix: Start with a stable state or wait for mount
@@ -100,7 +101,7 @@ function CitasContent() {
             console.log('Fetching citas for:', filtroFecha)
 
             let query = (supabase
-                .from('vista_citas_agente') as any)
+                .from('vista_general_citas') as any)
                 .select('*')
                 .eq('fecha_cita_local', filtroFecha)
                 .order('timestamp_inicio', { ascending: true })
@@ -412,7 +413,10 @@ function getDemoCitas(fecha: string): CitaDesdeVista[] {
             servicio_precio: 250,
             barbero_nombre: 'Carlos H.',
             monto_pagado: null,
-            metodo_pago: null
+            metodo_pago: null,
+            servicio_duracion: 40,
+            notas_crm: '',
+            cliente_id: null
         },
         {
             id: '2',
@@ -437,7 +441,10 @@ function getDemoCitas(fecha: string): CitaDesdeVista[] {
             servicio_precio: 150,
             barbero_nombre: 'Carlos H.',
             monto_pagado: null,
-            metodo_pago: null
+            metodo_pago: null,
+            servicio_duracion: 30,
+            notas_crm: '',
+            cliente_id: null
         },
         {
             id: '3',
@@ -462,7 +469,10 @@ function getDemoCitas(fecha: string): CitaDesdeVista[] {
             servicio_precio: 350,
             barbero_nombre: 'Miguel L.',
             monto_pagado: null,
-            metodo_pago: null
+            metodo_pago: null,
+            servicio_duracion: 60,
+            notas_crm: 'Cliente frecuente',
+            cliente_id: null
         }
     ]
 }
@@ -638,13 +648,17 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-slate-300 mb-2">Cliente</label>
-                            <input
-                                type="text"
-                                required
-                                className="input-field"
-                                placeholder="Nombre completo"
+                            <ClientAutocomplete
                                 value={formData.cliente_nombre}
-                                onChange={e => setFormData({ ...formData, cliente_nombre: e.target.value })}
+                                onChange={(val) => setFormData({ ...formData, cliente_nombre: val })}
+                                onSelect={(cliente) => {
+                                    setFormData({
+                                        ...formData,
+                                        cliente_nombre: cliente.nombre,
+                                        cliente_telefono: cliente.telefono || formData.cliente_telefono
+                                    })
+                                }}
+                                placeholder="Nombre completo"
                             />
                         </div>
                         <div className="col-span-2">

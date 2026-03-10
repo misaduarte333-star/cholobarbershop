@@ -1,0 +1,368 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase'
+import type { Cliente } from '@/lib/types'
+import {
+    Search,
+    UserPlus,
+    MessageSquare,
+    Calendar,
+    TrendingUp,
+    MoreVertical,
+    Phone,
+    Mail,
+    Edit2,
+    History
+} from 'lucide-react'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
+} from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
+
+export default function ClientesPage() {
+    const [clientes, setClientes] = useState<Cliente[]>([])
+    const [loading, setLoading] = useState(true)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+
+    const supabase = createClient()
+
+    const cargarClientes = useCallback(async () => {
+        setLoading(true)
+        try {
+            const { data, error } = await supabase
+                .from('clientes')
+                .select('*')
+                .order('ultima_cita', { ascending: false })
+
+            if (error) throw error
+            setClientes(data || [])
+        } catch (err) {
+            console.error('Error cargando clientes:', err)
+        } finally {
+            setLoading(false)
+        }
+    }, [supabase])
+
+    useEffect(() => {
+        cargarClientes()
+    }, [cargarClientes])
+
+    const filteredClientes = clientes.filter(c =>
+        c.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.telefono?.includes(searchQuery) ||
+        c.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    const kpis = {
+        total: clientes.length,
+        activos: clientes.filter(c => c.total_citas > 3).length, // Clientes recurrentes
+        nuevosHoy: clientes.filter(c => {
+            const date = new Date(c.created_at)
+            const today = new Date()
+            return date.toDateString() === today.toDateString()
+        }).length
+    }
+
+    const handleSaveCliente = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!selectedCliente) return
+
+        setIsSaving(true)
+        try {
+            const { error } = await supabase
+                .from('clientes')
+                .update({
+                    nombre: selectedCliente.nombre,
+                    telefono: selectedCliente.telefono,
+                    email: selectedCliente.email,
+                    notas_internas: selectedCliente.notas_internas
+                } as any)
+                .eq('id', selectedCliente.id)
+
+            if (error) throw error
+
+            setShowEditModal(false)
+            cargarClientes()
+        } catch (err) {
+            console.error('Error guardando cliente:', err)
+            alert('Error al guardar cambios')
+        } finally {
+            setIsSaving(false)
+        }
+    }
+
+    return (
+        <div className="space-y-6 animate-fade-in pb-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl md:text-4xl font-black text-white font-display tracking-tight">
+                        CRM <span className="text-gradient-gold">CLIENTES</span>
+                    </h1>
+                    <p className="text-white/40 text-xs font-black uppercase tracking-[0.3em] mt-1">
+                        Gestión y Fidelización de Clientes
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/30 group-focus-within:text-primary transition-colors" />
+                        <Input
+                            placeholder="Buscar cliente..."
+                            className="pl-10 w-full md:w-[300px] bg-black/40 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 transition-all rounded-xl"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    {/* Add manual client button if needed, but the user wants auto-registration primarily */}
+                </div>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="glass-card border-white/5 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-3xl" />
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-white/40 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <TrendingUp className="size-3 text-emerald-500" />
+                            Total Base de Datos
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-black text-white font-display">{kpis.total}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="glass-card border-white/5 relative overflow-hidden group">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-white/40 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <MessageSquare className="size-3 text-blue-500" />
+                            Clientes VIP (+3 visitas)
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-black font-display text-gradient-gold">{kpis.activos}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="glass-card border-white/5 relative overflow-hidden group">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-white/40 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <UserPlus className="size-3 text-amber-500" />
+                            Nuevos hoy
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-black text-white font-display">{kpis.nuevosHoy}</CardTitle>
+                    </CardHeader>
+                </Card>
+            </div>
+
+            {/* Clients Table */}
+            <Card className="glass-card border-white/5 rounded-2xl md:rounded-[2rem] overflow-hidden">
+                <Table>
+                    <TableHeader className="bg-white/5">
+                        <TableRow className="border-white/5 hover:bg-transparent">
+                            <TableHead className="text-white/40 font-black uppercase text-[10px] tracking-widest py-5 px-6">Cliente</TableHead>
+                            <TableHead className="text-white/40 font-black uppercase text-[10px] tracking-widest py-5">Contacto</TableHead>
+                            <TableHead className="text-white/40 font-black uppercase text-[10px] tracking-widest py-5">Visitas</TableHead>
+                            <TableHead className="text-white/40 font-black uppercase text-[10px] tracking-widest py-5">Última Cita</TableHead>
+                            <TableHead className="text-right text-white/40 font-black uppercase text-[10px] tracking-widest py-5 px-6">Acciones</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            Array(5).fill(null).map((_, i) => (
+                                <TableRow key={i} className="border-white/5">
+                                    <TableCell colSpan={5} className="py-8">
+                                        <div className="h-4 bg-white/5 animate-pulse rounded w-full" />
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : filteredClientes.length === 0 ? (
+                            <TableRow className="border-white/5">
+                                <TableCell colSpan={5} className="py-20 text-center">
+                                    <p className="text-white/20 font-black uppercase tracking-widest text-xs italic">
+                                        No se encontraron clientes
+                                    </p>
+                                </TableCell>
+                            </TableRow>
+                        ) : filteredClientes.map((cliente) => (
+                            <TableRow key={cliente.id} className="border-white/5 hover:bg-white/5 transition-all group">
+                                <TableCell className="px-6 py-5">
+                                    <div className="flex items-center gap-4">
+                                        <div className="size-10 rounded-xl bg-gradient-gold p-[1px] hidden sm:block">
+                                            <div className="w-full h-full rounded-xl bg-black flex items-center justify-center">
+                                                <span className="text-xs font-black text-gradient-gold">
+                                                    {cliente.nombre.slice(0, 2).toUpperCase()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-white uppercase tracking-tight font-display group-hover:text-primary transition-colors">
+                                                {cliente.nombre}
+                                            </p>
+                                            <p className="text-[10px] text-white/30 font-bold tracking-widest uppercase">
+                                                ID: {cliente.id.slice(0, 8)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 text-white/60">
+                                            <Phone className="size-3 text-primary/50" />
+                                            <span className="text-xs font-mono">{cliente.telefono || 'Sin tel'}</span>
+                                        </div>
+                                        {cliente.email && (
+                                            <div className="flex items-center gap-2 text-white/60">
+                                                <Mail className="size-3 text-primary/50" />
+                                                <span className="text-[10px]">{cliente.email}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-black text-[10px] rounded-lg">
+                                        {cliente.total_citas} Citas
+                                    </Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs text-white/80 font-bold">
+                                            {cliente.ultima_cita ? new Date(cliente.ultima_cita).toLocaleDateString('es-MX', {
+                                                day: 'numeric',
+                                                month: 'short',
+                                                year: 'numeric'
+                                            }).toUpperCase() : 'NUNCA'}
+                                        </span>
+                                        <span className="text-[10px] text-white/20 uppercase font-black tracking-widest">
+                                            {cliente.ultima_cita ? new Date(cliente.ultima_cita).toLocaleTimeString('es-MX', {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            }) : '-'}
+                                        </span>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-right px-6">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="rounded-xl hover:bg-primary/20 text-white/40 hover:text-primary active:scale-95 transition-all"
+                                        onClick={() => {
+                                            setSelectedCliente(cliente)
+                                            setShowEditModal(true)
+                                        }}
+                                    >
+                                        <Edit2 className="size-4" />
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </Card>
+
+            {/* Edit Modal */}
+            <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+                <DialogContent className="glass-card border-white/10 bg-black/90 text-white max-w-md rounded-[2rem]">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black font-display text-gradient-gold tracking-tight uppercase">
+                            Perfil del Cliente
+                        </DialogTitle>
+                        <DialogDescription className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
+                            Ver y editar información de fidelidad
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedCliente && (
+                        <form onSubmit={handleSaveCliente} className="space-y-6 pt-4">
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Nombre Completo</label>
+                                    <Input
+                                        className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl"
+                                        value={selectedCliente.nombre}
+                                        onChange={e => setSelectedCliente({ ...selectedCliente, nombre: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Teléfono</label>
+                                        <Input
+                                            className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl font-mono"
+                                            value={selectedCliente.telefono || ''}
+                                            onChange={e => setSelectedCliente({ ...selectedCliente, telefono: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Email</label>
+                                        <Input
+                                            type="email"
+                                            className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl"
+                                            value={selectedCliente.email || ''}
+                                            onChange={e => setSelectedCliente({ ...selectedCliente, email: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Notas del Barbero (CRM)</label>
+                                    <textarea
+                                        className="w-full bg-white/5 border border-white/10 focus:border-primary/50 text-white rounded-xl p-3 min-h-[100px] text-sm outline-none transition-all placeholder:text-white/10"
+                                        placeholder="Preferencias, estilo habitual, productos recomendados..."
+                                        value={selectedCliente.notas_internas || ''}
+                                        onChange={e => setSelectedCliente({ ...selectedCliente, notas_internas: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-white/5 border border-white/5">
+                                <div className="text-center">
+                                    <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Total Visitas</p>
+                                    <p className="text-xl font-black text-primary font-display">{selectedCliente.total_citas}</p>
+                                </div>
+                                <div className="text-center border-l border-white/5">
+                                    <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Registrado</p>
+                                    <p className="text-[11px] font-black text-white/60">
+                                        {new Date(selectedCliente.created_at).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <DialogFooter className="gap-2 sm:gap-0">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="rounded-xl text-white/30 hover:text-white hover:bg-white/5 font-black uppercase tracking-widest text-[10px]"
+                                    onClick={() => setShowEditModal(false)}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={isSaving}
+                                    className="btn-primary rounded-xl px-8 font-black uppercase tracking-widest text-[10px] shadow-[0_10px_20px_rgba(234,179,8,0.2)]"
+                                >
+                                    {isSaving ? 'Guardando...' : 'Guardar Perfil'}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </div>
+    )
+}

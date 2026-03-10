@@ -1,11 +1,31 @@
-'use client'
-
 import { useMemo, useEffect, useRef, useState, memo } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence, useDragControls } from 'framer-motion'
+import { motion, useDragControls } from 'framer-motion'
+import {
+    Play,
+    X,
+    Info,
+    RefreshCcw,
+    AlertTriangle,
+    CheckCircle2,
+    ArrowRight,
+    History,
+    Clock,
+    User,
+    Scissors
+} from 'lucide-react'
 import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from './CitaCard'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogDescription,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 interface AgendaTimelineProps {
     citas: CitaDesdeVista[]
@@ -556,21 +576,21 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                                                 className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-black transition-all border border-emerald-500/10 group"
                                                                                 title="Atender"
                                                                             >
-                                                                                <span className="material-icons-round text-xs md:text-sm">play_arrow</span>
+                                                                                <Play className="w-3 h-3 md:w-4 md:h-4 fill-current" />
                                                                             </button>
                                                                             <button
                                                                                 onClick={(e) => { e.stopPropagation(); setSelectedCita(item.data); setActiveModal('move'); }}
                                                                                 className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-white/5 text-white/40 flex items-center justify-center hover:bg-white/20 hover:text-white transition-all border border-white/5"
                                                                                 title="Mover"
                                                                             >
-                                                                                <span className="material-icons-round text-xs md:text-sm">event_repeat</span>
+                                                                                <RefreshCcw className="w-3 h-3 md:w-4 md:h-4" />
                                                                             </button>
                                                                             <button
                                                                                 onClick={(e) => { e.stopPropagation(); setSelectedCita(item.data); setActiveModal('cancel'); }}
                                                                                 className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all border border-red-500/10"
                                                                                 title="Cancelar"
                                                                             >
-                                                                                <span className="material-icons-round text-xs md:text-sm">close</span>
+                                                                                <X className="w-3 h-3 md:w-4 md:h-4" />
                                                                             </button>
                                                                         </>
                                                                     )}
@@ -578,7 +598,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                                         onClick={(e) => { e.stopPropagation(); setSelectedCita(item.data); setActiveModal('details'); }}
                                                                         className="w-6 h-6 rounded-lg bg-white/5 text-white/40 flex items-center justify-center hover:bg-white/20 hover:text-white transition-all border border-white/5"
                                                                     >
-                                                                        <span className="material-icons-round text-xs">info</span>
+                                                                        <Info className="w-3 h-3" />
                                                                     </button>
                                                                 </div>
                                                             )}
@@ -597,23 +617,23 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 </div>
             </div>
 
-            <div className="shrink-0 bg-[#0A0C10]/80 backdrop-blur-xl border-t border-white/5 p-2.5 md:p-3.5">
-                <div className="flex items-center justify-between px-1 text-[7px] md:text-[8px] font-black uppercase tracking-[0.1em] text-white/30 font-display">
-                    <div className="flex items-center gap-1.5 mr-auto">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            <div className="shrink-0 bg-black/40 backdrop-blur-xl border-t border-white/5 p-3">
+                <div className="flex items-center justify-between px-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(245,200,66,0.3)]" />
                         <span>Confirmada</span>
                     </div>
-                    <div className="flex items-center gap-1.5 mx-auto">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span>Proceso</span>
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
+                        <span>En Proceso</span>
                     </div>
-                    <div className="flex items-center gap-1.5 mx-auto hidden sm:flex">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                    <div className="flex items-center gap-2 hidden sm:flex">
+                        <span className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.3)]" />
                         <span>Por Cobrar</span>
                     </div>
-                    <div className="flex items-center gap-1.5 ml-auto">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                        <span>Hecho</span>
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-slate-300 shadow-[0_0_8px_rgba(255,255,255,0.1)]" />
+                        <span>Finalizada</span>
                     </div>
                 </div>
             </div>
@@ -632,137 +652,102 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 </div>
             )}
 
-            {/* Aviso Anticipado Modal — Portal to escape stacking context */}
-            {showEarlyWarning && pendingCitaAction && typeof window !== 'undefined' && createPortal(
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[9000]"
-                    style={{ isolation: 'isolate' }}
-                >
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 12 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ type: 'spring', damping: 22, stiffness: 500, mass: 0.4 }}
-                        className="bg-[#1A1D24] border border-white/10 rounded-3xl p-6 w-full max-w-sm flex flex-col items-center justify-center text-center relative overflow-hidden"
-                    >
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-amber-600" />
-                        <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 border border-amber-500/30 text-amber-500 mt-2">
-                            <span className="material-icons-round text-3xl">warning</span>
+            {/* Aviso Anticipado Modal */}
+            <Dialog open={showEarlyWarning} onOpenChange={(open) => { if (!open) { setShowEarlyWarning(false); setPendingCitaAction(null); } }}>
+                <DialogContent className="bg-[#1A1D24] border-white/10 rounded-3xl max-w-sm p-6 overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-amber-600" />
+                    <DialogHeader className="flex flex-col items-center justify-center text-center pt-4">
+                        <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 border border-amber-500/30 text-amber-500">
+                            <AlertTriangle className="w-8 h-8" />
                         </div>
-                        <h3 className="text-lg font-display font-black text-white mb-2 uppercase tracking-wide">Cliente Anticipado</h3>
-                        <p className="text-sm font-light text-slate-300 mb-5 leading-relaxed">
+                        <DialogTitle className="text-lg font-black text-white uppercase tracking-wide">Cliente Anticipado</DialogTitle>
+                        <DialogDescription className="text-sm font-light text-slate-300 leading-relaxed pt-2">
                             Este cliente llegó con <strong className="font-bold text-amber-500">más de 30 minutos</strong> de anticipación.
                             ¿Iniciar su corte de todas formas?
-                        </p>
-                        <div className="flex gap-2 w-full">
-                            <button
-                                onClick={() => { setShowEarlyWarning(false); setPendingCitaAction(null); }}
-                                className="flex-1 py-3 bg-white/5 text-white/40 rounded-xl font-black uppercase tracking-widest text-[9px] border border-white/5 active:scale-95 transition-transform"
-                            >
-                                Esperar
-                            </button>
-                            <button
-                                onClick={confirmarAtencionTemprana}
-                                className="flex-[2] py-3 bg-amber-500 text-black rounded-xl font-black uppercase tracking-widest text-[9px] active:scale-95 transition-transform flex items-center justify-center gap-1"
-                            >
-                                <span className="material-icons-round text-sm">play_arrow</span>
-                                Sí, atender ahora
-                            </button>
-                        </div>
-                    </motion.div>
-                </motion.div>,
-                document.body
-            )}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex flex-row gap-2 w-full mt-2">
+                        <Button
+                            variant="ghost"
+                            onClick={() => { setShowEarlyWarning(false); setPendingCitaAction(null); }}
+                            className="flex-1 h-12 bg-white/5 text-white/40 rounded-xl font-black uppercase tracking-widest text-[9px] border border-white/5 hover:bg-white/10"
+                        >
+                            Esperar
+                        </Button>
+                        <Button
+                            onClick={confirmarAtencionTemprana}
+                            className="flex-[2] h-12 bg-amber-500 text-black rounded-xl font-black uppercase tracking-widest text-[9px] hover:bg-amber-600 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Play className="w-3 h-3 fill-current" />
+                            Sí, atender ahora
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-            {/* Confirm Move Modal — always-mounted CSS portal, zero reconciliation on open */}
-            {typeof window !== 'undefined' && createPortal(
-                <div
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        zIndex: 9000,
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'center',
-                        background: 'rgba(0,0,0,0.72)',
-                        opacity: proposedMove ? 1 : 0,
-                        pointerEvents: proposedMove ? 'auto' : 'none',
-                        transition: 'opacity 0.1s ease',
-                        isolation: 'isolate',
-                    }}
-                    onClick={() => { setProposedMove(null); setCardResetKey(k => k + 1) }}
-                >
-                    <div
-                        style={{
-                            width: '100%',
-                            maxWidth: '24rem',
-                            transform: proposedMove ? 'translateY(0)' : 'translateY(28px)',
-                            opacity: proposedMove ? 1 : 0,
-                            transition: 'opacity 0.1s ease, transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                            willChange: 'transform, opacity',
-                        }}
-                        className="bg-[#111216] border-t border-primary/20 rounded-t-[2rem] sm:rounded-[2rem] sm:border sm:border-2 p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] relative overflow-hidden shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4 sm:hidden" />
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold" />
+            {/* Confirm Move Modal */}
+            <Dialog open={!!proposedMove} onOpenChange={(open) => { if (!open) { setProposedMove(null); setCardResetKey(k => k + 1); } }}>
+                <DialogContent className="bg-[#111216] border-primary/20 rounded-t-[2rem] sm:rounded-[2rem] p-0 overflow-hidden shadow-2xl max-w-sm">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-amber-600" />
 
-                        {displayMove && (<>
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary shrink-0">
-                                    <span className="material-icons-round text-xl">event_repeat</span>
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-black text-white uppercase tracking-tight">¿Confirmar Movimiento?</h3>
-                                    <p className="text-[10px] font-medium text-white/40">{displayMove.cita.cliente_nombre}</p>
-                                </div>
+                    <div className="p-6">
+                        <DialogHeader className="flex flex-row items-center gap-4 mb-6">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary shrink-0">
+                                <RefreshCcw className="w-6 h-6" />
                             </div>
+                            <div className="text-left">
+                                <DialogTitle className="text-base font-black text-white uppercase tracking-tight">¿Confirmar Movimiento?</DialogTitle>
+                                <DialogDescription className="text-xs font-medium text-white/40">
+                                    {proposedMove?.cita.cliente_nombre}
+                                </DialogDescription>
+                            </div>
+                        </DialogHeader>
 
-                            <div className="bg-white/5 rounded-2xl border border-white/5 p-4 mb-4">
-                                <div className="flex items-center justify-between gap-3">
+                        {displayMove && (
+                            <div className="bg-white/5 rounded-2xl border border-white/5 p-5 mb-6">
+                                <div className="flex items-center justify-between gap-4">
                                     <div className="text-center flex-1">
-                                        <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-0.5">De</p>
-                                        <p className="text-base font-black text-white/40 line-through">
+                                        <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">De</p>
+                                        <p className="text-lg font-black text-white/40 line-through">
                                             {new Date(displayMove.cita.timestamp_inicio).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                         </p>
                                     </div>
-                                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                                        <span className="material-icons-round text-primary text-base">east</span>
+                                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                        <ArrowRight className="text-primary w-5 h-5" />
                                     </div>
                                     <div className="text-center flex-1">
-                                        <p className="text-[8px] font-black text-primary uppercase tracking-widest mb-0.5">A</p>
-                                        <p className="text-base font-black text-primary">
+                                        <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">A</p>
+                                        <p className="text-lg font-black text-primary">
                                             {new Date(displayMove.newStartTime).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                         </p>
                                     </div>
                                 </div>
                             </div>
+                        )}
 
-                            <p className="text-[10px] font-medium text-slate-400 mb-4 leading-relaxed text-center">
-                                El servicio mantendrá su duración original.
-                            </p>
+                        <p className="text-[11px] font-medium text-slate-400 mb-6 leading-relaxed text-center">
+                            El servicio mantendrá su duración original.
+                        </p>
 
-                            <div className="flex gap-2 w-full">
-                                <button
-                                    onClick={() => { setProposedMove(null); setCardResetKey(k => k + 1) }}
-                                    className="flex-1 py-3 bg-white/5 text-white/40 rounded-xl font-black uppercase tracking-widest text-[9px] border border-white/5 active:scale-95 transition-transform"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={confirmarMoverCita}
-                                    className="flex-[2] py-3 bg-primary text-black rounded-xl font-black uppercase tracking-widest text-[9px] shadow-[0_4px_12px_rgba(234,179,8,0.25)] flex items-center justify-center gap-1 active:scale-95 transition-transform"
-                                >
-                                    <span className="material-icons-round text-sm">check_circle</span>
-                                    Confirmar y Mover
-                                </button>
-                            </div>
-                        </>)}
+                        <DialogFooter className="flex flex-row gap-3 w-full">
+                            <Button
+                                variant="ghost"
+                                onClick={() => { setProposedMove(null); setCardResetKey(k => k + 1) }}
+                                className="flex-1 h-14 bg-white/5 text-white/40 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-white/5 hover:bg-white/10"
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={confirmarMoverCita}
+                                className="flex-[2] h-14 bg-gradient-to-r from-primary to-amber-600 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-[0_10px_30px_rgba(245,200,66,0.2)] hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+                            >
+                                <CheckCircle2 className="w-5 h-5" />
+                                Confirmar y Mover
+                            </Button>
+                        </DialogFooter>
                     </div>
-                </div>,
-                document.body
-            )}
+                </DialogContent>
+            </Dialog>
 
         </div>
     )
