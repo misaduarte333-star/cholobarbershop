@@ -90,14 +90,14 @@ export default function ClientesPage() {
 
         setIsSaving(true)
         try {
-            const { error } = await supabase
-                .from('clientes')
+            const { error } = await (supabase
+                .from('clientes') as any)
                 .update({
                     nombre: selectedCliente.nombre,
                     telefono: selectedCliente.telefono,
                     email: selectedCliente.email,
                     notas_internas: selectedCliente.notas_internas
-                } as any)
+                })
                 .eq('id', selectedCliente.id)
 
             if (error) throw error
