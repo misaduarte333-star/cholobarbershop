@@ -83,8 +83,8 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
     }
 
     const renderCitaBlock = (cita: CitaDesdeVista) => {
-        const start = new Date(cita.timestamp_inicio)
-        const end = new Date(cita.timestamp_fin)
+        const start = new Date(cita.timestamp_inicio_local)
+        const end = new Date(cita.timestamp_fin_local)
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return null
 
         const startY = getTimeY(start.getHours(), start.getMinutes())

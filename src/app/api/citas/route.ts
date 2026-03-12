@@ -22,9 +22,12 @@ export async function GET(req: NextRequest) {
     const barbero_id = searchParams.get('barbero_id')
 
     try {
-        let query = (supabase.from('vista_general_citas') as any)
+        // Auditoría de Seguridad: 
+        // Se utiliza 'vista_citas_app' para asegurar que el frontend siempre trabaje 
+        // con la vista optimizada para la aplicación.
+        let query = (supabase.from('vista_citas_app') as any)
             .select('*')
-            .order('timestamp_inicio', { ascending: true })
+            .order('timestamp_inicio_local', { ascending: true })
 
         if (fecha) query = query.eq('fecha_cita_local', fecha)
         if (estado) query = query.eq('estado', estado)
@@ -58,11 +61,12 @@ export async function POST(req: NextRequest) {
         return err('InvalidBody', 'Request body must be valid JSON', 400)
     }
 
-    const required = ['cliente_nombre', 'timestamp_inicio', 'timestamp_fin', 'origen'] as const
-    for (const field of required) {
-        if (!body[field]) {
-            return err('MissingField', `El campo '${field}' es requerido`, 400)
-        }
+    // Unified timestamp handling: Accept either native or local names
+    const tInicio = (body.timestamp_inicio || body.timestamp_inicio_local) as string
+    const tFin = (body.timestamp_fin || body.timestamp_fin_local) as string
+
+    if (!body.cliente_nombre || !tInicio || !tFin || !body.origen) {
+        return err('MissingField', "Los campos 'cliente_nombre', 'timestamp_inicio' (o local), 'timestamp_fin' (o local) y 'origen' son requeridos", 400)
     }
 
     // Validate origen enum
@@ -89,8 +93,8 @@ export async function POST(req: NextRequest) {
         cliente_id: body.cliente_id || null,
         cliente_nombre: body.cliente_nombre,
         cliente_telefono: body.cliente_telefono || '',
-        timestamp_inicio: body.timestamp_inicio,
-        timestamp_fin: body.timestamp_fin,
+        timestamp_inicio: tInicio,
+        timestamp_fin: tFin,
         origen: body.origen,
         estado: body.estado || initialEstado,
         notas: body.notas || null,

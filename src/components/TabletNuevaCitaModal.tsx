@@ -89,7 +89,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             const supabase = createClient()
 
             // Citas: Always fetch from API to ensure real-time data when modal opens
-            const { data: citasData } = await supabase.from('vista_general_citas').select('*').eq('fecha_cita_local', fecha)
+            const { data: citasData } = await supabase.from('vista_citas_app').select('*').eq('fecha_cita_local', fecha)
             if (citasData) {
                 const filtered = barberoId ? citasData.filter((c: any) => String(c.barbero_id) === String(barberoId)) : citasData
                 console.log(`📡 [TabletNuevaCitaModal] Citas encontradas (${fecha}):`, filtered.length)
@@ -285,7 +285,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             const fechaInicioObj = new Date(timestampCompleto)
             const fechaFinObj = new Date(fechaInicioObj.getTime() + duracion * 60000)
 
-            // Formatear el timestamp_fin resultante en el mismo string con timezone de Hermosillo
+            // Formatear el timestamp_fin_local resultante en el mismo string con timezone de Hermosillo
             const finStrFormatter = new Intl.DateTimeFormat('en-GB', {
                 timeZone: 'America/Hermosillo',
                 hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -304,8 +304,8 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                 cliente_nombre: nombre,
                 cliente_telefono: telefono === "Sin registro de numero celular" ? null : telefono,
                 servicio_id: servicioId,
-                timestamp_inicio: timestampCompleto,
-                timestamp_fin: timestampFinCompleto,
+                timestamp_inicio_local: timestampCompleto,
+                timestamp_fin_local: timestampFinCompleto,
                 duracion_estimada: duracion,
                 estado: 'confirmada', // Walk-ins entran confirmados directamente
                 ...(sucursalId ? { sucursal_id: sucursalId } : {}),
@@ -416,8 +416,8 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                     cSMins = parse12hToMins(c.hora_cita_local)
                     cEMins = parse12hToMins(c.hora_fin_local)
                 } else {
-                    const cStart = new Date(c.timestamp_inicio)
-                    const cEnd = new Date(c.timestamp_fin)
+                    const cStart = new Date(c.timestamp_inicio_local)
+                    const cEnd = new Date(c.timestamp_fin_local)
                     cSMins = cStart.getHours() * 60 + cStart.getMinutes()
                     cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
                 }

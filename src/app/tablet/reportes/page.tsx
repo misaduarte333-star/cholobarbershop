@@ -111,13 +111,13 @@ export default function TabletReportesPage() {
         setActiveRange({ start: startDate, end: endDate })
 
         const { data, error } = await supabase
-            .from('vista_general_citas')
+            .from('vista_citas_app')
             .select('*')
             .eq('barbero_id', barbero.id)
             .eq('estado', 'finalizada')
             .gte('fecha_cita_local', startDate)
             .lte('fecha_cita_local', endDate)
-            .order('timestamp_inicio', { ascending: true })
+            .order('timestamp_inicio_local', { ascending: true })
 
         if (data) setCitas(data as CitaDesdeVista[])
         setIsRefreshing(false)

@@ -44,7 +44,7 @@ export default function AdminDashboard() {
                 { data: sucursalData },
                 { data: bloqueosData }
             ] = await Promise.all([
-                (supabase.from('vista_general_citas') as any).select('*').eq('fecha_cita_local', hoyLocal),
+                (supabase.from('vista_citas_app') as any).select('*').eq('fecha_cita_local', hoyLocal),
                 (supabase.from('barberos') as any).select('*').eq('activo', true).order('estacion_id'),
                 supabase.from('sucursales').select('*').eq('activa', true).single(),
                 supabase.from('bloqueos').select('*').gte('fecha_inicio', `${hoyLocal}T00:00:00`).lte('fecha_inicio', `${hoyLocal}T23:59:59`)

@@ -258,7 +258,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         citas.forEach(cita => {
             if (['cancelada', 'no_show'].includes(cita.estado)) return
 
-            const st = new Date(cita.timestamp_inicio)
+            const st = new Date(cita.timestamp_inicio_local)
             const ampm = st.getHours() >= 12 ? 'PM' : 'AM'
             const h12 = st.getHours() % 12 || 12
             const m = st.getMinutes() < 30 ? '00' : '30'
@@ -302,7 +302,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
     const handleAtenderClick = (e: React.MouseEvent, cita: CitaDesdeVista) => {
         e.stopPropagation()
-        const citaStartTime = new Date(cita.timestamp_inicio)
+        const citaStartTime = new Date(cita.timestamp_inicio_local)
         const minutosDiferencia = Math.floor((currentTime.getTime() - citaStartTime.getTime()) / 60000)
         const minHastaCita = -minutosDiferencia
 
@@ -398,7 +398,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         }
 
         // Snap to half-hour grid
-        const originalStart = new Date(cita.timestamp_inicio)
+        const originalStart = new Date(cita.timestamp_inicio_local)
         const newStart = new Date(originalStart)
         newStart.setMinutes(originalStart.getMinutes() + (slotsMoved * 30))
         setProposedMove({ cita, newStartTime: newStart.toISOString() })
@@ -410,21 +410,26 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
         try {
             // Preserve original duration
-            const originalStart = new Date(cita.timestamp_inicio)
-            const originalEnd = new Date(cita.timestamp_fin)
+            const originalStart = new Date(cita.timestamp_inicio_local)
+            const originalEnd = new Date(cita.timestamp_fin_local)
             const durationMs = originalEnd.getTime() - originalStart.getTime()
 
             const newStart = new Date(newStartTime)
             const newEnd = new Date(newStart.getTime() + durationMs)
 
-            const { error } = await (supabase.from('citas') as any).update({
-                timestamp_inicio: newStart.toISOString(),
-                timestamp_fin: newEnd.toISOString(),
-                updated_at: new Date().toISOString()
+            const res = await fetch(`/api/citas/${cita.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    timestamp_inicio: newStart.toISOString(),
+                    timestamp_fin: newEnd.toISOString()
+                })
             })
-                .eq('id', cita.id)
 
-            if (error) throw error
+            if (!res.ok) {
+                const errorData = await res.json()
+                throw new Error(errorData.message || 'Error al mover la cita')
+            }
             onUpdate?.()
         } catch (err) {
             console.error('Error moving appointment:', err)
@@ -712,7 +717,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                     <div className="text-center flex-1">
                                         <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">De</p>
                                         <p className="text-lg font-black text-white/40 line-through">
-                                            {new Date(displayMove.cita.timestamp_inicio).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                            {new Date(displayMove.cita.timestamp_inicio_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                         </p>
                                     </div>
                                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">

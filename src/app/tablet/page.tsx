@@ -313,13 +313,13 @@ export default function TabletDashboard() {
             console.log(`📡 Fetching data for [${syncVista}] range: ${startStr} to ${endStr}`)
             const [citasRes, bloqueosRes, barberoRes] = await Promise.all([
                 supabase
-                    .from('vista_general_citas')
+                    .from('vista_citas_app')
                     .select('*')
                     .eq('barbero_id', barbero.id)
                     .gte('fecha_cita_local', startStr)
                     .lte('fecha_cita_local', endStr)
                     .neq('estado', 'cancelada')
-                    .order('timestamp_inicio', { ascending: true }),
+                    .order('timestamp_inicio_local', { ascending: true }),
                 supabase
                     .from('bloqueos')
                     .select('*')

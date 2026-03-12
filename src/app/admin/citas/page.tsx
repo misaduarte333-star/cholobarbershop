@@ -103,10 +103,10 @@ function CitasContent() {
             console.log('Fetching citas for:', filtroFecha)
 
             let query = (supabase
-                .from('vista_general_citas') as any)
+                .from('vista_citas_app') as any)
                 .select('*')
                 .eq('fecha_cita_local', filtroFecha)
-                .order('timestamp_inicio', { ascending: true })
+                .order('timestamp_inicio_local', { ascending: true })
 
             if (filtroEstado !== 'todas') {
                 query = query.eq('estado', filtroEstado)
@@ -399,8 +399,8 @@ function getDemoCitas(fecha: string): CitaDesdeVista[] {
             servicio_id: '1',
             cliente_nombre: 'Carlos Mendoza',
             cliente_telefono: '+52 555 123 4567',
-            timestamp_inicio: `${safeFecha}T10:00:00`,
-            timestamp_fin: `${safeFecha}T10:40:00`,
+            timestamp_inicio_local: `${safeFecha}T10:00:00`,
+            timestamp_fin_local: `${safeFecha}T10:40:00`,
             origen: 'whatsapp',
             estado: 'en_proceso',
             notas: null,
@@ -427,8 +427,8 @@ function getDemoCitas(fecha: string): CitaDesdeVista[] {
             servicio_id: '2',
             cliente_nombre: 'Roberto García',
             cliente_telefono: '+52 555 987 6543',
-            timestamp_inicio: `${safeFecha}T11:00:00`,
-            timestamp_fin: `${safeFecha}T11:30:00`,
+            timestamp_inicio_local: `${safeFecha}T11:00:00`,
+            timestamp_fin_local: `${safeFecha}T11:30:00`,
             origen: 'whatsapp',
             estado: 'confirmada',
             notas: null,
@@ -455,8 +455,8 @@ function getDemoCitas(fecha: string): CitaDesdeVista[] {
             servicio_id: '3',
             cliente_nombre: 'Miguel Torres',
             cliente_telefono: '+52 555 456 7890',
-            timestamp_inicio: `${safeFecha}T12:00:00`,
-            timestamp_fin: `${safeFecha}T13:00:00`,
+            timestamp_inicio_local: `${safeFecha}T12:00:00`,
+            timestamp_fin_local: `${safeFecha}T13:00:00`,
             origen: 'walkin',
             estado: 'en_espera',
             notas: 'Cliente frecuente',
@@ -517,9 +517,9 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
         cliente_telefono: cita?.cliente_telefono || '',
         servicio_id: cita?.servicio_id || (cita ? 'custom' : ''), // If editing and no service, assume custom
         barbero_id: cita?.barbero_id || '',
-        fecha: extractLocalDate(cita?.timestamp_inicio),
-        hora: cita?.timestamp_inicio ? extractLocalTime(cita.timestamp_inicio) : '10:00',
-        horaFin: cita?.timestamp_fin ? extractLocalTime(cita.timestamp_fin) : '10:30',
+        fecha: extractLocalDate(cita?.timestamp_inicio_local),
+        hora: cita?.timestamp_inicio_local ? extractLocalTime(cita.timestamp_inicio_local) : '10:00',
+        horaFin: cita?.timestamp_fin_local ? extractLocalTime(cita.timestamp_fin_local) : '10:30',
         notas: cita?.notas || ''
     })
 

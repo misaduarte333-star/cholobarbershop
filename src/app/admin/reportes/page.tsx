@@ -28,7 +28,7 @@ export default function ReportesPage() {
         setLoading(true)
         try {
             const { data: citas, error } = await supabase
-                .from('vista_general_citas')
+                .from('vista_citas_app')
                 .select('*')
                 .gte('fecha_cita_local', dateRange.start)
                 .lte('fecha_cita_local', dateRange.end)
@@ -54,7 +54,7 @@ export default function ReportesPage() {
                 // Prepare Chart Data: Ingresos por Dia
                 const ingresosMap = new Map<string, number>()
                 finalizadas.forEach(c => {
-                    const dia = new Date(c.timestamp_inicio).toLocaleDateString('es-MX', { weekday: 'short' })
+                    const dia = new Date(c.timestamp_inicio_local).toLocaleDateString('es-MX', { weekday: 'short' })
                     const precio = c.servicio_precio || 0
                     ingresosMap.set(dia, (ingresosMap.get(dia) || 0) + precio)
                 })

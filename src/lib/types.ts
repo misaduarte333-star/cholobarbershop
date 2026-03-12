@@ -141,11 +141,14 @@ export interface CitaDesdeVista {
     cliente_id?: string | null
     cliente_nombre: string
     cliente_telefono: string | null
-    timestamp_inicio: string
-    timestamp_fin: string
+
+    // Campos de tiempo en hora local de Hermosillo
     hora_cita_local: string
     hora_fin_local: string
     fecha_cita_local: string
+    timestamp_inicio_local: string // Reemplaza timestamp_inicio para evitar confusión
+    timestamp_fin_local: string    // Reemplaza timestamp_fin para evitar confusión
+
     barbero_nombre: string
     servicio_nombre: string
     servicio_duracion: number
@@ -161,8 +164,6 @@ export interface CitaDesdeVista {
     timestamp_inicio_servicio?: string | null
     timestamp_fin_servicio?: string | null
     duracion_real_minutos?: number | null
-    timestamp_inicio_servicio_local?: string | null
-    timestamp_fin_servicio_local?: string | null
     created_at?: string
     updated_at?: string
 }

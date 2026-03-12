@@ -108,8 +108,8 @@ function VistaSemanal({ citas, bloqueos, almuerzoBarbero, days }: { citas: CitaD
                             {days.map(day => {
                                 const citasDelDia = citas.filter(c => c.fecha_cita_local === day.dateStr)
                                 const bloqueosDelDia = bloqueos.filter(b => {
-                                    const bStart = new Date(b.timestamp_inicio)
-                                    const bEnd = new Date(b.timestamp_fin)
+                                    const bStart = new Date(b.timestamp_inicio_local)
+                                    const bEnd = new Date(b.timestamp_fin_local)
                                     const dayD = new Date(`${day.dateStr}T12:00:00-07:00`)
                                     return dayD >= new Date(bStart.getFullYear(), bStart.getMonth(), bStart.getDate(), 0, 0, 0) &&
                                         dayD <= new Date(bEnd.getFullYear(), bEnd.getMonth(), bEnd.getDate(), 23, 59, 59)
@@ -121,8 +121,8 @@ function VistaSemanal({ citas, bloqueos, almuerzoBarbero, days }: { citas: CitaD
                                     <div key={day.dateStr} className="relative border-r border-white/5 last:border-r-0 p-0.5">
                                         {/* Citas */}
                                         {citasDelDia.map(cita => {
-                                            const start = new Date(cita.timestamp_inicio)
-                                            const end = new Date(cita.timestamp_fin)
+                                            const start = new Date(cita.timestamp_inicio_local)
+                                            const end = new Date(cita.timestamp_fin_local)
                                             const style = calculateStyles(start, end)
                                             return (
                                                 <div key={cita.id} className={`absolute left-0.5 right-0.5 rounded-lg border p-1 px-1.5 overflow-hidden backdrop-blur-md flex flex-col ${getStatusColor(cita.estado)} hover:brightness-110 transition-all z-10 shadow-md`} style={style} title={`${cita.cliente_nombre} - ${cita.servicio_nombre}`}>
@@ -134,8 +134,8 @@ function VistaSemanal({ citas, bloqueos, almuerzoBarbero, days }: { citas: CitaD
 
                                         {/* Bloqueos */}
                                         {bloqueosDelDia.map(bloqueo => {
-                                            const start = new Date(bloqueo.timestamp_inicio)
-                                            const end = new Date(bloqueo.timestamp_fin)
+                                            const start = new Date(bloqueo.timestamp_inicio_local)
+                                            const end = new Date(bloqueo.timestamp_fin_local)
                                             const style = calculateStyles(start, end)
                                             return (
                                                 <div key={bloqueo.id} className="absolute left-0.5 right-0.5 rounded-lg border border-red-500/50 bg-red-500/10 p-1 overflow-hidden flex flex-col justify-center items-center text-center z-[5] backdrop-blur-md" style={style}>
@@ -227,8 +227,8 @@ function VistaMensual({ citas, bloqueos, days, fecha }: { citas: CitaDesdeVista[
                             const isToday = d.dateStr === new Date().toLocaleDateString('en-CA')
 
                             const bloqueosDelDia = bloqueos.filter(b => {
-                                const bStart = new Date(b.timestamp_inicio)
-                                const bEnd = new Date(b.timestamp_fin)
+                                const bStart = new Date(b.timestamp_inicio_local)
+                                const bEnd = new Date(b.timestamp_fin_local)
                                 const dayD = new Date(`${d.dateStr}T12:00:00-07:00`)
                                 return dayD >= new Date(bStart.getFullYear(), bStart.getMonth(), bStart.getDate(), 0, 0, 0) &&
                                     dayD <= new Date(bEnd.getFullYear(), bEnd.getMonth(), bEnd.getDate(), 23, 59, 59)
@@ -242,12 +242,12 @@ function VistaMensual({ citas, bloqueos, days, fecha }: { citas: CitaDesdeVista[
                                     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 px-0.5">
                                         {citasDelDia.map(cita => (
                                             <div key={cita.id} className={`text-[8px] md:text-[9px] font-black uppercase tracking-tight truncate px-1.5 py-0.5 rounded border ${getStatusColor(cita.estado)}`} title={`${cita.cliente_nombre}`}>
-                                                {new Date(cita.timestamp_inicio).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '')} {cita.cliente_nombre.split(' ')[0]}
+                                                {new Date(cita.timestamp_inicio_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '')} {cita.cliente_nombre.split(' ')[0]}
                                             </div>
                                         ))}
                                         {bloqueosDelDia.map(bloqueo => (
                                             <div key={bloqueo.id} className="text-[8px] font-black uppercase tracking-tight truncate px-1.5 py-0.5 rounded border border-red-500/50 bg-red-500/10 text-red-400">
-                                                BLQ • {new Date(bloqueo.timestamp_inicio).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '')}
+                                                BLQ • {new Date(bloqueo.timestamp_inicio_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '')}
                                             </div>
                                         ))}
                                     </div>

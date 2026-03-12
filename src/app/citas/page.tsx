@@ -79,40 +79,54 @@ export default function BookingPage() {
     const handleSubmit = async () => {
         setLoading(true)
         try {
+            const TZ_OFFSET = '-07:00'
+            const timestampInicio = `${selectedDate}T${selectedTime}:00${TZ_OFFSET}`
+            
+            // Calculate end time with offset
+            const startD = new Date(timestampInicio)
+            const endD = new Date(startD.getTime() + (selectedService?.duracion_minutos || 30) * 60000)
+            
+            // Format end time ISO string with correct offset (manual string build to be safe with Intl)
+            const year = endD.getFullYear()
+            const month = String(endD.getMonth() + 1).padStart(2, '0')
+            const day = String(endD.getDate()).padStart(2, '0')
+            const hours = String(endD.getHours()).padStart(2, '0')
+            const minutes = String(endD.getMinutes()).padStart(2, '0')
+            const timestampFin = `${year}-${month}-${day}T${hours}:${minutes}:00${TZ_OFFSET}`
+
             const appointmentData = {
                 sucursal_id: SUCURSAL_ID,
-                barbero_id: selectedBarber?.id || barberos[0].id, // Logic to assign random if null
+                barbero_id: selectedBarber?.id || barberos[0].id,
                 servicio_id: selectedService?.id,
                 cliente_nombre: clientName,
                 cliente_telefono: clientPhone,
-                timestamp_inicio: `${selectedDate}T${selectedTime}:00`,
-                timestamp_fin: calculateEndTime(`${selectedDate}T${selectedTime}:00`, selectedService?.duracion_minutos || 30),
-                origen: 'walkin', // or web
+                timestamp_inicio: timestampInicio,
+                timestamp_fin: timestampFin,
+                origen: 'web', // Changed from walkin to web for public page
                 estado: 'confirmada',
                 notas: clientNote
             }
 
-            const { error } = await (supabase.from('citas') as any).insert([appointmentData])
+            const res = await fetch('/api/citas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(appointmentData)
+            })
 
-            if (error) throw error
+            if (!res.ok) {
+                const body = await res.json()
+                throw new Error(body.message || 'Error al agendar')
+            }
 
             alert('¡Cita Confirmada!')
-            // Reset or redirect
             window.location.href = '/'
 
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error creating appointment:', err)
-            alert('Error al agendar la cita. Intente nuevamente.')
+            alert('Error al agendar la cita: ' + err.message)
         } finally {
             setLoading(false)
         }
-    }
-
-    // Helper to calculate end time
-    const calculateEndTime = (startIso: string, durationMinutes: number) => {
-        const date = new Date(startIso)
-        date.setMinutes(date.getMinutes() + durationMinutes)
-        return date.toISOString() // Note: DB expects ISO or timestamp
     }
 
     // Generate available time slots (Simplified logic for demo)

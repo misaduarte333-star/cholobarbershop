@@ -39,13 +39,18 @@ export async function PATCH(
         return err('InvalidValue', `'estado' debe ser uno de: ${validEstados.join(', ')}`, 400)
     }
 
-    // Whitelist allowed update fields to prevent arbitrary overwrites
+    // Whitelist allowed update fields and map local names to physical columns
     const allowedFields = [
         'estado', 'monto_pagado', 'metodo_pago', 'notas_crm', 'notas',
         'timestamp_inicio', 'timestamp_fin', 'barbero_id', 'servicio_id',
         'timestamp_inicio_servicio', 'timestamp_fin_servicio', 'duracion_real_minutos'
     ]
     const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    
+    // Map _local fields if present
+    if (body.timestamp_inicio_local !== undefined) updatePayload.timestamp_inicio = body.timestamp_inicio_local
+    if (body.timestamp_fin_local !== undefined) updatePayload.timestamp_fin = body.timestamp_fin_local
+
     for (const field of allowedFields) {
         if (body[field] !== undefined) updatePayload[field] = body[field]
     }

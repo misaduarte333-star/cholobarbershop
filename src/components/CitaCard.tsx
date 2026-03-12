@@ -134,7 +134,7 @@ export const CitaCard = memo(function CitaCard({
                 payload.timestamp_inicio_servicio = new Date().toISOString()
             }
 
-            // Set timestamp_fin_servicio and duration when Finalizar Corte is clicked
+            // Set timestamp_fin_local_servicio and duration when Finalizar Corte is clicked
             if (nuevoEstado === 'por_cobrar') {
                 const now = new Date()
                 payload.timestamp_fin_servicio = now.toISOString()
@@ -144,7 +144,7 @@ export const CitaCard = memo(function CitaCard({
                     const diffMs = now.getTime() - start.getTime()
                     payload.duracion_real_minutos = Math.round(diffMs / 60000)
                 } else {
-                    const scheduledStart = new Date(cita.timestamp_inicio)
+                    const scheduledStart = new Date(cita.timestamp_inicio_local)
                     const diffMs = now.getTime() - scheduledStart.getTime()
                     payload.duracion_real_minutos = Math.max(0, Math.round(diffMs / 60000))
                 }
@@ -191,8 +191,8 @@ export const CitaCard = memo(function CitaCard({
         setLoading(true)
         try {
             const [hours, minutes] = newHour.split(':').map(Number)
-            const oldInicio = new Date(cita.timestamp_inicio)
-            const oldFin = new Date(cita.timestamp_fin)
+            const oldInicio = new Date(cita.timestamp_inicio_local)
+            const oldFin = new Date(cita.timestamp_fin_local)
             const duration = oldFin.getTime() - oldInicio.getTime()
 
             // Asignar manualmente la hora sobre el día actual de la cita (oldInicio)
@@ -222,8 +222,8 @@ export const CitaCard = memo(function CitaCard({
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    timestamp_inicio: formatToHermosilloISO(newInicio),
-                    timestamp_fin: formatToHermosilloISO(newFin),
+                    timestamp_inicio_local: formatToHermosilloISO(newInicio),
+                    timestamp_fin_local: formatToHermosilloISO(newFin),
                 }),
             })
 
@@ -252,7 +252,7 @@ export const CitaCard = memo(function CitaCard({
         no_show: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'No Show', badgeClass: 'bg-red-500/10 text-red-400 border-red-500/20' }
     }[cita.estado] || { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-slate-500', badgeVariant: 'outline' as const, label: cita.estado, badgeClass: 'bg-slate-500/10 text-slate-400' }
 
-    const citaStartTime = new Date(cita.timestamp_inicio)
+    const citaStartTime = new Date(cita.timestamp_inicio_local)
     const minutosDiferencia = Math.floor((currentTime.getTime() - citaStartTime.getTime()) / 60000)
     const minHastaCita = -minutosDiferencia
     const esNoShow = minutosDiferencia > 15
@@ -265,17 +265,17 @@ export const CitaCard = memo(function CitaCard({
 
     const hasNextSoon = allCitas.some(c => {
         if (c.id === cita.id || c.estado === 'cancelada' || c.estado === 'finalizada') return false
-        const start = new Date(c.timestamp_inicio)
+        const start = new Date(c.timestamp_inicio_local)
         return start > citaStartTime && (start.getTime() - currentTime.getTime()) < 30 * 60 * 1000
     })
 
     const horaInicio = citaStartTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
-    const horaFin = new Date(cita.timestamp_fin).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
+    const horaFin = new Date(cita.timestamp_fin_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
 
     // Horarios para generar botones (ajustado al horario de la sucursal) - MEMOIZED for parity with Nueva Cita
     const slotsParaCita = useMemo(() => {
         const slots = []
-        const fechaCita = new Date(cita.timestamp_inicio).toLocaleDateString('en-CA')
+        const fechaCita = new Date(cita.timestamp_inicio_local).toLocaleDateString('en-CA')
 
         // Determinar día de la semana para el horario de sucursal
         const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
@@ -301,11 +301,11 @@ export const CitaCard = memo(function CitaCard({
         }
 
         const duracionSlotMin = 30
-        const duracionCitaActual = Math.round((new Date(cita.timestamp_fin).getTime() - new Date(cita.timestamp_inicio).getTime()) / 60000)
+        const duracionCitaActual = Math.round((new Date(cita.timestamp_fin_local).getTime() - new Date(cita.timestamp_inicio_local).getTime()) / 60000)
 
         // La hora exacta de inicio de la cita actual (para bloquear ese mismo slot)
         const citaActualMins = (() => {
-            const d = new Date(cita.timestamp_inicio)
+            const d = new Date(cita.timestamp_inicio_local)
             return d.getHours() * 60 + d.getMinutes()
         })()
 
@@ -331,8 +331,8 @@ export const CitaCard = memo(function CitaCard({
                     cSMins = parse12hToMins(c.hora_cita_local)
                     cEMins = parse12hToMins(c.hora_fin_local)
                 } else {
-                    const cStart = new Date(c.timestamp_inicio)
-                    const cEnd = new Date(c.timestamp_fin)
+                    const cStart = new Date(c.timestamp_inicio_local)
+                    const cEnd = new Date(c.timestamp_fin_local)
                     cSMins = cStart.getHours() * 60 + cStart.getMinutes()
                     cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
                 }
@@ -392,7 +392,7 @@ export const CitaCard = memo(function CitaCard({
             }
         }
         return slots
-    }, [cita.timestamp_inicio, cita.timestamp_fin, allCitas, bloqueos, almuerzoBarbero, horarioSucursal])
+    }, [cita.timestamp_inicio_local, cita.timestamp_fin_local, allCitas, bloqueos, almuerzoBarbero, horarioSucursal])
 
     const isAnyModalOpen = showDetails || showMove || showCancel || showCheckout || showLateWarning || showEarlyWarning
     const isInProcess = cita.estado === 'en_proceso' || cita.estado === 'por_cobrar'
