@@ -26,6 +26,8 @@ export const metadata: Metadata = {
     authors: [{ name: 'BarberCloud' }],
 }
 
+import { Toaster } from "@/components/ui/sonner"
+
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -40,6 +42,7 @@ export default function RootLayout({
                 <AuthProvider>
                     {children}
                 </AuthProvider>
+                <Toaster position="top-center" expand={false} richColors closeButton />
             </body>
         </html>
     )

@@ -11,8 +11,11 @@ import {
     History,
     Clock,
     User,
-    Scissors
+    Scissors,
+    CreditCard,
+    AlertCircle
 } from 'lucide-react'
+import { toast } from "sonner"
 import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from './CitaCard'
@@ -49,6 +52,153 @@ function generarSlots(inicio: number, fin: number): string[] {
         slots.push(`${hour12}:30 ${ampm}`)
     }
     return slots
+}
+
+const TimelineAppointmentCard = ({ 
+    item, 
+    cardResetKey, 
+    longPressActive, 
+    highlightedCitaId, 
+    handleDragStart, 
+    handleDragEnd, 
+    handlePointerDown, 
+    handlePointerMove, 
+    handlePointerUp, 
+    activeTimer, 
+    isEnProceso, 
+    isPorCobrar, 
+    cardBorder, 
+    getStatusColor,
+    handleAtenderClick,
+    handleDetailsClick,
+    handleMoveClick,
+    handleCancelClick,
+    handleCheckoutClick
+}: any) => {
+    const controls = useDragControls()
+    const isThisLongPress = longPressActive === (item.tipo === 'cita' ? item.data.id : null)
+    const isThisHighlighted = highlightedCitaId === item.data.id
+
+    return (
+        <motion.div
+            key={`${item.data.id}-${cardResetKey}`}
+            data-drag-id={item.tipo === 'cita' ? item.data.id : undefined}
+            drag={item.tipo === 'cita' && (item.data.estado === 'confirmada' || item.data.estado === 'en_espera') ? "y" : false}
+            dragElastic={0}
+            dragMomentum={false}
+            dragControls={controls}
+            dragListener={false}
+            onDragStart={() => handleDragStart(item.data.id)}
+            onDragEnd={(e, info) => handleDragEnd(e, info, item.data)}
+            onPointerDown={(e) => item.tipo === 'cita' && handlePointerDown(e, item.data, controls)}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            animate={{
+                y: isThisLongPress ? undefined : 0,
+                scale: isThisLongPress ? 1.03 : isThisHighlighted ? [1, 1.05, 1] : 1,
+                boxShadow: isThisLongPress
+                    ? '0 10px 20px rgba(0,0,0,0.4), 0 0 15px rgba(234,179,8,0.2)'
+                    : isThisHighlighted
+                        ? '0 0 25px rgba(16,185,129,0.5)'
+                        : '0 2px 6px rgba(0,0,0,0.1)',
+                zIndex: isThisLongPress || isThisHighlighted ? 100 : 20,
+                borderColor: isThisHighlighted ? '#10b981' : undefined
+            }}
+            transition={{
+                type: 'spring',
+                damping: 20,
+                stiffness: 400,
+                mass: 0.3,
+                scale: isThisHighlighted ? { repeat: 3, duration: 1 } : undefined
+            }}
+            className={cn(
+                "absolute inset-x-0 h-[calc(100%-4px)] flex items-center justify-between gap-1 animate-fade-in backdrop-blur-sm px-2.5 py-1 rounded-xl border transition-colors group/card overflow-hidden cursor-pointer select-none",
+                isThisHighlighted ? 'bg-emerald-500/20' : cardBorder
+            )}
+            style={{
+                backgroundColor: isThisLongPress ? 'rgba(30,34,45,0.98)' : undefined,
+                WebkitTouchCallout: 'none',
+                touchAction: isThisLongPress ? 'none' : 'pan-y',
+                willChange: isThisLongPress ? 'transform' : 'auto',
+                transform: isThisLongPress ? 'translateZ(0)' : undefined,
+            }}
+        >
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 h-full">
+                <div className={`w-0.5 h-full rounded-full ${getStatusColor(item.tipo === 'cita' ? item.data.estado : '', item.tipo)} shrink-0`} />
+                <div className="min-w-0 flex-1 flex flex-col justify-center h-full">
+                    <div className="flex justify-between items-center gap-1">
+                        <p className={`text-[9px] font-black ${item.tipo === 'bloqueo' ? 'text-red-400' : item.tipo === 'almuerzo' ? 'text-amber-400' : 'text-white'} truncate leading-none uppercase tracking-tight`}>
+                            {item.tipo === 'cita' ? item.data.cliente_nombre : item.tipo === 'almuerzo' ? 'ALMUERZO' : 'BLOQUEO'}
+                        </p>
+                        {activeTimer && (
+                            <div className="px-1 py-0.5 rounded bg-white/5 text-[6px] font-black text-primary border border-primary/20 shrink-0">
+                                {activeTimer}
+                            </div>
+                        )}
+                    </div>
+                    <p className={`text-[6px] font-black ${item.tipo === 'cita' ? 'text-slate-500' : item.tipo === 'bloqueo' ? 'text-red-500/50' : 'text-amber-500/50'} uppercase tracking-widest leading-none mt-0.5 truncate`}>
+                        {item.tipo === 'cita' ? item.data.servicio_nombre : item.tipo === 'almuerzo' ? 'DESCANSO' : (item.data.motivo || 'OCUPADO')}
+                    </p>
+                </div>
+            </div>
+
+            {/* Quick Actions - Only for Citas */}
+            {item.tipo === 'cita' && (
+                <div className="flex items-center gap-1 shrink-0">
+                    {item.data.estado === 'confirmada' && (
+                        <button
+                            onClick={(e) => handleAtenderClick(e, item.data)}
+                            className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-black transition-all border border-emerald-500/10 group"
+                            title="Atender"
+                        >
+                            <Play className="w-3 h-3 md:w-4 md:h-4 fill-current" />
+                        </button>
+                    )}
+                    
+                    <div className="flex items-center gap-0.5 transition-opacity">
+                        <button
+                            onClick={(e) => handleDetailsClick(e, item.data)}
+                            className="w-6 h-6 rounded-lg bg-white/5 text-white/40 flex items-center justify-center hover:bg-primary hover:text-black transition-all border border-white/5"
+                            title="Detalles"
+                        >
+                            <Info className="w-3 h-3" />
+                        </button>
+                        
+                        {(item.data.estado === 'confirmada' || item.data.estado === 'en_espera') && (
+                            <button
+                                onClick={(e) => handleMoveClick(e, item.data)}
+                                className="w-6 h-6 rounded-lg bg-white/5 text-white/40 flex items-center justify-center hover:bg-primary hover:text-black transition-all border border-white/5"
+                                title="Mover"
+                            >
+                                <History className="w-3 h-3" />
+                            </button>
+                        )}
+
+                        {item.data.estado === 'por_cobrar' && (
+                            <button
+                                onClick={(e) => handleCheckoutClick(e, item.data)}
+                                className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-all border border-purple-500/20"
+                                title="Cobrar"
+                            >
+                                <CreditCard className="w-3 h-3" />
+                            </button>
+                        )}
+                        
+                        {(item.data.estado === 'confirmada' || item.data.estado === 'en_espera') && (
+                            <button
+                                onClick={(e) => handleCancelClick(e, item.data)}
+                                className="w-6 h-6 rounded-lg bg-white/5 text-red-500/40 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all border border-white/5"
+                                title="Cancelar"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </motion.div>
+    )
 }
 
 export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, onUpdate }: AgendaTimelineProps) {
@@ -88,8 +238,11 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
     const supabase = createClient()
 
-    const [activeModal, setActiveModal] = useState<'move' | 'cancel' | 'details' | null>(null)
+    const [activeModal, setActiveModal] = useState<'move' | 'cancel' | 'details' | 'checkout' | null>(null)
     const [showEarlyWarning, setShowEarlyWarning] = useState(false)
+    const [showActiveWarning, setShowActiveWarning] = useState(false)
+    const [highlightedCitaId, setHighlightedCitaId] = useState<string | null>(null)
+    const [citaActiva, setCitaActiva] = useState<CitaDesdeVista | null>(null)
     const [pendingCitaAction, setPendingCitaAction] = useState<CitaDesdeVista | null>(null)
 
     // Refs for drag state tracking
@@ -102,7 +255,6 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     if (proposedMove) lastMoveRef.current = proposedMove
     const displayMove = proposedMove || lastMoveRef.current
 
-    const dragControls = useDragControls()
     const timerRef = useRef<NodeJS.Timeout | null>(null)
     const touchStartPos = useRef<{ x: number, y: number } | null>(null)
     const activePointerId = useRef<number | null>(null)
@@ -143,7 +295,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         const scroll = scrollContainerRef.current
         if (!card || !scroll) return
 
-        const MAX_SPEED = 150
+        const MAX_SPEED = 50
         const VH = () => window.visualViewport?.height ?? window.innerHeight
         const ZONE = 220 // px from each edge of the visual viewport
 
@@ -190,10 +342,21 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const handleUserInteraction = () => {
         setIsManualScroll(true)
         if (timeoutRef.current) clearTimeout(timeoutRef.current)
-
         timeoutRef.current = setTimeout(() => {
             setIsManualScroll(false)
         }, 15000)
+    }
+
+    const scrollAndHighlight = (citaId: string) => {
+        // Encontrar el elemento en el DOM
+        const element = document.querySelector(`[data-drag-id="${citaId}"]`)
+        if (element) {
+            handleUserInteraction() // Pausar autoscroll de tiempo real
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            setHighlightedCitaId(citaId)
+            // Quitar el resaltado después de unos segundos
+            setTimeout(() => setHighlightedCitaId(null), 4000)
+        }
     }
 
     useEffect(() => {
@@ -285,23 +448,58 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         }
     }
 
-    const actualizarEstadoDirecto = async (citaId: string, nuevoEstado: EstadoCita) => {
+    const actualizarEstadoDirecto = async (cita: CitaDesdeVista, nuevoEstado: EstadoCita) => {
         try {
             const payload: any = { estado: nuevoEstado, updated_at: new Date().toISOString() }
+            
             if (nuevoEstado === 'en_proceso') {
                 payload.timestamp_inicio_servicio = new Date().toISOString()
             }
-            const { error } = await (supabase.from('citas') as any).update(payload).eq('id', citaId)
-            if (error) throw error
+
+            if (nuevoEstado === 'por_cobrar') {
+                const now = new Date()
+                payload.timestamp_fin_servicio = now.toISOString()
+
+                if (cita.timestamp_inicio_servicio) {
+                    const start = new Date(cita.timestamp_inicio_servicio)
+                    const diffMs = now.getTime() - start.getTime()
+                    payload.duracion_real_minutos = Math.round(diffMs / 60000)
+                } else {
+                    const scheduledStart = new Date(cita.timestamp_inicio_local)
+                    const diffMs = now.getTime() - scheduledStart.getTime()
+                    payload.duracion_real_minutos = Math.max(0, Math.round(diffMs / 60000))
+                }
+            }
+
+            const res = await fetch(`/api/citas/${cita.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+
+            if (!res.ok) {
+                const body = await res.json()
+                throw new Error(body.message || 'Error en la API')
+            }
+
             onUpdate?.()
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error updating state:', err)
-            alert('Error al actualizar')
+            alert(`Error al actualizar: ${err.message || 'Error desconocido'}`)
         }
     }
 
     const handleAtenderClick = (e: React.MouseEvent, cita: CitaDesdeVista) => {
         e.stopPropagation()
+
+        // VALIDACIÓN: ¿Hay otra cita en proceso?
+        const citaEnCurso = citas.find(c => c.estado === 'en_proceso')
+        if (citaEnCurso && citaEnCurso.id !== cita.id) {
+            setCitaActiva(citaEnCurso)
+            setShowActiveWarning(true)
+            return
+        }
+
         const citaStartTime = new Date(cita.timestamp_inicio_local)
         const minutosDiferencia = Math.floor((currentTime.getTime() - citaStartTime.getTime()) / 60000)
         const minHastaCita = -minutosDiferencia
@@ -310,13 +508,22 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             setPendingCitaAction(cita)
             setShowEarlyWarning(true)
         } else {
-            actualizarEstadoDirecto(cita.id, 'en_proceso')
+            actualizarEstadoDirecto(cita, 'en_proceso')
         }
     }
 
     const confirmarAtencionTemprana = () => {
         if (pendingCitaAction) {
-            actualizarEstadoDirecto(pendingCitaAction.id, 'en_proceso')
+            // VALIDACIÓN: ¿Hay otra cita en proceso? (doble check por si cambió mientras estaba el modal)
+            const citaEnCurso = citas.find(c => c.estado === 'en_proceso')
+            if (citaEnCurso && citaEnCurso.id !== pendingCitaAction.id) {
+                setCitaActiva(citaEnCurso)
+                setShowActiveWarning(true)
+                setShowEarlyWarning(false)
+                return
+            }
+
+            actualizarEstadoDirecto(pendingCitaAction, 'en_proceso')
             setShowEarlyWarning(false)
             setPendingCitaAction(null)
         }
@@ -331,7 +538,9 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         document.body.style.overscrollBehavior = 'none'
     }
 
-    const handlePointerDown = (e: React.PointerEvent, cita: CitaDesdeVista) => {
+    const handlePointerDown = (e: React.PointerEvent, cita: CitaDesdeVista, controls: any) => {
+        // Evitar que el clic se propague al slot o a citas que se solapen visualmente
+        e.stopPropagation()
         if (cita.estado !== 'confirmada') return
 
         touchStartPos.current = { x: e.clientX, y: e.clientY }
@@ -345,9 +554,9 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 try { target.setPointerCapture(activePointerId.current) } catch (_) { }
             }
             setLongPressActive(cita.id)
-            dragControls.start(e)
+            controls.start(e)
             if (window.navigator?.vibrate) window.navigator.vibrate(50)
-        }, 2000)
+        }, 600)
     }
 
     const handlePointerMove = (e: React.PointerEvent) => {
@@ -397,10 +606,52 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             return
         }
 
-        // Snap to half-hour grid
+        // Snap to half-hour grid and normalize
         const originalStart = new Date(cita.timestamp_inicio_local)
+        const originalEnd = new Date(cita.timestamp_fin_local)
+        const durationMs = originalEnd.getTime() - originalStart.getTime()
+
         const newStart = new Date(originalStart)
         newStart.setMinutes(originalStart.getMinutes() + (slotsMoved * 30))
+        newStart.setSeconds(0)
+        newStart.setMilliseconds(0)
+
+        // Ensure snap to nearest 30m if original was slightly off
+        const currentMins = newStart.getMinutes()
+        if (currentMins % 30 !== 0) {
+            newStart.setMinutes(Math.round(currentMins / 30) * 30)
+        }
+
+        const newEnd = new Date(newStart.getTime() + durationMs)
+
+        // --- VALIDACIÓN DE COLISIONES ROBUSTA ---
+        const colisionProhibida = citas.find((c: CitaDesdeVista) => {
+            if (c.id === cita.id) return false
+            const cancelados = ['cancelada', 'no_show']
+            if (cancelados.includes(c.estado)) return false
+
+            const cStart = new Date(c.timestamp_inicio_local).getTime()
+            const cEnd = new Date(c.timestamp_fin_local).getTime()
+            const nStart = newStart.getTime()
+            const nEnd = newEnd.getTime()
+
+            const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada', 'confirmada', 'en_espera']
+            if (!estadosProhibidos.includes(c.estado)) return false
+
+            // Collision if intervals overlap (strict inequalities for back-to-back support)
+            return (nStart < cEnd && nEnd > cStart)
+        })
+
+        if (colisionProhibida) {
+            toast.error("Colisión de Horario", {
+                description: `No es posible mover aquí. Se solapa con una cita ${colisionProhibida.estado.replace('_', ' ')} de ${colisionProhibida.cliente_nombre}.`,
+                icon: <AlertCircle className="w-5 h-5 text-red-500" />,
+                duration: 4000
+            })
+            setCardResetKey(k => k + 1)
+            return
+        }
+
         setProposedMove({ cita, newStartTime: newStart.toISOString() })
     }
 
@@ -521,93 +772,27 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                 </div>
                                                 <div className="relative flex-1 h-full py-1 pr-1.5">
                                                     {item ? (
-                                                        <motion.div
-                                                            key={`${item.data.id}-${cardResetKey}`}
-                                                            data-drag-id={item.tipo === 'cita' ? item.data.id : undefined}
-                                                            drag={item.tipo === 'cita' && item.data.estado === 'confirmada' ? "y" : false}
-                                                            dragControls={dragControls}
-                                                            dragListener={false}
-                                                            dragElastic={0}
-                                                            dragMomentum={false}
-                                                            onDragStart={() => handleDragStart(item.data.id)}
-                                                            onDragEnd={(e, info) => handleDragEnd(e, info, item.data)}
-                                                            onPointerDown={(e) => item.tipo === 'cita' && handlePointerDown(e, item.data)}
-                                                            onPointerMove={handlePointerMove}
-                                                            onPointerUp={handlePointerUp}
-                                                            onPointerCancel={handlePointerUp}
-                                                            animate={{
-                                                                y: longPressActive === (item.tipo === 'cita' ? item.data.id : null) ? undefined : 0,
-                                                                scale: longPressActive === (item.tipo === 'cita' ? item.data.id : null) ? 1.03 : 1,
-                                                                boxShadow: longPressActive === (item.tipo === 'cita' ? item.data.id : null) ? '0 10px 20px rgba(0,0,0,0.4), 0 0 15px rgba(234,179,8,0.2)' : '0 2px 6px rgba(0,0,0,0.1)',
-                                                                zIndex: longPressActive === (item.tipo === 'cita' ? item.data.id : null) ? 100 : 20
-                                                            }}
-                                                            transition={{ type: 'spring', damping: 20, stiffness: 400, mass: 0.3 }}
-                                                            className={`absolute inset-x-0 h-[calc(100%-4px)] flex items-center justify-between gap-1 animate-fade-in backdrop-blur-sm px-2.5 py-1 rounded-xl border ${cardBorder} transition-colors group/card overflow-hidden cursor-pointer select-none`}
-                                                            style={{
-                                                                backgroundColor: longPressActive === (item.tipo === 'cita' ? item.data.id : null) ? 'rgba(30,34,45,0.98)' : undefined,
-                                                                WebkitTouchCallout: 'none',
-                                                                touchAction: longPressActive === (item.tipo === 'cita' ? item.data.id : null) ? 'none' : 'pan-y',
-                                                                // GPU acceleration for smoother drag (Vercel: rendering-hoist-jsx principle)
-                                                                willChange: longPressActive === (item.tipo === 'cita' ? item.data.id : null) ? 'transform' : 'auto',
-                                                                transform: longPressActive === (item.tipo === 'cita' ? item.data.id : null) ? 'translateZ(0)' : undefined,
-                                                            }}
-                                                        >
-                                                            <div className="flex items-center gap-1.5 min-w-0 flex-1 h-full">
-                                                                <div className={`w-0.5 h-full rounded-full ${getStatusColor(item.tipo === 'cita' ? item.data.estado : '', item.tipo)} shrink-0`} />
-                                                                <div className="min-w-0 flex-1 flex flex-col justify-center h-full">
-                                                                    <div className="flex justify-between items-center gap-1">
-                                                                        <p className={`text-[9px] font-black ${item.tipo === 'bloqueo' ? 'text-red-400' : item.tipo === 'almuerzo' ? 'text-amber-400' : 'text-white'} truncate leading-none uppercase tracking-tight`}>
-                                                                            {item.tipo === 'cita' ? item.data.cliente_nombre : item.tipo === 'almuerzo' ? 'ALMUERZO' : 'BLOQUEO'}
-                                                                        </p>
-                                                                        {activeTimer && (
-                                                                            <div className="px-1 py-0.5 rounded bg-white/5 text-[6px] font-black text-primary border border-primary/20 shrink-0">
-                                                                                {activeTimer}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                    <p className={`text-[6px] font-black ${item.tipo === 'cita' ? 'text-slate-500' : item.tipo === 'bloqueo' ? 'text-red-500/50' : 'text-amber-500/50'} uppercase tracking-widest leading-none mt-0.5 truncate`}>
-                                                                        {item.tipo === 'cita' ? item.data.servicio_nombre : item.tipo === 'almuerzo' ? 'DESCANSO' : (item.data.motivo || 'OCUPADO')}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Quick Actions - Only for Citas */}
-                                                            {item.tipo === 'cita' && (
-                                                                <div className="flex items-center gap-1 shrink-0">
-                                                                    {item.data.estado === 'confirmada' && (
-                                                                        <>
-                                                                            <button
-                                                                                onClick={(e) => handleAtenderClick(e, item.data)}
-                                                                                className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-black transition-all border border-emerald-500/10 group"
-                                                                                title="Atender"
-                                                                            >
-                                                                                <Play className="w-3 h-3 md:w-4 md:h-4 fill-current" />
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={(e) => { e.stopPropagation(); setSelectedCita(item.data); setActiveModal('move'); }}
-                                                                                className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-white/5 text-white/40 flex items-center justify-center hover:bg-white/20 hover:text-white transition-all border border-white/5"
-                                                                                title="Mover"
-                                                                            >
-                                                                                <RefreshCcw className="w-3 h-3 md:w-4 md:h-4" />
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={(e) => { e.stopPropagation(); setSelectedCita(item.data); setActiveModal('cancel'); }}
-                                                                                className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all border border-red-500/10"
-                                                                                title="Cancelar"
-                                                                            >
-                                                                                <X className="w-3 h-3 md:w-4 md:h-4" />
-                                                                            </button>
-                                                                        </>
-                                                                    )}
-                                                                    <button
-                                                                        onClick={(e) => { e.stopPropagation(); setSelectedCita(item.data); setActiveModal('details'); }}
-                                                                        className="w-6 h-6 rounded-lg bg-white/5 text-white/40 flex items-center justify-center hover:bg-white/20 hover:text-white transition-all border border-white/5"
-                                                                    >
-                                                                        <Info className="w-3 h-3" />
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                        </motion.div>
+                                                        <TimelineAppointmentCard
+                                                            item={item}
+                                                            cardResetKey={cardResetKey}
+                                                            longPressActive={longPressActive}
+                                                            highlightedCitaId={highlightedCitaId}
+                                                            handleDragStart={handleDragStart}
+                                                            handleDragEnd={handleDragEnd}
+                                                            handlePointerDown={handlePointerDown}
+                                                            handlePointerMove={handlePointerMove}
+                                                            handlePointerUp={handlePointerUp}
+                                                            activeTimer={activeTimer}
+                                                            isEnProceso={isEnProceso}
+                                                            isPorCobrar={isPorCobrar}
+                                                            cardBorder={cardBorder}
+                                                            getStatusColor={getStatusColor}
+                                                            handleAtenderClick={handleAtenderClick}
+                                                            handleDetailsClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('details'); }}
+                                                            handleMoveClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('move'); }}
+                                                            handleCancelClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('cancel'); }}
+                                                            handleCheckoutClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('checkout'); }}
+                                                        />
                                                     ) : (
                                                         <div className="h-px w-4 bg-white/5 ml-1" />
                                                     )}
@@ -660,36 +845,76 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 </div>
             )}
 
-            {/* Aviso Anticipado Modal */}
-            <Dialog open={showEarlyWarning} onOpenChange={(open) => { if (!open) { setShowEarlyWarning(false); setPendingCitaAction(null); } }}>
-                <DialogContent className="bg-[#1A1D24] border-white/10 rounded-3xl max-w-sm p-6 overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-amber-600" />
-                    <DialogHeader className="flex flex-col items-center justify-center text-center pt-4">
-                        <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 border border-amber-500/30 text-amber-500">
-                            <AlertTriangle className="w-8 h-8" />
+            {/* Early Warning Dialog */}
+            <Dialog open={showEarlyWarning} onOpenChange={setShowEarlyWarning}>
+                <DialogContent className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] sm:max-w-sm w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold opacity-50" />
+                    <DialogHeader className="flex flex-col items-center pt-6 px-6">
+                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                            <Clock className="w-8 h-8 text-primary animate-pulse" />
                         </div>
-                        <DialogTitle className="text-lg font-black text-white uppercase tracking-wide">Cliente Anticipado</DialogTitle>
-                        <DialogDescription className="text-sm font-light text-slate-300 leading-relaxed pt-2">
-                            Este cliente llegó con <strong className="font-bold text-amber-500">más de 30 minutos</strong> de anticipación.
-                            ¿Iniciar su corte de todas formas?
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight text-center">Atención Adelantada</DialogTitle>
+                        <DialogDescription className="text-white/60 text-center text-sm">
+                            Faltan unos minutos para esta cita. ¿Deseas comenzar el servicio ahora mismo?
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="flex flex-row gap-2 w-full mt-2">
-                        <Button
-                            variant="ghost"
-                            onClick={() => { setShowEarlyWarning(false); setPendingCitaAction(null); }}
-                            className="flex-1 h-12 bg-white/5 text-white/40 rounded-xl font-black uppercase tracking-widest text-[9px] border border-white/5 hover:bg-white/10"
-                        >
-                            Esperar
+                    <div className="flex flex-col gap-3 mt-4 p-8">
+                        <Button onClick={confirmarAtencionTemprana} className="w-full bg-gradient-gold text-black font-black uppercase tracking-widest py-6 rounded-2xl">
+                            Sí, Atender Ahora
                         </Button>
-                        <Button
-                            onClick={confirmarAtencionTemprana}
-                            className="flex-[2] h-12 bg-amber-500 text-black rounded-xl font-black uppercase tracking-widest text-[9px] hover:bg-amber-600 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <Play className="w-3 h-3 fill-current" />
-                            Sí, atender ahora
+                        <Button variant="ghost" onClick={() => setShowEarlyWarning(false)} className="w-full text-white/40 hover:text-white hover:bg-white/5 font-black uppercase rounded-2xl">
+                            No, Esperar
                         </Button>
-                    </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Active Appointment Warning Dialog */}
+            <Dialog open={showActiveWarning} onOpenChange={setShowActiveWarning}>
+                <DialogContent className="bg-[#050608] border-red-500/20 text-white rounded-[2rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border shadow-[0_0_50px_rgba(239,68,68,0.15)]">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-red-600 opacity-50" />
+                    <DialogHeader className="flex flex-col items-center pt-10 px-6">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
+                            <AlertTriangle className="w-10 h-10 text-red-500 animate-pulse" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-center leading-none">
+                            Servicio en Proceso
+                        </DialogTitle>
+                        <DialogDescription className="text-red-400/60 text-center text-sm mt-3 font-bold uppercase tracking-widest leading-relaxed">
+                            No es posible iniciar un nuevo servicio <br/> sin finalizar el que está activo.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-8 space-y-4">
+                        {citaActiva && (
+                            <div className="p-6 bg-white/[0.03] rounded-[1.5rem] border border-white/5">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">Cita Activa</p>
+                                <p className="text-xl font-black text-white uppercase italic">{citaActiva.cliente_nombre}</p>
+                                <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-widest">{citaActiva.servicio_nombre}</p>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-3 pt-2">
+                            <Button
+                                onClick={() => {
+                                    setShowActiveWarning(false)
+                                    if (citaActiva) {
+                                        scrollAndHighlight(citaActiva.id)
+                                    }
+                                }}
+                                className="w-full bg-white text-black hover:bg-white/90 font-black uppercase tracking-widest py-7 rounded-2xl shadow-xl active:scale-[0.98] transition-all"
+                            >
+                                Gestionar Cita Activa
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowActiveWarning(false)}
+                                className="w-full text-white/40 hover:text-white hover:bg-white/5 font-black uppercase tracking-widest py-6 rounded-2xl"
+                            >
+                                Entendido
+                            </Button>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
 

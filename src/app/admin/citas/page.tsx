@@ -368,6 +368,7 @@ function CitasContent() {
                 showModal && (
                     <CitaModal
                         cita={editingCita}
+                        allCitas={citas}
                         onClose={() => setShowModal(false)}
                         onSave={() => {
                             setShowModal(false)
@@ -480,8 +481,9 @@ function getDemoCitas(fecha: string): CitaDesdeVista[] {
 }
 
 
-function CitaModal({ cita, onClose, onSave, initialOrigen }: {
+function CitaModal({ cita, allCitas, onClose, onSave, initialOrigen }: {
     cita?: CitaDesdeVista | null
+    allCitas: CitaDesdeVista[]
     onClose: () => void
     onSave: () => void
     initialOrigen?: 'whatsapp' | 'walkin'
@@ -606,6 +608,36 @@ function CitaModal({ cita, onClose, onSave, initialOrigen }: {
             const TZ_OFFSET = '-07:00'
             const startISO = `${formData.fecha}T${formData.hora}:00${TZ_OFFSET}`
             const endISO = `${formData.fecha}T${formData.horaFin}:00${TZ_OFFSET}`
+
+            // --- VALIDACIÓN DE COLISIONES ---
+            const startMins = parseInt(formData.hora.split(':')[0]) * 60 + parseInt(formData.hora.split(':')[1])
+            const endMins = parseInt(formData.horaFin.split(':')[0]) * 60 + parseInt(formData.horaFin.split(':')[1])
+
+            const colisionProhibida = allCitas.find((c: CitaDesdeVista) => {
+                if (cita && c.id === cita.id) return false
+                // Only check for the selected barber if specified
+                if (formData.barbero_id && String(c.barbero_id) !== String(formData.barbero_id)) return false
+                
+                const cancelados = ['cancelada', 'no_show']
+                if (cancelados.includes(c.estado)) return false
+
+                const cStart = new Date(c.timestamp_inicio_local)
+                const cEnd = new Date(c.timestamp_fin_local)
+                const cSMins = cStart.getHours() * 60 + cStart.getMinutes()
+                const cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
+
+                const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada']
+                if (!estadosProhibidos.includes(c.estado)) return false
+
+                const overlaps = (startMins < cEMins && endMins > cSMins)
+                return overlaps
+            })
+
+            if (colisionProhibida) {
+                alert(`No es posible agendar en este horario porque coincide con una cita ${colisionProhibida.estado.replace('_', ' ')} del barbero ${colisionProhibida.barbero_nombre}.`)
+                setLoading(false)
+                return
+            }
 
             const payload = {
                 sucursal_id: sucursalId,

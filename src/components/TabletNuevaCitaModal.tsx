@@ -285,6 +285,32 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             const fechaInicioObj = new Date(timestampCompleto)
             const fechaFinObj = new Date(fechaInicioObj.getTime() + duracion * 60000)
 
+            // --- VALIDACIÓN DE COLISIONES ---
+            const startMins = fechaInicioObj.getHours() * 60 + fechaInicioObj.getMinutes()
+            const endMins = fechaFinObj.getHours() * 60 + fechaFinObj.getMinutes()
+
+            const colisionProhibida = citasParaFecha.find((c: any) => {
+                const cancelados = ['cancelada', 'no_show']
+                if (cancelados.includes(c.estado)) return false
+
+                const cStart = new Date(c.timestamp_inicio_local)
+                const cEnd = new Date(c.timestamp_fin_local)
+                const cSMins = cStart.getHours() * 60 + cStart.getMinutes()
+                const cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
+
+                const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada']
+                if (!estadosProhibidos.includes(c.estado)) return false
+
+                const overlaps = (startMins < cEMins && endMins > cSMins)
+                return overlaps
+            })
+
+            if (colisionProhibida) {
+                setError(`No es posible agendar en este horario porque coincide con una cita ${colisionProhibida.estado.replace('_', ' ')}.`)
+                setLoading(false)
+                return
+            }
+
             // Formatear el timestamp_fin_local resultante en el mismo string con timezone de Hermosillo
             const finStrFormatter = new Intl.DateTimeFormat('en-GB', {
                 timeZone: 'America/Hermosillo',

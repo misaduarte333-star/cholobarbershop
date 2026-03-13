@@ -16,18 +16,26 @@ import {
     PlayCircle,
     Scissors,
     CreditCard,
-    Info,
+    Trash2,
+    Calendar as CalendarIcon,
     Clock,
+    User,
+    CheckCircle2,
+    History,
+    Info,
+    ChevronRight,
+    MessageSquare,
+    AlertTriangle,
+    AlertCircle,
     StickyNote,
     UserCheck,
     Timer,
-    AlertTriangle,
     CalendarClock,
-    Calendar as CalendarIcon,
     Store,
-    MessageCircle,
+    MessageCircle as MessageCircleIcon,
     Phone
 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
     Dialog,
     DialogContent,
@@ -46,7 +54,7 @@ interface CitaCardProps {
     style?: React.CSSProperties
     currentTime: Date
     allCitas: CitaDesdeVista[]
-    autoOpen?: 'move' | 'cancel' | 'details' | null
+    autoOpen?: 'move' | 'cancel' | 'details' | 'checkout' | null
     bloqueos?: any[]
     almuerzoBarbero?: any
     horarioSucursal?: any
@@ -92,18 +100,21 @@ export const CitaCard = memo(function CitaCard({
         if (autoOpen === 'details') setShowDetails(true)
         if (autoOpen === 'move') setShowMove(true)
         if (autoOpen === 'cancel') setShowCancel(true)
+        if (autoOpen === 'checkout') setShowCheckout(true)
     }, [autoOpen, cita.id]) // Depend on cita.id too in case the same ghost card is reused for different appointments
 
     // States
     const [loading, setLoading] = useState(false)
-    const [showDetails, setShowDetails] = useState(false)
+    const [showEarlyWarning, setShowEarlyWarning] = useState(false)
+    const [showActiveWarning, setShowActiveWarning] = useState(false)
+    const [citaActiva, setCitaActiva] = useState<CitaDesdeVista | null>(null)
+    const [showDetails, setShowDetails] = useState(autoOpen === 'details')
     const [showMove, setShowMove] = useState(false)
     const [showCancel, setShowCancel] = useState(false)
     const [showCheckout, setShowCheckout] = useState(false)
     const [showLateWarning, setShowLateWarning] = useState(false)
     const [newHour, setNewHour] = useState('')
     const [agreedCancel, setAgreedCancel] = useState(false)
-    const [showEarlyWarning, setShowEarlyWarning] = useState(false)
 
     // Checkout states
     const [montoFinal, setMontoFinal] = useState<number>(cita.servicio_precio || 0)
@@ -114,6 +125,17 @@ export const CitaCard = memo(function CitaCard({
 
     const actualizarEstado = async (nuevoEstado: EstadoCita) => {
         if (loading) return
+
+        // VALIDACIÓN: ¿Hay otra cita en proceso?
+        if (nuevoEstado === 'en_proceso') {
+            const citaEnCurso = allCitas.find(c => c.estado === 'en_proceso' && c.id !== cita.id)
+            if (citaEnCurso) {
+                setCitaActiva(citaEnCurso)
+                setShowActiveWarning(true)
+                setShowEarlyWarning(false)
+                return
+            }
+        }
 
         console.log(`🚀 INICIO ACTUALIZACION: ${nuevoEstado} para ${cita.cliente_nombre}`)
         setLoading(true)
@@ -216,6 +238,37 @@ export const CitaCard = memo(function CitaCard({
                 const parts = timeFormatter.formatToParts(d)
                 const p = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {} as any)
                 return `${dateStr}T${p.hour}:${p.minute}:00${TZ_OFFSET}`
+            }
+
+            // --- VALIDACIÓN DE COLISIONES ---
+            const startMins = newInicio.getHours() * 60 + newInicio.getMinutes()
+            const endMins = newFin.getHours() * 60 + newFin.getMinutes()
+
+            const colisionProhibida = allCitas.find((c: CitaDesdeVista) => {
+                if (c.id === cita.id) return false
+                const cancelados = ['cancelada', 'no_show']
+                if (cancelados.includes(c.estado)) return false
+
+                const cStart = new Date(c.timestamp_inicio_local)
+                const cEnd = new Date(c.timestamp_fin_local)
+                const cSMins = cStart.getHours() * 60 + cStart.getMinutes()
+                const cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
+
+                // Actualizado para incluir 'confirmada' y 'en_espera' en las restricciones de colisión
+                const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada', 'confirmada', 'en_espera']
+                if (!estadosProhibidos.includes(c.estado)) return false
+
+                const overlaps = (startMins < cEMins && endMins > cSMins)
+                return overlaps
+            })
+
+            if (colisionProhibida) {
+                toast.error("Horario no disponible", {
+                    description: `Ya existe una cita ${colisionProhibida.estado.replace('_', ' ')} en este horario.`,
+                    icon: <AlertCircle className="w-5 h-5 text-red-500" />
+                })
+                setLoading(false)
+                return
             }
 
             const res = await fetch(`/api/citas/${cita.id}`, {
@@ -529,15 +582,17 @@ export const CitaCard = memo(function CitaCard({
                                     {esNoShow ? 'Tardío' : 'Atender'}
                                 </Button>
 
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowMove(true)}
-                                    className="h-auto py-2.5 px-3 bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-[9px] font-black uppercase tracking-[0.1em]"
-                                >
-                                    <CalendarClock className="w-3.5 h-3.5" />
-                                    Mover
-                                </Button>
+                                {cita.estado === 'confirmada' && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowMove(true)}
+                                        className="h-auto py-2.5 px-3 bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-[9px] font-black uppercase tracking-[0.1em]"
+                                    >
+                                        <CalendarClock className="w-3.5 h-3.5" />
+                                        Mover
+                                    </Button>
+                                )}
 
                                 <Button
                                     variant="outline"
@@ -616,7 +671,7 @@ export const CitaCard = memo(function CitaCard({
                             Faltan <strong>{minHastaCita} minutos</strong> para esta cita. ¿Deseas comenzar el servicio ahora mismo?
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex flex-col gap-3 mt-4">
+                    <div className="flex flex-col gap-3 mt-4 p-6">
                         <Button onClick={() => { setShowEarlyWarning(false); actualizarEstado('en_proceso') }} className="w-full bg-gradient-gold text-black font-black uppercase tracking-widest py-6">
                             Sí, Atender Ahora
                         </Button>
@@ -627,30 +682,114 @@ export const CitaCard = memo(function CitaCard({
                 </DialogContent>
             </Dialog>
 
+            {/* Active Appointment Warning Dialog */}
+            <Dialog open={showActiveWarning} onOpenChange={setShowActiveWarning}>
+                <DialogContent className="bg-[#050608] border-red-500/20 text-white rounded-[2rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border shadow-[0_0_50px_rgba(239,68,68,0.15)]">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-red-600 opacity-50" />
+                    <DialogHeader className="flex flex-col items-center pt-10 px-6">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
+                            <AlertTriangle className="w-10 h-10 text-red-500 animate-pulse" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-center leading-none">
+                            Servicio en Proceso
+                        </DialogTitle>
+                        <DialogDescription className="text-red-400/60 text-center text-sm mt-3 font-bold uppercase tracking-widest leading-relaxed">
+                            No es posible iniciar un nuevo servicio <br/> sin finalizar el que está activo.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-8 space-y-4">
+                        {citaActiva && (
+                            <div className="p-6 bg-white/[0.03] rounded-[1.5rem] border border-white/5">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">Cita Activa</p>
+                                <p className="text-xl font-black text-white uppercase italic">{citaActiva.cliente_nombre}</p>
+                                <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-widest">{citaActiva.servicio_nombre}</p>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-3 pt-2">
+                            <Button
+                                onClick={() => {
+                                    setShowActiveWarning(false)
+                                    // In CitaCard (upcoming list), we just close and expect the user 
+                                    // to see it highlighted in the timeline if it's visible.
+                                    // If we had a global store or context, we could trigger the scroll here too.
+                                }}
+                                className="w-full bg-white text-black hover:bg-white/90 font-black uppercase tracking-widest py-7 rounded-2xl shadow-xl active:scale-[0.98] transition-all"
+                            >
+                                Entendido
+                            </Button>
+
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             {/* Details Dialog */}
             <Dialog open={showDetails} onOpenChange={(open) => { setShowDetails(open); if (!open) onClose?.(); }}>
-                <DialogContent className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter font-display">Detalles de la Cita</DialogTitle>
+                <DialogContent className="bg-[#050608] border-white/10 text-white rounded-[2rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border shadow-[0_0_50px_rgba(0,0,0,1)]">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold opacity-50" />
+                    
+                    <DialogHeader className="px-8 pt-8 pb-4">
+                        <div className="flex items-center justify-between">
+                            <DialogTitle className="text-xl font-black uppercase tracking-widest font-display text-white">
+                                Detalles de la Cita
+                            </DialogTitle>
+                        </div>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="p-6 bg-white/5 rounded-[2rem] border border-white/5">
-                            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-2">Cliente</p>
-                            <p className="text-2xl font-black text-white font-display uppercase tracking-tight">{cita.cliente_nombre}</p>
-                            {cita.cliente_telefono && <p className="text-sm font-bold text-primary mt-1 tracking-widest">{cita.cliente_telefono}</p>}
+
+                    <div className="px-8 pb-8 space-y-4">
+                        {/* Cliente Section */}
+                        <div className="p-8 bg-white/[0.03] rounded-[2rem] border border-white/5 relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Cliente</p>
+                            <h2 className="text-3xl font-black text-white font-display uppercase tracking-tighter leading-tight italic">
+                                {cita.cliente_nombre}
+                            </h2>
+                            {cita.cliente_telefono && (
+                                <p className="text-lg font-black text-primary mt-2 tracking-widest font-mono">
+                                    {cita.cliente_telefono}
+                                </p>
+                            )}
                         </div>
+
+                        {/* Info Grid */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="p-6 bg-white/5 rounded-[2rem] border border-white/5">
-                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-2">Servicio</p>
-                                <p className="font-black text-white text-sm uppercase">{cita.servicio_nombre}</p>
-                                <p className="text-lg font-black text-primary mt-1 tracking-tight">${cita.servicio_precio}</p>
+                            {/* Servicio */}
+                            <div className="p-8 bg-white/[0.03] rounded-[2.5rem] border border-white/5 relative overflow-hidden group">
+                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Servicio</p>
+                                <p className="text-xl font-black text-white uppercase tracking-tight italic leading-tight">
+                                    {cita.servicio_nombre}
+                                </p>
+                                <p className="text-2xl font-black text-primary mt-2 flex items-baseline gap-1">
+                                    <span className="text-sm opacity-50">$</span>
+                                    {cita.servicio_precio}
+                                </p>
                             </div>
-                            <div className="p-6 bg-white/5 rounded-[2rem] border border-white/5">
-                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-2">Horario</p>
-                                <p className="font-black text-white text-sm uppercase">{horaInicio}</p>
-                                <p className="text-[10px] text-white/40 mt-1 uppercase font-bold">{horaFin}</p>
+
+                            {/* Horario */}
+                            <div className="p-8 bg-white/[0.03] rounded-[2.5rem] border border-white/5 relative overflow-hidden group text-right">
+                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Horario</p>
+                                <p className="text-xl font-black text-white uppercase tracking-tighter tabular-nums leading-tight italic">
+                                    {horaInicio.replace('.', '')}
+                                </p>
+                                <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-2">
+                                    {horaFin.replace('.', '')}
+                                </p>
                             </div>
                         </div>
+                        
+                        {cita.notas && (
+                            <div className="p-6 bg-blue-500/5 rounded-[1.5rem] border border-blue-500/10">
+                                <p className="text-[8px] font-black text-blue-400/40 uppercase tracking-[0.3em] mb-2 flex items-center gap-2">
+                                    <StickyNote className="w-2.5 h-2.5" />
+                                    Notas
+                                </p>
+                                <p className="text-[11px] font-medium text-blue-300 italic opacity-80 leading-relaxed">
+                                    "{cita.notas}"
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
