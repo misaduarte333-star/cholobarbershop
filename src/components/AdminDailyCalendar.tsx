@@ -13,13 +13,16 @@ interface AdminDailyCalendarProps {
 
 const HORA_INICIO = 8
 const HORA_FIN = 21 // Till 9 PM
-const MINUTE_HEIGHT = 1.1 // 1.1px per minute = 66px per hour
+const MINUTE_HEIGHT = 1.6 // 1.6px per minute = 96px per hour (48px per 30m)
 const HEADER_HEIGHT = 40 // Height of the barber header and axis corner spacer
 
-function generarSlots(): number[] {
-    const slots: number[] = []
+function generarSlots(): { h: number, m: number }[] {
+    const slots: { h: number, m: number }[] = []
     for (let hora = HORA_INICIO; hora <= HORA_FIN; hora++) {
-        slots.push(hora)
+        slots.push({ h: hora, m: 0 })
+        if (hora < HORA_FIN) {
+            slots.push({ h: hora, m: 30 })
+        }
     }
     return slots
 }
@@ -88,8 +91,8 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return null
 
         const startY = getTimeY(start.getHours(), start.getMinutes())
-        const endY = getTimeY(end.getHours(), end.getMinutes())
-        const height = Math.max(24, endY - startY)
+        // Forzar altura de exactamente 30 minutos (independientemente de la duración real)
+        const height = 30 * MINUTE_HEIGHT
 
         const isEnProceso = cita.estado === 'en_proceso'
         const isPorCobrar = cita.estado === 'por_cobrar'
@@ -113,25 +116,20 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
         return (
             <div
                 key={cita.id}
-                className={`absolute left-1 right-1 rounded-xl border p-2 overflow-hidden shadow-lg backdrop-blur-sm transition-transform hover:scale-[1.02] hover:z-20 ${getStatusColor(cita.estado)} ${extraClasses}`}
-                style={{ top: `${startY}px`, height: `${height}px` }}
+                className={`absolute left-1 right-1 rounded-lg border px-2 py-1.5 overflow-hidden shadow-sm backdrop-blur-sm transition-all hover:scale-[1.01] hover:z-20 ${getStatusColor(cita.estado)} ${extraClasses}`}
+                style={{ top: `${startY + 3}px`, height: `${height - 6}px` }}
             >
-                <div className="flex justify-between items-start gap-1">
-                    <p className="text-[10px] font-black uppercase tracking-tight leading-tight truncate">{cita.cliente_nombre}</p>
+                <div className="flex justify-between items-center gap-1 mb-0.5">
+                    <p className="text-[11px] font-black uppercase tracking-tight leading-none truncate">{cita.cliente_nombre}</p>
                     {(isEnProceso || isPorCobrar) && activeTimer && (
-                        <div className={`px-1.5 py-0.5 rounded text-[8px] font-black flex-shrink-0 flex items-center gap-1 border ${isEnProceso ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                        <div className={`px-1 rounded-[4px] text-[7px] font-black flex-shrink-0 flex items-center gap-0.5 border ${isEnProceso ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
                             'bg-purple-500/20 text-purple-400 border-purple-500/30'
                             }`}>
-                            <span className={`material-icons-round text-[9px] ${isEnProceso ? 'animate-spin-slow' : ''}`}>
-                                {isEnProceso ? 'hourglass_top' : 'done_all'}
-                            </span>
                             <span className={isEnProceso ? 'animate-pulse' : ''}>{activeTimer}</span>
                         </div>
                     )}
                 </div>
-                {height >= 40 && (
-                    <p className="text-[9px] opacity-70 uppercase truncate mt-0.5">{cita.servicio_nombre}</p>
-                )}
+                <p className="text-[9px] opacity-70 font-bold uppercase truncate leading-none">{cita.servicio_nombre}</p>
             </div>
         )
     }
@@ -208,19 +206,21 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
                 <div className="relative flex min-w-full" style={{ height: `${(HORA_FIN - HORA_INICIO) * 60 * MINUTE_HEIGHT + HEADER_HEIGHT + 20}px` }}>
 
                     {/* Time labels axis (Sticky Left) */}
-                    <div className="sticky left-0 z-50 w-8 sm:w-16 bg-black/95 backdrop-blur-md border-r border-white/10 h-full flex-shrink-0">
+                    <div className="sticky left-0 z-50 w-8 sm:w-16 bg-black/95 backdrop-blur-md border-r-2 border-white/20 h-full flex-shrink-0">
                         {/* Corner Spacer */}
-                        <div className="absolute top-0 left-0 right-0 h-10 border-b border-white/10 z-50 bg-black/80" />
+                        <div className="absolute top-0 left-0 right-0 h-10 border-b-2 border-white/20 z-50 bg-black/80" />
 
                         <div className="relative h-full">
-                            {slots.map(hora => (
+                            {slots.map((slot, i) => (
                                 <div
-                                    key={`axis-${hora}`}
-                                    className="absolute w-full flex items-center justify-center"
-                                    style={{ top: `${getTimeY(hora)}px` }}
+                                    key={`axis-${i}`}
+                                    className="absolute w-full border-b border-white/[0.08]"
+                                    style={{ top: `${getTimeY(slot.h, slot.m)}px`, height: `${30 * MINUTE_HEIGHT}px` }}
                                 >
-                                    <span className="absolute -top-1.5 text-[7px] sm:text-[9px] font-black text-slate-400 uppercase">
-                                        {hora >= 12 ? `${hora === 12 ? 12 : hora - 12}PM` : `${hora}AM`}
+                                    <span className={`absolute -top-[9px] left-0 right-0 text-center font-black uppercase ${slot.m === 30 ? 'text-slate-600 text-[6px] sm:text-[7px]' : 'text-slate-400 text-[7px] sm:text-[8px]'}`}>
+                                        {slot.h >= 12 
+                                            ? `${slot.h === 12 ? 12 : slot.h - 12}${slot.m === 30 ? ':30' : ''}PM` 
+                                            : `${slot.h}${slot.m === 30 ? ':30' : ''}AM`}
                                     </span>
                                 </div>
                             ))}
@@ -229,23 +229,15 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
 
                     {/* Main Content (Grid + Barbers) */}
                     <div className="flex-1 relative flex h-full">
-                        {/* Unified Grid Lines Layer */}
-                        <div className="absolute inset-0 pointer-events-none z-0">
-                            {slots.map(hora => (
-                                <div
-                                    key={`grid-${hora}`}
-                                    className="absolute w-full border-t border-white/[0.15]"
-                                    style={{ top: `${getTimeY(hora)}px` }}
-                                />
-                            ))}
-
+                        {/* Unified Grid Lines Layer (DELETED TO AVOID DUPLICATES) */}
+                        <div className="absolute inset-x-0 top-0 bottom-0 pointer-events-none z-0">
                             {/* Closing Hours Shadows */}
                             {horarioHoy && (
                                 <>
                                     {/* Morning closing */}
                                     {parseInt(horarioHoy.apertura.substring(0, 2)) > HORA_INICIO && (
                                         <div
-                                            className="absolute inset-x-0 bg-black/40 z-0"
+                                            className="absolute inset-x-0 bg-black/60 z-10"
                                             style={{
                                                 top: `${getTimeY(HORA_INICIO)}px`,
                                                 height: `${(parseInt(horarioHoy.apertura.substring(0, 2)) - HORA_INICIO) * 60 * MINUTE_HEIGHT}px`
@@ -255,7 +247,7 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
                                     {/* Evening closing */}
                                     {parseInt(horarioHoy.cierre.substring(0, 2)) < HORA_FIN && (
                                         <div
-                                            className="absolute inset-x-0 bg-black/40 z-0"
+                                            className="absolute inset-x-0 bg-black/60 z-10"
                                             style={{
                                                 top: `${getTimeY(parseInt(horarioHoy.cierre.substring(0, 2)))}px`,
                                                 height: `${(HORA_FIN - parseInt(horarioHoy.cierre.substring(0, 2))) * 60 * MINUTE_HEIGHT}px`
@@ -269,20 +261,36 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
                         {/* Barber Columns Wrapper */}
                         <div className="flex flex-1 relative h-full">
                             {barberos.map((barbero, idx) => (
-                                <div key={`col-${barbero.id}`} className={`flex-1 min-w-[95px] sm:min-w-[140px] relative z-10 ${idx !== barberos.length - 1 ? 'border-r border-white/5' : ''}`}>
+                                <div key={`col-${barbero.id}`} className={`flex-1 min-w-[95px] sm:min-w-[140px] relative z-10 ${idx !== barberos.length - 1 ? 'border-r border-white/15' : ''}`}>
                                     {/* Sticky header for this barber */}
-                                    <div className="sticky top-0 h-10 bg-black/90 backdrop-blur-md border-b border-white/10 flex items-center justify-center z-40 p-2">
+                                    <div className="sticky top-0 h-10 bg-black/90 backdrop-blur-md border-b-2 border-white/20 flex items-center justify-center z-40 p-2">
                                         <p className="text-[9px] sm:text-xs font-black text-white uppercase tracking-widest truncate">
                                             {barbero.nombre.split(' ')[0]}
                                         </p>
                                     </div>
 
-                                    {/* Content in this column */}
-                                    <div className="absolute inset-x-0 top-0 bottom-0 pointer-events-none">
-                                        <div className="relative h-full pointer-events-auto">
-                                            {renderAlmuerzo(barbero)}
-                                            {bloqueos.filter(b => b.barbero_id === barbero.id).map(renderBloqueoProp)}
-                                            {citas.filter(c => c.barbero_id === barbero.id).map(renderCitaBlock)}
+                                    {/* Excel-like cells container */}
+                                    <div className="absolute inset-x-0 top-0 bottom-0">
+                                        <div className="relative h-full">
+                                            {/* Shaded hover cells */}
+                                            {slots.map((_, i) => (
+                                                <div 
+                                                    key={`cell-${i}`} 
+                                                    className="w-full hover:bg-white/[0.02] transition-colors border-b border-white/[0.05]" 
+                                                    style={{ height: `${30 * MINUTE_HEIGHT}px` }}
+                                                />
+                                            ))}
+                                            
+                                            {/* Overlays (Citas, Almuerzos, etc) */}
+                                            <div className="absolute inset-0 pointer-events-none">
+                                                <div className="relative h-full pointer-events-auto">
+                                                    {renderAlmuerzo(barbero)}
+                                                    {bloqueos.filter(b => b.barbero_id === barbero.id).map(renderBloqueoProp)}
+                                                    {citas
+                                                        .filter(c => c.barbero_id === barbero.id && c.estado !== 'cancelada')
+                                                        .map(renderCitaBlock)}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

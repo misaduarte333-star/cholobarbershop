@@ -41,9 +41,10 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import type { Gasto } from '@/lib/types'
-import { format } from 'date-fns'
+import { format, startOfMonth, endOfMonth as endOfMonthDate } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { Progress } from '@/components/ui/progress'
+import type { Barbero, CitaDesdeVista, Gasto } from '@/lib/types'
 
 export default function FinanzasPage() {
     const [gastos, setGastos] = useState<Gasto[]>([])
@@ -68,6 +69,15 @@ export default function FinanzasPage() {
     const [detallesPago, setDetallesPago] = useState('')
     const [isPayDialogOpen, setIsPayDialogOpen] = useState(false)
     const [gastoToPay, setGastoToPay] = useState<Gasto | null>(null)
+    const [montoConfirmacion, setMontoConfirmacion] = useState('')
+    const [showRecurrenceAlert, setShowRecurrenceAlert] = useState(false)
+    const [updateFutureRecurrence, setUpdateFutureRecurrence] = useState(false)
+
+    // Break-even states
+    const [barberos, setBarberos] = useState<Barbero[]>([])
+    const [selectedBarberoId, setSelectedBarberoId] = useState<string>('')
+    const [barberoIncome, setBarberoIncome] = useState(0)
+    const [loadingIncome, setLoadingIncome] = useState(false)
 
     const supabase = createClient()
 
@@ -84,7 +94,7 @@ export default function FinanzasPage() {
                 throw error
             }
 
-            setGastos((data as Gasto[]) || [])
+            setGastos((data as any[] as Gasto[]) || [])
         } catch (error: any) {
             console.error('Error fetching gastos:', error?.message || error)
             toast.error('Error al conectar con la base de datos de gastos')
@@ -109,10 +119,63 @@ export default function FinanzasPage() {
         }
     }
 
+    const fetchBarberos = async () => {
+        try {
+            const { data, error } = await supabase.from('barberos').select('*').eq('activo', true)
+            if (error) throw error
+            const casted = data as Barbero[]
+            setBarberos(casted)
+            
+            // Try to find Gabriel by default
+            const gabriel = casted.find(b => b.nombre.toLowerCase().includes('gabriel'))
+            if (gabriel) {
+                setSelectedBarberoId(gabriel.id)
+            } else if (casted.length > 0) {
+                setSelectedBarberoId(casted[0].id)
+            }
+        } catch (error) {
+            console.error('Error fetching barberos:', error)
+        }
+    }
+
+    const fetchBarberoIncome = async (barberoId: string) => {
+        if (!barberoId) return
+        setLoadingIncome(true)
+        try {
+            const start = startOfMonth(new Date()).toISOString()
+            const end = endOfMonthDate(new Date()).toISOString()
+
+            const { data, error } = await supabase
+                .from('vista_citas_app')
+                .select('servicio_precio')
+                .eq('barbero_id', barberoId)
+                .gte('timestamp_inicio_local', start)
+                .lte('timestamp_inicio_local', end)
+                .in('estado', ['finalizada', 'confirmada', 'en_proceso'])
+
+            if (error) throw error
+            
+            const total = (data as any[]).reduce((sum, cita) => sum + (cita.servicio_precio || 0), 0)
+            setBarberoIncome(total)
+        } catch (error) {
+            console.error('Error fetching barbero income:', error)
+            setBarberoIncome(0)
+        } finally {
+            setLoadingIncome(false)
+        }
+    }
+
     useEffect(() => {
         fetchGastos()
         fetchSucursal()
+        fetchBarberos()
     }, [])
+
+    useEffect(() => {
+        if (selectedBarberoId) {
+            fetchBarberoIncome(selectedBarberoId)
+        }
+    }, [selectedBarberoId])
 
     const clearForm = () => {
         setDescripcion('')
@@ -139,6 +202,14 @@ export default function FinanzasPage() {
         setIsDialogOpen(true)
     }
 
+    const openPayModal = (gasto: Gasto) => {
+        setGastoToPay(gasto)
+        setMontoConfirmacion(gasto.monto.toString())
+        setIsPayDialogOpen(true)
+        setShowRecurrenceAlert(false)
+        setUpdateFutureRecurrence(false)
+    }
+
     const handleSaveGasto = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!descripcion || !monto || !fechaPago) return
@@ -160,7 +231,7 @@ export default function FinanzasPage() {
         try {
             if (!sucursalId && !editingGasto) {
                 console.warn('No sucursalId found, trying to fetch before saving...')
-                const { data } = await supabase.from('sucursales').select('id').limit(1).maybeSingle()
+                const { data } = await supabase.from('sucursales').select('id').limit(1).maybeSingle() as { data: { id: string } | null }
                 if (data) setSucursalId(data.id)
                 else throw new Error('No se encontró una sucursal para asociar el gasto. Por favor crea una sucursal primero.')
             }
@@ -217,29 +288,58 @@ export default function FinanzasPage() {
         }
     }
 
-    const handleConfirmPayment = async () => {
-        if (!gastoToPay || !metodoPago) {
-            toast.error('Por favor selecciona un método de pago')
+    const handleConfirmPayment = async (forceUpdateFuture?: boolean) => {
+        if (!gastoToPay || !metodoPago || !montoConfirmacion) {
+            toast.error('Por favor completa todos los campos')
+            return
+        }
+
+        const nuevoMonto = parseFloat(montoConfirmacion)
+        const montoCambiado = nuevoMonto !== gastoToPay.monto
+        const shouldUpdateFuture = forceUpdateFuture !== undefined ? forceUpdateFuture : updateFutureRecurrence
+
+        // Si el monto cambió y no se ha mostrado la alerta, mostrarla
+        if (montoCambiado && !showRecurrenceAlert && gastoToPay.es_recurrente && forceUpdateFuture === undefined) {
+            setShowRecurrenceAlert(true)
             return
         }
 
         try {
+            // Update individual record
+            const updateData: any = {
+                pagado: true,
+                metodo_pago: metodoPago,
+                detalles_pago: detallesPago,
+                monto: nuevoMonto,
+                updated_at: new Date().toISOString()
+            }
+
             const { error } = await (supabase.from('gastos') as any)
-                .update({
-                    pagado: true,
-                    metodo_pago: metodoPago,
-                    detalles_pago: detallesPago,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updateData)
                 .eq('id', gastoToPay.id)
 
             if (error) throw error
+
+            // Si se pidió actualizar de forma recurrente, actualizamos todos los gastos futuros con misma descripción
+            if (shouldUpdateFuture && gastoToPay.es_recurrente) {
+                const { error: recurError } = await (supabase.from('gastos') as any)
+                    .update({ monto: nuevoMonto })
+                    .eq('descripcion', gastoToPay.descripcion)
+                    .eq('es_recurrente', true)
+                    .eq('pagado', false)
+                
+                if (recurError) console.error('Error updating future recurrence:', recurError)
+                else toast.success('Precios futuros actualizados')
+            }
             
             toast.success('¡Gasto pagado con éxito!')
             setIsPayDialogOpen(false)
             setGastoToPay(null)
             setMetodoPago('')
             setDetallesPago('')
+            setMontoConfirmacion('')
+            setShowRecurrenceAlert(false)
+            setUpdateFutureRecurrence(false)
             fetchGastos()
         } catch (error: any) {
             console.error('Error confirming payment:', error)
@@ -573,6 +673,114 @@ export default function FinanzasPage() {
                 </Card>
             </div>
 
+            {/* Break-Even Analysis Section */}
+            <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2.5rem] relative group border-indigo-500/10">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-amber-500/5 opacity-50" />
+                <CardHeader className="p-8 pb-4 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <CardTitle className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
+                                <span className="material-icons-round text-2xl">insights</span>
+                            </div>
+                            Análisis de <span className="text-gradient-gold">Punto de Equilibrio</span>
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">Rentabilidad basada en ingresos de barberos</CardDescription>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-2 rounded-2xl backdrop-blur-md">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">Barbero:</span>
+                        <Select value={selectedBarberoId} onValueChange={(val) => setSelectedBarberoId(val || '')}>
+                            <SelectTrigger className="h-9 w-[180px] bg-black/40 border-white/10 text-white rounded-xl text-xs font-bold">
+                                <SelectValue placeholder="Seleccionar..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                                {barberos.map(b => (
+                                    <SelectItem key={b.id} value={b.id}>{b.nombre}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-8 pt-4 relative z-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                        {/* Summary Stats */}
+                        <div className="space-y-8">
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Ingreso Actual ({barberos.find(b => b.id === selectedBarberoId)?.nombre || '...' })</p>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-4xl font-black tracking-tighter text-white">${barberoIncome.toLocaleString()}</span>
+                                    <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Este mes</span>
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-end">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Meta de Cobertura (Gastos)</p>
+                                    <p className="text-xs font-black text-amber-500 tracking-tight">${savingsMetrics.mensual.toLocaleString()}</p>
+                                </div>
+                                <div className="relative pt-2">
+                                    <Progress 
+                                        value={Math.min((barberoIncome / (savingsMetrics.mensual || 1)) * 100, 100)} 
+                                        className="h-3 bg-white/5 border border-white/5"
+                                    />
+                                    <div className="absolute -top-1 right-0 w-2 h-5 bg-amber-500/50 blur-[2px] rounded-full" style={{ left: '100%' }} />
+                                </div>
+                                <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.15em] text-center italic">
+                                    {barberoIncome >= savingsMetrics.mensual 
+                                        ? "✨ ¡HAS OPERADO SUPERANDO EL PUNTO DE EQUILIBRIO!" 
+                                        : `Faltan $${Math.max(0, savingsMetrics.mensual - barberoIncome).toLocaleString()} para cubrir gastos`}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Threshold Analysis */}
+                        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 flex flex-col justify-between group hover:bg-white/[0.04] transition-all">
+                                <div className="space-y-4">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                        <span className="material-icons-round">trending_up</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Umbral de Ganancia</h4>
+                                        <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-relaxed">Punto donde cada peso extra es utilidad neta</p>
+                                    </div>
+                                </div>
+                                <div className="mt-8">
+                                    <div className="text-2xl font-black text-emerald-400 tracking-tight">
+                                        {barberoIncome > savingsMetrics.mensual ? (
+                                            `+$${(barberoIncome - savingsMetrics.mensual).toLocaleString()}`
+                                        ) : (
+                                            `$${savingsMetrics.mensual.toLocaleString()}`
+                                        )}
+                                    </div>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mt-1">
+                                        {barberoIncome > savingsMetrics.mensual ? "Utilidad Generada" : "Monto de Break-Even"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 flex flex-col justify-between group hover:bg-white/[0.04] transition-all">
+                                <div className="space-y-4">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+                                        ⚖️
+                                    </div>
+                                    <div>
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Ratio de Cobertura</h4>
+                                        <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-relaxed">Porcentaje de gastos cubiertos actualmente</p>
+                                    </div>
+                                </div>
+                                <div className="mt-8">
+                                    <div className="text-2xl font-black text-white tracking-tight">
+                                        {Math.round((barberoIncome / (savingsMetrics.mensual || 1)) * 100)}%
+                                    </div>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mt-1">Eficiencia Operativa</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Calendar View */}
                 <Card className="lg:col-span-8 glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2rem]">
@@ -644,10 +852,7 @@ export default function FinanzasPage() {
                                                             <Button 
                                                                 size="sm"
                                                                 className="h-7 px-3 bg-emerald-500 hover:bg-emerald-600 text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all active:scale-95"
-                                                                onClick={() => {
-                                                                    setGastoToPay(gasto)
-                                                                    setIsPayDialogOpen(true)
-                                                                }}
+                                                                onClick={() => openPayModal(gasto)}
                                                             >
                                                                 Pagar
                                                             </Button>
@@ -696,7 +901,15 @@ export default function FinanzasPage() {
                                 {gastos.map((gasto) => (
                                     <TableRow key={gasto.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
                                         <TableCell className="px-4 sm:px-6 py-4">
-                                            <p className="text-[11px] sm:text-[10px] font-black text-white uppercase tracking-tight">{gasto.descripcion}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-[11px] sm:text-[10px] font-black text-white uppercase tracking-tight">{gasto.descripcion}</p>
+                                                {getGastoStatus(gasto) === 'overdue' && (
+                                                    <Badge variant="outline" className="text-[7px] border-red-500/30 text-red-500 h-3.5 px-1 font-black leading-none">VENCIDO</Badge>
+                                                )}
+                                                {getGastoStatus(gasto) === 'due_tomorrow' && (
+                                                    <Badge variant="outline" className="text-[7px] border-amber-500/30 text-amber-500 h-3.5 px-1 font-black leading-none">MAÑANA</Badge>
+                                                )}
+                                            </div>
                                             <p className="text-[9px] sm:text-[8px] font-bold text-white/20 uppercase tracking-widest mt-1">
                                                 {format(new Date(gasto.fecha_pago), 'dd/MM/yyyy')}
                                                 {gasto.es_recurrente && <span className="ml-2 text-amber-500/50">Recurrente</span>}
@@ -714,8 +927,7 @@ export default function FinanzasPage() {
                                                         className="h-8 px-4 bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-[9px] font-black uppercase tracking-widest rounded-lg lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:bg-emerald-500 hover:text-black"
                                                         onClick={(e) => {
                                                             e.stopPropagation()
-                                                            setGastoToPay(gasto)
-                                                            setIsPayDialogOpen(true)
+                                                            openPayModal(gasto)
                                                         }}
                                                     >
                                                         Pagar
@@ -746,64 +958,161 @@ export default function FinanzasPage() {
             </div>
             {/* Payment Confirmation Dialog */}
             <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
-                <DialogContent className="sm:max-w-md bg-[#0a0a0b]/95 border-white/5 text-white backdrop-blur-xl p-0 overflow-hidden rounded-[2rem]">
-                    <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 via-transparent to-transparent opacity-50 pointer-events-none" />
+                <DialogContent className="sm:max-w-md bg-[#0a0a0b]/95 border-white/5 text-white backdrop-blur-2xl p-0 overflow-hidden rounded-[2.5rem] shadow-2xl shadow-emerald-500/10">
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-indigo-500/5 opacity-50 pointer-events-none" />
                     
-                    <DialogHeader className="p-8 pb-4 relative z-10">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-4 border border-emerald-500/30">
-                            <span className="text-2xl">💳</span>
+                    <DialogHeader className="p-8 pb-0 relative z-10">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+                                    <span className="material-icons-round text-3xl text-emerald-400">payments</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <DialogTitle className="text-2xl font-black tracking-tight text-white">Confirmar Pago</DialogTitle>
+                                    <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Transacción Segura</DialogDescription>
+                                </div>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setIsPayDialogOpen(false)}
+                                className="rounded-full h-10 w-10 text-white/20 hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                                <span className="material-icons-round">close</span>
+                            </Button>
                         </div>
-                        <DialogTitle className="text-2xl font-black tracking-tight text-white mb-1">Confirmar Pago</DialogTitle>
-                        <DialogDescription className="text-zinc-400 font-medium text-sm leading-relaxed">
-                            {gastoToPay && (
-                                <>¿Deseas marcar <span className="text-white font-bold">"{gastoToPay.descripcion}"</span> (${gastoToPay.monto}) como pagado?</>
-                            )}
-                        </DialogDescription>
+
+                        {gastoToPay && (
+                            <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-6 mb-2 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                    <span className="material-icons-round text-6xl">receipt_long</span>
+                                </div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">Resumen del Gasto</p>
+                                <h4 className="text-lg font-black text-white truncate mb-3">{gastoToPay.descripcion}</h4>
+                                
+                                <div className="relative mt-2">
+                                    <Label className="text-[9px] font-black uppercase tracking-widest text-emerald-400/50 mb-1 block">Monto a Pagar</Label>
+                                    <div className="flex items-center gap-3 bg-black/40 border border-white/10 rounded-2xl px-4 py-2 focus-within:border-emerald-500/50 transition-colors">
+                                        <span className="text-white/40 text-xl font-black">$</span>
+                                        <input 
+                                            type="number"
+                                            value={montoConfirmacion}
+                                            onChange={(e) => setMontoConfirmacion(e.target.value)}
+                                            className="bg-transparent border-none text-2xl font-black text-white focus:ring-0 w-full p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <span className="text-[10px] font-bold text-white/20 uppercase">MXN</span>
+                                    </div>
+                                    <p className="text-[8px] font-bold text-white/20 mt-1 uppercase italic">* Puedes modificar el monto si aumentó este periodo</p>
+                                </div>
+                            </div>
+                        )}
                     </DialogHeader>
 
-                    <div className="p-8 pt-2 space-y-6 relative z-10">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500/50 px-1">Método de Pago</Label>
-                                <Select value={metodoPago} onValueChange={(v: any) => setMetodoPago(v)}>
-                                    <SelectTrigger className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus:ring-emerald-500/20">
-                                        <SelectValue placeholder="Seleccionar método" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                                        <SelectItem value="efectivo">Efectivo 💵</SelectItem>
-                                        <SelectItem value="tarjeta">Tarjeta 💳</SelectItem>
-                                        <SelectItem value="transferencia">Transferencia 🏦</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                    <div className="p-8 pt-6 space-y-8 relative z-10">
+                        {showRecurrenceAlert ? (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-6 text-center space-y-4">
+                                    <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto border border-amber-500/30">
+                                        <span className="material-icons-round text-3xl text-amber-500">update</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h4 className="text-lg font-black text-amber-400">¿Actualizar recurrencia?</h4>
+                                        <p className="text-xs text-white/60 font-medium px-4">Detectamos que el monto cambió. ¿Quieres que este nuevo monto se aplique a los próximos pagos automáticos?</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 pt-2">
+                                        <Button
+                                            onClick={() => {
+                                                handleConfirmPayment(false)
+                                            }}
+                                            className="h-12 rounded-xl bg-white/5 hover:bg-white/10 text-white font-black text-[10px] uppercase tracking-widest transition-all"
+                                        >
+                                            Solo hoy
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                handleConfirmPayment(true)
+                                            }}
+                                            className="h-12 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-amber-500/20"
+                                        >
+                                            Actualizar todos
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
+                        ) : (
+                            <>
+                                <div className="space-y-4">
+                                    <div className="space-y-3">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-400/60 px-1 ml-1 flex items-center gap-2">
+                                            <span className="material-icons-round text-xs">account_balance_wallet</span>
+                                            Método de Pago
+                                        </Label>
+                                        <div className="grid grid-cols-grid gap-3">
+                                            {[
+                                                { id: 'efectivo', label: 'Efectivo', icon: '💵' },
+                                                { id: 'tarjeta', label: 'Tarjeta', icon: '💳' },
+                                                { id: 'transferencia', label: 'Transf.', icon: '🏦' }
+                                            ].map((m) => (
+                                                <button
+                                                    key={m.id}
+                                                    onClick={() => setMetodoPago(m.id as any)}
+                                                    className={cn(
+                                                        "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all duration-300",
+                                                        metodoPago === m.id 
+                                                            ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400 shadow-lg shadow-emerald-500/10 scale-95" 
+                                                            : "bg-white/[0.02] border-white/5 text-white/40 hover:bg-white/[0.05] hover:border-white/10"
+                                                    )}
+                                                >
+                                                    <span className="text-xl">{m.icon}</span>
+                                                    <span className="text-[9px] font-black uppercase tracking-widest">{m.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-500/50 px-1">Detalles o Notas</Label>
-                                <Input 
-                                    placeholder="Ticket #, Banco, etc..." 
-                                    className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus:ring-emerald-500/20"
-                                    value={detallesPago}
-                                    onChange={(e) => setDetallesPago(e.target.value)}
-                                />
-                            </div>
-                        </div>
+                                    <div className="space-y-3">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-400/60 px-1 ml-1 flex items-center gap-2">
+                                            <span className="material-icons-round text-xs">notes</span>
+                                            Notas adicionales
+                                        </Label>
+                                        <div className="relative group">
+                                            <Input 
+                                                placeholder="Ticket, referencia o banco..." 
+                                                className="bg-white/[0.03] border-white/10 text-white h-14 rounded-2xl focus:ring-emerald-500/20 focus:border-emerald-500/30 pl-12 transition-all"
+                                                value={detallesPago}
+                                                onChange={(e) => setDetallesPago(e.target.value)}
+                                            />
+                                            <span className="material-icons-round absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-emerald-500/50 transition-colors">edit_note</span>
+                                        </div>
+                                    </div>
+                                </div>
 
-                        <DialogFooter className="gap-3 pt-4 pb-8 px-8">
-                            <Button 
-                                type="button" 
-                                variant="ghost" 
-                                onClick={() => setIsPayDialogOpen(false)}
-                                className="flex-1 h-12 rounded-xl text-white/50 hover:bg-white/5 font-bold uppercase tracking-widest text-[10px]"
-                            >
-                                Cancelar
-                            </Button>
-                            <Button 
-                                onClick={handleConfirmPayment}
-                                className="flex-1 h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-black uppercase tracking-widest text-[10px] shadow-lg shadow-emerald-500/20 group"
-                            >
-                                Confirmar Pago
-                            </Button>
-                        </DialogFooter>
+                                <div className="flex gap-3 pt-2">
+                                    <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        onClick={() => setIsPayDialogOpen(false)}
+                                        className="flex-1 h-14 rounded-2xl text-white/40 hover:bg-white/5 font-black uppercase tracking-widest text-[10px] border border-transparent hover:border-white/5"
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button 
+                                        onClick={() => handleConfirmPayment()}
+                                        disabled={!metodoPago}
+                                        className="flex-[2] h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-black font-black uppercase tracking-widest text-[10px] shadow-xl shadow-emerald-500/20 group relative overflow-hidden disabled:opacity-50 disabled:grayscale"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                                        <span className="relative z-10 flex items-center justify-center gap-2">
+                                            Confirmar Pago
+                                            <span className="material-icons-round text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                        </span>
+                                    </Button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    <div className="h-2 bg-emerald-500/20 relative">
+                        <div className="absolute inset-0 bg-emerald-500 animate-pulse opacity-50" />
                     </div>
                 </DialogContent>
             </Dialog>

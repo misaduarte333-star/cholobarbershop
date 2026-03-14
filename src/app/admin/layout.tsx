@@ -111,6 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <NavItem href="/admin/barberos" icon="groups" label="Barberos" active={isLinkActive('/admin/barberos')} onClick={() => setIsSidebarOpen(false)} />
                         <NavItem href="/admin/servicios" icon="content_cut" label="Servicios" active={isLinkActive('/admin/servicios')} onClick={() => setIsSidebarOpen(false)} />
                         <NavItem href="/admin/reportes" icon="analytics" label="Análisis" active={isLinkActive('/admin/reportes')} onClick={() => setIsSidebarOpen(false)} />
+                        <NavItem href="/admin/finanzas" icon="account_balance_wallet" label="Finanzas" active={isLinkActive('/admin/finanzas')} onClick={() => setIsSidebarOpen(false)} />
                         <NavItem href="/admin/configuracion" icon="tune" label="Ajustes" active={isLinkActive('/admin/configuracion')} onClick={() => setIsSidebarOpen(false)} />
                     </nav>
 
