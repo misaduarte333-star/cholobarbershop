@@ -113,6 +113,23 @@ export interface Cliente {
     updated_at: string
 }
 
+export interface Gasto {
+    id: string
+    sucursal_id: string
+    descripcion: string
+    monto: number
+    fecha_pago: string
+    pagado: boolean
+    es_recurrente: boolean
+    frecuencia?: 'mensual' | 'semanal' | 'diario' | 'anual' | null
+    dia_semana?: string | null
+    dia_mes?: number | null
+    metodo_pago?: 'efectivo' | 'tarjeta' | 'transferencia' | null
+    detalles_pago?: string | null
+    created_at: string
+    updated_at: string
+}
+
 export interface UsuarioAdmin {
     id: string
     sucursal_id: string | null
@@ -257,6 +274,12 @@ export interface Database {
                 Row: Cliente
                 Insert: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>
                 Update: Partial<Omit<Cliente, 'id' | 'created_at' | 'updated_at'>>
+                Relationships: []
+            }
+            gastos: {
+                Row: Gasto
+                Insert: Omit<Gasto, 'id' | 'created_at' | 'updated_at'>
+                Update: Partial<Omit<Gasto, 'id' | 'created_at' | 'updated_at'>>
                 Relationships: []
             }
         }
