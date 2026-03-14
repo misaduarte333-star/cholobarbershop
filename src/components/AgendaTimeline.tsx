@@ -28,7 +28,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO } from "@/lib/utils"
 
 interface AgendaTimelineProps {
     citas: CitaDesdeVista[]
@@ -83,7 +83,7 @@ const TimelineAppointmentCard = ({
         <motion.div
             key={`${item.data.id}-${cardResetKey}`}
             data-drag-id={item.tipo === 'cita' ? item.data.id : undefined}
-            drag={item.tipo === 'cita' && (item.data.estado === 'confirmada' || item.data.estado === 'en_espera') ? "y" : false}
+            drag={item.tipo === 'cita' && (item.data.estado === 'confirmada' || item.data.estado === 'en_espera' || item.data.estado === 'finalizada') ? "y" : false}
             dragElastic={0}
             dragMomentum={false}
             dragControls={controls}
@@ -165,7 +165,7 @@ const TimelineAppointmentCard = ({
                             <Info className="w-3 h-3" />
                         </button>
                         
-                        {(item.data.estado === 'confirmada' || item.data.estado === 'en_espera') && (
+                        {(item.data.estado === 'confirmada' || item.data.estado === 'en_espera' || item.data.estado === 'finalizada') && (
                             <button
                                 onClick={(e) => handleMoveClick(e, item.data)}
                                 className="w-6 h-6 rounded-lg bg-white/5 text-white/40 flex items-center justify-center hover:bg-primary hover:text-black transition-all border border-white/5"
@@ -185,7 +185,7 @@ const TimelineAppointmentCard = ({
                             </button>
                         )}
                         
-                        {(item.data.estado === 'confirmada' || item.data.estado === 'en_espera') && (
+                        {(item.data.estado === 'confirmada' || item.data.estado === 'en_espera' || item.data.estado === 'finalizada') && (
                             <button
                                 onClick={(e) => handleCancelClick(e, item.data)}
                                 className="w-6 h-6 rounded-lg bg-white/5 text-red-500/40 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all border border-white/5"
@@ -204,7 +204,10 @@ const TimelineAppointmentCard = ({
 export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, onUpdate }: AgendaTimelineProps) {
     // Determinar día de la semana para el horario de sucursal
     const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
-    const todayLocalStr = new Date().toLocaleDateString('en-CA')
+    const todayLocalStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Hermosillo',
+        year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date())
     const viewDate = fechaBase || todayLocalStr
     const targetDate = new Date(`${viewDate}T12:00:00-07:00`)
     const nombreDia = dias[targetDate.getDay()]
@@ -234,6 +237,17 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const slots = useMemo(() => generarSlots(horaInicio, horaFin), [horaInicio, horaFin])
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const [selectedCita, setSelectedCita] = useState<CitaDesdeVista | null>(null)
+    
+    // Sincronizar selectedCita cuando los datos globales cambian (evita datos obsoletos en el modal)
+    useEffect(() => {
+        if (selectedCita) {
+            const updated = citas.find(c => c.id === selectedCita.id)
+            if (updated) {
+                setSelectedCita(updated)
+            }
+        }
+    }, [citas])
+
     const [isManualScroll, setIsManualScroll] = useState(false)
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
     const supabase = createClient()
@@ -271,7 +285,10 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const targetScrollPosition = Math.max(0, ((currentHour - 1 - horaInicio) * 2 * SLOT_HEIGHT))
 
     // Auto-center: only scroll to current time when viewing TODAY
-    const todayLocal = new Date().toLocaleDateString('en-CA')
+    const todayLocal = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Hermosillo',
+        year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date())
     const isViewingToday = !fechaBase || fechaBase === todayLocal
 
     useEffect(() => {
@@ -541,7 +558,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const handlePointerDown = (e: React.PointerEvent, cita: CitaDesdeVista, controls: any) => {
         // Evitar que el clic se propague al slot o a citas que se solapen visualmente
         e.stopPropagation()
-        if (cita.estado !== 'confirmada') return
+        if (cita.estado !== 'confirmada' && cita.estado !== 'finalizada') return
 
         touchStartPos.current = { x: e.clientX, y: e.clientY }
         activePointerId.current = e.pointerId
@@ -606,45 +623,87 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             return
         }
 
-        // Snap to half-hour grid and normalize
+        // Snap to half-hour grid and normalize using relative timestamp manipulation
         const originalStart = new Date(cita.timestamp_inicio_local)
         const originalEnd = new Date(cita.timestamp_fin_local)
         const durationMs = originalEnd.getTime() - originalStart.getTime()
 
-        const newStart = new Date(originalStart)
-        newStart.setMinutes(originalStart.getMinutes() + (slotsMoved * 30))
-        newStart.setSeconds(0)
-        newStart.setMilliseconds(0)
-
-        // Ensure snap to nearest 30m if original was slightly off
-        const currentMins = newStart.getMinutes()
+        // Mover el inicio sumando minutos (30 min por slot)
+        const newStart = new Date(originalStart.getTime() + (slotsMoved * 30 * 60000))
+        
+        // Asegurar que el inicio caiga en :00 o :30 de Hermosillo
+        const currentMins = getHermosilloMins(newStart)
         if (currentMins % 30 !== 0) {
-            newStart.setMinutes(Math.round(currentMins / 30) * 30)
+            const adjustedMins = Math.round(currentMins / 30) * 30
+            const diff = adjustedMins - currentMins
+            newStart.setTime(newStart.getTime() + diff * 60000)
         }
 
         const newEnd = new Date(newStart.getTime() + durationMs)
 
         // --- VALIDACIÓN DE COLISIONES ROBUSTA ---
         const colisionProhibida = citas.find((c: CitaDesdeVista) => {
-            if (c.id === cita.id) return false
-            const cancelados = ['cancelada', 'no_show']
-            if (cancelados.includes(c.estado)) return false
-
-            const cStart = new Date(c.timestamp_inicio_local).getTime()
-            const cEnd = new Date(c.timestamp_fin_local).getTime()
-            const nStart = newStart.getTime()
-            const nEnd = newEnd.getTime()
-
+            if (c.id != null && cita.id != null && String(c.id) === String(cita.id)) return false
+            
             const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada', 'confirmada', 'en_espera']
             if (!estadosProhibidos.includes(c.estado)) return false
 
-            // Collision if intervals overlap (strict inequalities for back-to-back support)
-            return (nStart < cEnd && nEnd > cStart)
+            const cStart = new Date(c.timestamp_inicio_local).getTime()
+            const cEndOriginal = new Date(c.timestamp_fin_local).getTime()
+            const cDur = Math.round((cEndOriginal - cStart) / 60000)
+            const cDurBlocks = Math.max(1, Math.floor(cDur / 30))
+            const cEndEffective = cStart + (cDurBlocks * 30 * 60000)
+
+            // Usar duración redondeada para el nuevo fin (ej: si movemos una de 45m, solo ocupa 30m)
+            const nDur = Math.round(durationMs / 60000)
+            const nDurBlocks = Math.max(1, Math.floor(nDur / 30))
+            const nEndEffective = newStart.getTime() + (nDurBlocks * 30 * 60000)
+
+            // Interval Overlap logic
+            return (newStart.getTime() < cEndEffective && nEndEffective > cStart)
         })
 
         if (colisionProhibida) {
             toast.error("Colisión de Horario", {
                 description: `No es posible mover aquí. Se solapa con una cita ${colisionProhibida.estado.replace('_', ' ')} de ${colisionProhibida.cliente_nombre}.`,
+                icon: <AlertCircle className="w-5 h-5 text-red-500" />,
+                duration: 4000
+            })
+            setCardResetKey(k => k + 1)
+            return
+        }
+
+        // --- VALIDACIÓN DE ALMUERZO Y BLOQUEOS ---
+        const nStartMs = newStart.getTime()
+        const nEndMs = newEnd.getTime()
+
+        const enAlmuerzo = (() => {
+            if (!almuerzoBarbero || !almuerzoBarbero.inicio || !almuerzoBarbero.fin) return false
+            const dateStr = getHermosilloDateStr(new Date(cita.timestamp_inicio_local))
+            const aStart = new Date(`${dateStr}T${almuerzoBarbero.inicio}:00-07:00`).getTime()
+            const aEnd = new Date(`${dateStr}T${almuerzoBarbero.fin}:00-07:00`).getTime()
+            return (nStartMs < aEnd && nEndMs > aStart)
+        })()
+
+        if (enAlmuerzo) {
+            toast.error("Horario de Almuerzo", {
+                description: "No es posible mover la cita al horario de almuerzo del barbero.",
+                icon: <Clock className="w-5 h-5 text-amber-500" />,
+                duration: 4000
+            })
+            setCardResetKey(k => k + 1)
+            return
+        }
+
+        const enBloqueo = bloqueos.some(b => {
+            const bStart = new Date(b.fecha_inicio).getTime()
+            const bEnd = new Date(b.fecha_fin).getTime()
+            return (nStartMs < bEnd && nEndMs > bStart)
+        })
+
+        if (enBloqueo) {
+            toast.error("Horario Bloqueado", {
+                description: "Este horario está bloqueado administrativamente.",
                 icon: <AlertCircle className="w-5 h-5 text-red-500" />,
                 duration: 4000
             })
@@ -672,8 +731,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    timestamp_inicio: newStart.toISOString(),
-                    timestamp_fin: newEnd.toISOString()
+                    timestamp_inicio_local: formatToHermosilloISO(newStart),
+                    timestamp_fin_local: formatToHermosilloISO(newEnd)
                 })
             })
 

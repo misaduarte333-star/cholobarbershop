@@ -41,6 +41,8 @@ function dentroDeBloqueAlmuerzo(horaInicio: string, horaFin: string, bloqueo: Bl
 // Helper: Check if two time ranges overlap
 // ============================================================================
 function hayOverlap(inicio1: Date, fin1: Date, inicio2: Date, fin2: Date): boolean {
+    // Permisivo en las fronteras: solo hay solapamiento si los rangos realmente se cruzan
+    // Si uno termina exactamente donde empieza el otro (fin1 === inicio2), NO es solapamiento.
     return inicio1 < fin2 && fin1 > inicio2
 }
 
@@ -51,14 +53,28 @@ export async function validarDisponibilidad(
     sucursalId: string,
     barberoId: string,
     timestampInicio: Date,
-    duracionMinutos: number
+    duracionMinutos: number,
+    excludeCitaId?: string
 ): Promise<ValidacionResultado> {
     const supabase = createClient()
     const timestampFin = new Date(timestampInicio.getTime() + duracionMinutos * 60000)
 
-    const diaSemana = getDiaSemana(timestampInicio)
-    const horaInicio = timestampInicio.toTimeString().slice(0, 5)
-    const horaFin = timestampFin.toTimeString().slice(0, 5)
+    // Extraction in America/Hermosillo timezone to avoid server-local time issues
+    const formatTime = (d: Date) => d.toLocaleTimeString('en-GB', {
+        timeZone: 'America/Hermosillo',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+    })
+
+    const formatDay = (d: Date) => d.toLocaleDateString('es-ES', {
+        timeZone: 'America/Hermosillo',
+        weekday: 'long'
+    }).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") as DiasSemana
+
+    const diaSemana = formatDay(timestampInicio)
+    const horaInicio = formatTime(timestampInicio)
+    const horaFin = formatTime(timestampFin)
 
     // ========================================================================
     // LEVEL 1: Validate branch hours
@@ -134,20 +150,34 @@ export async function validarDisponibilidad(
     // ========================================================================
     // LEVEL 3: Check for overlapping appointments
     // ========================================================================
-    const inicioDelDia = new Date(timestampInicio)
-    inicioDelDia.setHours(0, 0, 0, 0)
+    // Calculation for start/end day in America/Hermosillo
+    // to filter appointments correctly in the database
+    const startOfDay = new Date(timestampInicio.toLocaleString('en-US', { timeZone: 'America/Hermosillo' }))
+    startOfDay.setHours(0, 0, 0, 0)
+    // Shift back to UTC adjusted (rough estimation but works since we use ISO strings)
+    // A more precise way:
+    const getHermosilloDayRange = (d: Date) => {
+        const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Hermosillo' }).format(d)
+        return {
+            start: `${fmt}T00:00:00-07:00`,
+            end: `${fmt}T23:59:59-07:00`
+        }
+    }
+    const range = getHermosilloDayRange(timestampInicio)
 
-    const finDelDia = new Date(timestampInicio)
-    finDelDia.setHours(23, 59, 59, 999)
-
-    const { data: citasExistentes, error: citasError } = await (supabase
-        .from('citas') as any)
-        .select('timestamp_inicio, timestamp_fin')
+    let query = (supabase.from('citas') as any)
+        .select('id, timestamp_inicio, timestamp_fin')
         .eq('barbero_id', barberoId)
         .neq('estado', 'cancelada')
         .neq('estado', 'no_show')
-        .gte('timestamp_inicio', inicioDelDia.toISOString())
-        .lte('timestamp_fin', finDelDia.toISOString())
+        .gte('timestamp_inicio', range.start)
+        .lte('timestamp_fin', range.end)
+
+    if (excludeCitaId) {
+        query = query.neq('id', excludeCitaId)
+    }
+
+    const { data: citasExistentes, error: citasError } = await query
 
     if (citasError) {
         console.error('Error checking appointments:', citasError)

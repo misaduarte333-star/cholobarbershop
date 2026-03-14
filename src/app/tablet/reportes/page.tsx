@@ -87,7 +87,10 @@ export default function TabletReportesPage() {
         let endDate = ''
 
         const hoy = new Date()
-        const hoyStr = hoy.toLocaleDateString('en-CA') // YYYY-MM-DD local
+        const hoyStr = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Hermosillo',
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        }).format(hoy) // YYYY-MM-DD local
 
         if (dateRange === 'hoy') {
             startDate = hoyStr

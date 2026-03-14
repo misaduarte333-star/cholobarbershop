@@ -43,7 +43,8 @@ export async function PATCH(
     const allowedFields = [
         'estado', 'monto_pagado', 'metodo_pago', 'notas_crm', 'notas',
         'timestamp_inicio', 'timestamp_fin', 'barbero_id', 'servicio_id',
-        'timestamp_inicio_servicio', 'timestamp_fin_servicio', 'duracion_real_minutos'
+        'timestamp_inicio_servicio', 'timestamp_fin_servicio', 'duracion_real_minutos',
+        'cliente_nombre', 'cliente_telefono'
     ]
     const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() }
     

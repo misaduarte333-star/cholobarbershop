@@ -33,7 +33,10 @@ export default function AdminDashboard() {
     const [bloqueos, setBloqueos] = useState<Bloqueo[]>([])
 
     const cargarKPIs = useCallback(async (isInitialLoad = false) => {
-        const hoyLocal = new Date().toLocaleDateString('en-CA')
+        const hoyLocal = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Hermosillo',
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        }).format(new Date())
 
         if (isInitialLoad) setLoading(true)
         try {

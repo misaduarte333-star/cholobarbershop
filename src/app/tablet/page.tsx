@@ -91,7 +91,10 @@ export default function TabletDashboard() {
     }
 
     const getRelativeDateLabel = (dateStr: string) => {
-        const hoy = new Date().toLocaleDateString('en-CA')
+        const hoy = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Hermosillo',
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        }).format(new Date())
         if (dateStr === hoy) return 'Hoy'
 
         const target = new Date(`${dateStr}T12:00:00-07:00`)
@@ -109,7 +112,10 @@ export default function TabletDashboard() {
     const handleDoubleTapAgenda = () => {
         const now = Date.now()
         if (now - lastTapAgenda.current < 300) {
-            setFechaAgenda(new Date().toLocaleDateString('en-CA'))
+            setFechaAgenda(new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Hermosillo',
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(new Date()))
             setVistaAgenda('hoy')
         }
         lastTapAgenda.current = now
@@ -196,7 +202,10 @@ export default function TabletDashboard() {
             const cachedCitas = localStorage.getItem('cached_dashboard_citas')
             if (cachedCitas) setCitas(JSON.parse(cachedCitas))
 
-            const hoy = new Date().toLocaleDateString('en-CA')
+            const hoy = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Hermosillo',
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(new Date())
             setFechaAgenda(hoy)
             setCurrentTime(new Date())
             setIsMounted(true)
@@ -342,7 +351,10 @@ export default function TabletDashboard() {
             setAlmuerzoBarbero((barberoRes.data as any)?.bloqueo_almuerzo || null)
 
             // UNIFICATION: Update the summary "citas" (Today) if relevant
-            const hoy = new Date().toLocaleDateString('en-CA')
+            const hoy = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Hermosillo',
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(new Date())
             if (startStr <= hoy && endStr >= hoy) {
                 const totalHoy = (syncVista === 'hoy' || syncVista === 'dia') && syncTimelineDate === hoy
                     ? citasData
@@ -633,7 +645,7 @@ export default function TabletDashboard() {
                                             onUpdate={cargarCitas}
                                             isHighlighted
                                             currentTime={currentTime!}
-                                            allCitas={citas}
+                                            allCitas={citasAgenda}
                                             bloqueos={bloqueosAgenda}
                                             almuerzoBarbero={almuerzoBarbero}
                                             horarioSucursal={sucursal}
@@ -671,7 +683,7 @@ export default function TabletDashboard() {
                                                     cita={cita}
                                                     onUpdate={cargarCitas}
                                                     currentTime={currentTime!}
-                                                    allCitas={citas}
+                                                    allCitas={citasAgenda}
                                                     bloqueos={bloqueosAgenda}
                                                     almuerzoBarbero={almuerzoBarbero}
                                                     horarioSucursal={sucursal}

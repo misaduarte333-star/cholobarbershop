@@ -89,7 +89,10 @@ function CitasContent() {
         // Create a date in local timezone "YYYY-MM-DD"
         // avoiding UTC shift which might show tomorrow's date late at night
         const today = new Date()
-        const localIsoDate = today.toLocaleDateString('en-CA') // YYYY-MM-DD format
+        const localIsoDate = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Hermosillo',
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        }).format(today) // YYYY-MM-DD format
         setFiltroFecha(localIsoDate)
         setMounted(true)
     }, [])
@@ -610,27 +613,31 @@ function CitaModal({ cita, allCitas, onClose, onSave, initialOrigen }: {
             const endISO = `${formData.fecha}T${formData.horaFin}:00${TZ_OFFSET}`
 
             // --- VALIDACIÓN DE COLISIONES ---
-            const startMins = parseInt(formData.hora.split(':')[0]) * 60 + parseInt(formData.hora.split(':')[1])
-            const endMins = parseInt(formData.horaFin.split(':')[0]) * 60 + parseInt(formData.horaFin.split(':')[1])
+            const nStartMs = new Date(startISO).getTime()
+            const nEndMs = new Date(endISO).getTime()
 
             const colisionProhibida = allCitas.find((c: CitaDesdeVista) => {
-                if (cita && c.id === cita.id) return false
+                if (cita && String(c.id).toLowerCase() === String(cita.id).toLowerCase()) return false
+                
                 // Only check for the selected barber if specified
                 if (formData.barbero_id && String(c.barbero_id) !== String(formData.barbero_id)) return false
                 
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
 
-                const cStart = new Date(c.timestamp_inicio_local)
-                const cEnd = new Date(c.timestamp_fin_local)
-                const cSMins = cStart.getHours() * 60 + cStart.getMinutes()
-                const cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
+                const cStart = new Date(c.timestamp_inicio_local).getTime()
+                const cEndOriginal = new Date(c.timestamp_fin_local).getTime()
+                const cDur = Math.round((cEndOriginal - cStart) / 60000)
+                const cDurBlocks = Math.max(1, Math.floor(cDur / 30))
+                const cEndEffective = cStart + (cDurBlocks * 30 * 60000)
 
-                const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada']
-                if (!estadosProhibidos.includes(c.estado)) return false
+                // Effective end for new appt
+                const nDur = Math.round((nEndMs - nStartMs) / 60000)
+                const nDurBlocks = Math.max(1, Math.floor(nDur / 30))
+                const nEndEffectiveMs = nStartMs + (nDurBlocks * 30 * 60000)
 
-                const overlaps = (startMins < cEMins && endMins > cSMins)
-                return overlaps
+                // Interval Overlap
+                return (nStartMs < cEndEffective && nEndEffectiveMs > cStart)
             })
 
             if (colisionProhibida) {

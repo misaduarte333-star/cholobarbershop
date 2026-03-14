@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
 import { CheckOutModal } from './CheckOutModal'
-import { cn } from '@/lib/utils'
+import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,6 @@ import {
     RefreshCcw,
     X,
     PlayCircle,
-    Scissors,
     CreditCard,
     Trash2,
     Calendar as CalendarIcon,
@@ -45,6 +44,11 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Edit2, Check, Scissors, User as UserIcon, DollarSign } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import type { Servicio, Barbero } from '@/lib/types'
 
 interface CitaCardProps {
     cita: CitaDesdeVista
@@ -120,8 +124,47 @@ export const CitaCard = memo(function CitaCard({
     const [montoFinal, setMontoFinal] = useState<number>(cita.servicio_precio || 0)
     const [metodoPago, setMetodoPago] = useState<'efectivo' | 'tarjeta' | 'transferencia'>('efectivo')
     const [notasCrm, setNotasCrm] = useState('')
+    const [isEditing, setIsEditing] = useState(false)
+    const [nombreEdit, setNombreEdit] = useState(cita.cliente_nombre)
+    const [telefonoEdit, setTelefonoEdit] = useState(cita.cliente_telefono || '')
+
+    const [servicioEdit, setServicioEdit] = useState(cita.servicio_id)
+    const [precioEdit, setPrecioEdit] = useState(cita.servicio_precio || 0)
+    const [barberoEdit, setBarberoEdit] = useState(cita.barbero_id)
+    const [notasEdit, setNotasEdit] = useState(cita.notas || '')
+
+    const [allServicios, setAllServicios] = useState<Servicio[]>([])
+    const [allBarberos, setAllBarberos] = useState<Barbero[]>([])
 
     const supabase = createClient()
+
+    // Sync state when cita prop changes (important due to parent synchronization)
+    useEffect(() => {
+        if (!isEditing) {
+            setNombreEdit(cita.cliente_nombre)
+            setTelefonoEdit(cita.cliente_telefono || '')
+            setServicioEdit(cita.servicio_id)
+            setPrecioEdit(cita.servicio_precio || 0)
+            setBarberoEdit(cita.barbero_id)
+            setNotasEdit(cita.notas || '')
+        }
+    }, [cita.id, isEditing])
+
+    useEffect(() => {
+        const loadDeps = async () => {
+            try {
+                const [servs, barbs] = await Promise.all([
+                    supabase.from('servicios').select('*').eq('activo', true),
+                    supabase.from('barberos').select('*').eq('activo', true)
+                ])
+                if (servs.data) setAllServicios(servs.data)
+                if (barbs.data) setAllBarberos(barbs.data)
+            } catch (err) {
+                console.error('Error loading deps in CitaCard:', err)
+            }
+        }
+        loadDeps()
+    }, [supabase])
 
     const actualizarEstado = async (nuevoEstado: EstadoCita) => {
         if (loading) return
@@ -217,54 +260,57 @@ export const CitaCard = memo(function CitaCard({
             const oldFin = new Date(cita.timestamp_fin_local)
             const duration = oldFin.getTime() - oldInicio.getTime()
 
-            // Asignar manualmente la hora sobre el día actual de la cita (oldInicio)
-            const newInicio = new Date(oldInicio)
-            newInicio.setHours(hours, minutes, 0, 0)
+            // Asignar la hora sobre el día de la cita usando Hermosillo TZ
+            const fechaStr = getHermosilloDateStr(oldInicio)
+            const newInicio = new Date(`${fechaStr}T${newHour}:00-07:00`)
             const newFin = new Date(newInicio.getTime() + duration)
 
-            // Función auxiliar para forzar la construcción del string ISO en zona Hermosillo con offset
-            const TZ_OFFSET = '-07:00'
-            const formatToHermosilloISO = (d: Date) => {
-                const formatter = new Intl.DateTimeFormat('en-CA', {
-                    timeZone: 'America/Hermosillo',
-                    year: 'numeric', month: '2-digit', day: '2-digit'
-                })
-                const dateStr = formatter.format(d) // YYYY-MM-DD
-
-                const timeFormatter = new Intl.DateTimeFormat('en-GB', {
-                    timeZone: 'America/Hermosillo',
-                    hour: '2-digit', minute: '2-digit', second: '2-digit'
-                })
-                const parts = timeFormatter.formatToParts(d)
-                const p = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {} as any)
-                return `${dateStr}T${p.hour}:${p.minute}:00${TZ_OFFSET}`
-            }
-
-            // --- VALIDACIÓN DE COLISIONES ---
-            const startMins = newInicio.getHours() * 60 + newInicio.getMinutes()
-            const endMins = newFin.getHours() * 60 + newFin.getMinutes()
+            // --- VALIDACIÓN DE COLISIONES ROBUSTA (30-min block based) ---
+            const nStart = newInicio.getTime()
+            const nCDur = Math.round(duration / 60000)
+            const nCDurBlocks = Math.max(1, Math.floor(nCDur / 30))
+            const nEndEffective = nStart + (nCDurBlocks * 30 * 60000)
 
             const colisionProhibida = allCitas.find((c: CitaDesdeVista) => {
-                if (c.id === cita.id) return false
+                // Exclusión por ID (Robusta)
+                if (c.id && cita.id && String(c.id) === String(cita.id)) return false
+                
+                // Solo colisionar con citas del mismo barbero
+                if (c.barbero_id && cita.barbero_id && String(c.barbero_id) !== String(cita.barbero_id)) return false
+
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
 
-                const cStart = new Date(c.timestamp_inicio_local)
-                const cEnd = new Date(c.timestamp_fin_local)
-                const cSMins = cStart.getHours() * 60 + cStart.getMinutes()
-                const cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
+                const cStart = new Date(c.timestamp_inicio_local).getTime()
+                const cEndOriginal = new Date(c.timestamp_fin_local).getTime()
+                const cDur = Math.round((cEndOriginal - cStart) / 60000)
+                const cDurBlocks = Math.max(1, Math.floor(cDur / 30))
+                const cEndEffective = cStart + (cDurBlocks * 30 * 60000)
 
-                // Actualizado para incluir 'confirmada' y 'en_espera' en las restricciones de colisión
-                const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada', 'confirmada', 'en_espera']
-                if (!estadosProhibidos.includes(c.estado)) return false
-
-                const overlaps = (startMins < cEMins && endMins > cSMins)
+                // Interval Overlap con duraciones efectivas de 30m
+                const overlaps = (nStart < cEndEffective && nEndEffective > cStart)
                 return overlaps
             })
 
             if (colisionProhibida) {
                 toast.error("Horario no disponible", {
                     description: `Ya existe una cita ${colisionProhibida.estado.replace('_', ' ')} en este horario.`,
+                    icon: <AlertCircle className="w-5 h-5 text-red-500" />
+                })
+                setLoading(false)
+                return
+            }
+
+            // --- VALIDACIÓN DE BLOQUEOS ---
+            const enBloqueo = bloqueos.some(b => {
+                const bStart = new Date(b.timestamp_inicio || b.fecha_inicio).getTime()
+                const bEnd = new Date(b.timestamp_fin || b.fecha_fin).getTime()
+                return (nStart < bEnd && nEndEffective > bStart)
+            })
+
+            if (enBloqueo) {
+                toast.error("Horario Bloqueado", {
+                    description: "Este horario está bloqueado administrativamente.",
                     icon: <AlertCircle className="w-5 h-5 text-red-500" />
                 })
                 setLoading(false)
@@ -294,6 +340,55 @@ export const CitaCard = memo(function CitaCard({
             setLoading(false)
         }
     }
+
+    const guardarTodo = async () => {
+        if (loading) return
+        if (!nombreEdit.trim()) {
+            toast.error("El nombre es requerido")
+            return
+        }
+
+        setLoading(true)
+        try {
+            // Recalcular timestamp_fin basado en el servicio seleccionado para mantener la duración correcta
+            const selectedService = allServicios.find(s => s.id === servicioEdit)
+            const durationMin = selectedService?.duracion_minutos || 30 // Duración por defecto si no se encuentra
+            
+            const start = new Date(cita.timestamp_inicio_local)
+            const newFin = new Date(start.getTime() + durationMin * 60000)
+
+            const res = await fetch(`/api/citas/${cita.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cliente_nombre: nombreEdit,
+                    cliente_telefono: telefonoEdit,
+                    servicio_id: servicioEdit,
+                    // servicio_precio no es una columna real en 'citas', se deriva del servicio en la vista.
+                    // Se quita de aquí para evitar confusiones, el precio se actualizará al cambiar el servicio_id.
+                    barbero_id: barberoEdit,
+                    notas: notasEdit,
+                    timestamp_fin: newFin.toISOString()
+                }),
+            })
+
+            if (!res.ok) {
+                const body = await res.json()
+                throw new Error(body.message)
+            }
+
+            toast.success("Cita actualizada")
+            setIsEditing(false)
+            onUpdate?.()
+        } catch (err: any) {
+            console.error('Error updating appointment:', err)
+            toast.error("Error al actualizar la cita")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+
 
     const config = {
         confirmada: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-primary', badgeVariant: 'outline' as const, label: 'Confirmada', badgeClass: 'bg-primary/10 text-primary border-primary/20' },
@@ -356,63 +451,60 @@ export const CitaCard = memo(function CitaCard({
         const duracionSlotMin = 30
         const duracionCitaActual = Math.round((new Date(cita.timestamp_fin_local).getTime() - new Date(cita.timestamp_inicio_local).getTime()) / 60000)
 
-        // La hora exacta de inicio de la cita actual (para bloquear ese mismo slot)
-        const citaActualMins = (() => {
-            const d = new Date(cita.timestamp_inicio_local)
-            return d.getHours() * 60 + d.getMinutes()
-        })()
-
         const getSlotStatus = (start: Date, end: Date) => {
             const ahora = new Date()
-            const startMins = start.getHours() * 60 + start.getMinutes()
-            const endMins = end.getHours() * 60 + end.getMinutes()
+            const nStartMs = start.getTime()
+            const nEndMs = end.getTime()
 
-            // 1. Bloquear el slot exacto donde ya está la cita (no reagendar al mismo)
-            if (startMins === citaActualMins) return 'actual'
+            // 1. Identificar si este slot pertenece a la CITA ACTUAL (la que estamos moviendo)
+            const nCStart = new Date(cita.timestamp_inicio_local).getTime()
+            const nCEndOriginal = new Date(cita.timestamp_fin_local).getTime()
+            const nCDur = Math.round((nCEndOriginal - nCStart) / 60000)
+            const nCDurBlocks = Math.max(1, Math.floor(nCDur / 30))
+            const nCEndEffective = nCStart + (nCDurBlocks * 30 * 60000)
 
-            const estadosFinalizados = ['completada', 'finalizada', 'cobrada', 'por_cobrar']
-            const esFechaHoy = fechaCita === new Date().toLocaleDateString('en-CA')
+            const isThisCitaActual = (nStartMs < nCEndEffective && nEndMs > nCStart)
+            
+            if (isThisCitaActual) return 'actual'
 
-            // 2. Buscar cita en el slot (ANTES de evaluar 'past' para detectar finalizadas correctamente)
-            const citaEnSlot = allCitas.find(c => {
-                if (c.id === cita.id) return false
-                const cancelados = ['cancelada', 'no_show']
-                if (cancelados.includes(c.estado)) return false
+            // 2. Colisión con otras citas (Interval overlap con duración efectiva de 30m)
+            const ocupadoPorCita = allCitas.find(c => {
+                // Exclusión por ID (Robusta)
+                if (c.id != null && cita.id != null && String(c.id) === String(cita.id)) return false
+                
+                // Seguridad: Solo colisionar con citas del mismo barbero
+                if (c.barbero_id && cita.barbero_id && String(c.barbero_id) !== String(cita.barbero_id)) return false
 
-                let cSMins, cEMins
-                if (c.hora_cita_local && c.hora_fin_local) {
-                    cSMins = parse12hToMins(c.hora_cita_local)
-                    cEMins = parse12hToMins(c.hora_fin_local)
-                } else {
-                    const cStart = new Date(c.timestamp_inicio_local)
-                    const cEnd = new Date(c.timestamp_fin_local)
-                    cSMins = cStart.getHours() * 60 + cStart.getMinutes()
-                    cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
-                }
+                if (['cancelada', 'no_show'].includes(c.estado)) return false
 
-                if (cSMins >= startMins && cSMins < endMins) return true
-                return false
+                const cStart = new Date(c.timestamp_inicio_local).getTime()
+                const cEndOriginal = new Date(c.timestamp_fin_local).getTime()
+                const cDur = Math.round((cEndOriginal - cStart) / 60000)
+                const cDurBlocks = Math.max(1, Math.floor(cDur / 30))
+                const cEndEffective = cStart + (cDurBlocks * 30 * 60000)
+
+                // Interval Overlap
+                return (nStartMs < cEndEffective && nEndMs > cStart)
             })
 
-            // 3. Slot pasado con cita ya finalizada/cobrada → inhabilitado en verde
-            if (citaEnSlot && estadosFinalizados.includes(citaEnSlot.estado) && start < ahora) return 'finalizada'
-            // 4. Slot ocupado por cita activa (futura o en curso)
-            if (citaEnSlot) return 'ocupado'
+            if (ocupadoPorCita) return 'ocupado'
 
-            // 5. Slot del pasado sin cita: atenuado pero seleccionable (solo hoy, para retroactivos)
+            // 3. Past check
+            const esFechaHoy = getHermosilloDateStr(new Date(cita.timestamp_inicio_local)) === getHermosilloDateStr(ahora)
             if (start < ahora && esFechaHoy) return 'past'
 
-            const bloqueado = (bloqueos || []).some(b => {
-                const bStart = new Date(b.fecha_inicio)
-                const bEnd = new Date(b.fecha_fin)
-                return start < bEnd && end > bStart
+            // 4. Bloqueos manuales
+            const isBlocked = bloqueos.some(b => {
+                const bStart = new Date(b.timestamp_inicio || b.fecha_inicio).getTime()
+                const bEnd = new Date(b.timestamp_fin || b.fecha_fin).getTime()
+                return (nStartMs < bEnd && nEndMs > bStart)
             })
-            if (bloqueado) return 'bloqueado'
+            if (isBlocked) return 'bloqueado'
 
             if (almuerzoBarbero && almuerzoBarbero.inicio && almuerzoBarbero.fin) {
-                const almuerzoStart = new Date(`${fechaCita}T${almuerzoBarbero.inicio}:00-07:00`)
-                const almuerzoEnd = new Date(`${fechaCita}T${almuerzoBarbero.fin}:00-07:00`)
-                if (start < almuerzoEnd && end > almuerzoStart) return 'bloqueado'
+                const aStart = new Date(`${fechaCita}T${almuerzoBarbero.inicio}:00-07:00`).getTime()
+                const aEnd = new Date(`${fechaCita}T${almuerzoBarbero.fin}:00-07:00`).getTime()
+                if (start.getTime() < aEnd && end.getTime() > aStart) return 'bloqueado'
             }
 
             return 'libre'
@@ -556,7 +648,7 @@ export const CitaCard = memo(function CitaCard({
                     </div>
 
                     <div className="flex flex-wrap gap-2 md:gap-3 shrink-0">
-                        {cita.estado === 'confirmada' && (
+                        {(cita.estado === 'confirmada' || cita.estado === 'finalizada') && (
                             <>
                                 <Button
                                     size="sm"
@@ -570,29 +662,29 @@ export const CitaCard = memo(function CitaCard({
                                             actualizarEstado('en_proceso')
                                         }
                                     }}
-                                    disabled={loading}
+                                    disabled={loading || cita.estado === 'finalizada'}
                                     className={cn(
                                         "h-auto py-2.5 px-4 font-black text-[9px] uppercase tracking-[0.1em] shadow-xl transition-all flex items-center gap-2 active:scale-95",
-                                        esNoShow
-                                            ? "bg-amber-500 text-white hover:bg-amber-400 border-amber-300 shadow-[0_5px_15px_rgba(245,158,11,0.2)] animate-pulse"
-                                            : "bg-gradient-gold text-black hover:scale-[1.02] border border-primary/20 shadow-[0_5px_15px_rgba(234,179,8,0.15)]"
+                                        cita.estado === 'finalizada' 
+                                            ? "hidden" 
+                                            : (esNoShow
+                                                ? "bg-amber-500 text-white hover:bg-amber-400 border-amber-300 shadow-[0_5px_15px_rgba(245,158,11,0.2)] animate-pulse"
+                                                : "bg-gradient-gold text-black hover:scale-[1.02] border border-primary/20 shadow-[0_5px_15px_rgba(234,179,8,0.15)]")
                                     )}
                                 >
                                     <Play className="w-3.5 h-3.5 fill-current" />
                                     {esNoShow ? 'Tardío' : 'Atender'}
                                 </Button>
 
-                                {cita.estado === 'confirmada' && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowMove(true)}
-                                        className="h-auto py-2.5 px-3 bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-[9px] font-black uppercase tracking-[0.1em]"
-                                    >
-                                        <CalendarClock className="w-3.5 h-3.5" />
-                                        Mover
-                                    </Button>
-                                )}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowMove(true)}
+                                    className="h-auto py-2.5 px-3 bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-[9px] font-black uppercase tracking-[0.1em]"
+                                >
+                                    <CalendarClock className="w-3.5 h-3.5" />
+                                    Mover
+                                </Button>
 
                                 <Button
                                     variant="outline"
@@ -735,36 +827,174 @@ export const CitaCard = memo(function CitaCard({
                             <DialogTitle className="text-xl font-black uppercase tracking-widest font-display text-white">
                                 Detalles de la Cita
                             </DialogTitle>
+                            {!isEditing ? (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setIsEditing(true)}
+                                    className="h-8 w-8 text-white/20 hover:text-primary hover:bg-white/5"
+                                >
+                                    <Edit2 className="w-4 h-4" />
+                                </Button>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => {
+                                            setIsEditing(false)
+                                            setNombreEdit(cita.cliente_nombre)
+                                            setTelefonoEdit(cita.cliente_telefono || '')
+                                            setServicioEdit(cita.servicio_id)
+                                            setPrecioEdit(cita.servicio_precio || 0)
+                                            setBarberoEdit(cita.barbero_id)
+                                            setNotasEdit(cita.notas || '')
+                                        }}
+                                        className="h-8 w-8 text-red-400 hover:bg-red-400/10"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={guardarTodo}
+                                        disabled={loading}
+                                        className="h-8 w-8 text-emerald-400 hover:bg-emerald-400/10"
+                                    >
+                                        <Check className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </DialogHeader>
 
                     <div className="px-8 pb-8 space-y-4">
                         {/* Cliente Section */}
                         <div className="p-8 bg-white/[0.03] rounded-[2rem] border border-white/5 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Cliente</p>
-                            <h2 className="text-3xl font-black text-white font-display uppercase tracking-tighter leading-tight italic">
-                                {cita.cliente_nombre}
-                            </h2>
-                            {cita.cliente_telefono && (
-                                <p className="text-lg font-black text-primary mt-2 tracking-widest font-mono">
-                                    {cita.cliente_telefono}
-                                </p>
+                            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Cliente</p>
+                            </div>
+                            
+                            {!isEditing ? (
+                                <>
+                                    <h2 className="text-3xl font-black text-white font-display uppercase tracking-tighter leading-tight italic">
+                                        {cita.cliente_nombre}
+                                    </h2>
+                                    {cita.cliente_telefono && (
+                                        <p className="text-lg font-black text-primary mt-2 tracking-widest font-mono">
+                                            {cita.cliente_telefono}
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black">Nombre</Label>
+                                        <Input 
+                                            value={nombreEdit}
+                                            onChange={(e) => setNombreEdit(e.target.value)}
+                                            className="bg-black/40 border-white/10 text-white font-black uppercase tracking-widest"
+                                            placeholder="Nombre del cliente"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black">Teléfono</Label>
+                                        <Input 
+                                            value={telefonoEdit}
+                                            onChange={(e) => setTelefonoEdit(e.target.value)}
+                                            className="bg-black/40 border-white/10 text-primary font-mono tracking-widest"
+                                            placeholder="Teléfono (opcional)"
+                                        />
+                                    </div>
+                                </div>
                             )}
                         </div>
 
                         {/* Info Grid */}
                         <div className="grid grid-cols-2 gap-4">
-                            {/* Servicio */}
-                            <div className="p-8 bg-white/[0.03] rounded-[2.5rem] border border-white/5 relative overflow-hidden group">
-                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Servicio</p>
-                                <p className="text-xl font-black text-white uppercase tracking-tight italic leading-tight">
-                                    {cita.servicio_nombre}
-                                </p>
-                                <p className="text-2xl font-black text-primary mt-2 flex items-baseline gap-1">
-                                    <span className="text-sm opacity-50">$</span>
-                                    {cita.servicio_precio}
-                                </p>
+                            {/* Servicio y Barbero */}
+                            <div className="p-8 bg-white/[0.03] rounded-[2.5rem] border border-white/5 relative overflow-hidden group col-span-2 sm:col-span-1">
+                                {!isEditing ? (
+                                    <>
+                                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Servicio</p>
+                                        <p className="text-xl font-black text-white uppercase tracking-tight italic leading-tight">
+                                            {cita.servicio_nombre}
+                                        </p>
+                                        <p className="text-2xl font-black text-primary mt-2 flex items-baseline gap-1">
+                                            <span className="text-sm opacity-50">$</span>
+                                            {cita.servicio_precio}
+                                        </p>
+                                        <div className="mt-4 pt-4 border-t border-white/5">
+                                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-2">Barbero</p>
+                                            <p className="text-sm font-bold text-white/60 uppercase tracking-widest flex items-center gap-2">
+                                                <UserIcon className="w-3.5 h-3.5 text-primary" />
+                                                {cita.barbero_nombre}
+                                            </p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black flex items-center gap-2">
+                                                <Scissors className="w-3 h-3" />
+                                                Servicio
+                                            </Label>
+                                            <Select value={servicioEdit} onValueChange={(val: string | null) => {
+                                                if (val) {
+                                                    setServicioEdit(val)
+                                                    const s = allServicios.find(x => x.id === val)
+                                                    if (s) setPrecioEdit(s.precio)
+                                                }
+                                            }}>
+                                                <SelectTrigger className="bg-black/40 border-white/10 text-white font-black uppercase tracking-widest h-10">
+                                                    <SelectValue placeholder="Seleccionar servicio" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-[#0A0C10] border-white/10 text-white">
+                                                    {allServicios.map(s => (
+                                                        <SelectItem key={s.id} value={s.id} className="focus:bg-primary/20 focus:text-primary">
+                                                            {s.nombre} - ${s.precio}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black flex items-center gap-2">
+                                                <DollarSign className="w-3 h-3" />
+                                                Precio
+                                            </Label>
+                                            <Input 
+                                                type="number"
+                                                value={precioEdit}
+                                                onChange={(e) => setPrecioEdit(Number(e.target.value))}
+                                                className="bg-black/40 border-white/10 text-primary font-black tracking-widest h-10"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black flex items-center gap-2">
+                                                <UserIcon className="w-3 h-3" />
+                                                Barbero
+                                            </Label>
+                                            <Select value={barberoEdit} onValueChange={(val: string | null) => {
+                                                if (val) setBarberoEdit(val)
+                                            }}>
+                                                <SelectTrigger className="bg-black/40 border-white/10 text-white font-black uppercase tracking-widest h-10">
+                                                    <SelectValue placeholder="Seleccionar barbero" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-[#0A0C10] border-white/10 text-white">
+                                                    {allBarberos.map(b => (
+                                                        <SelectItem key={b.id} value={b.id} className="focus:bg-primary/20 focus:text-primary">
+                                                            {b.nombre}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Horario */}
@@ -779,15 +1009,30 @@ export const CitaCard = memo(function CitaCard({
                             </div>
                         </div>
                         
-                        {cita.notas && (
-                            <div className="p-6 bg-blue-500/5 rounded-[1.5rem] border border-blue-500/10">
-                                <p className="text-[8px] font-black text-blue-400/40 uppercase tracking-[0.3em] mb-2 flex items-center gap-2">
+                        {(cita.notas || isEditing) && (
+                            <div className={cn(
+                                "p-6 rounded-[1.5rem] border transition-colors",
+                                isEditing ? "bg-black/40 border-white/10" : "bg-blue-500/5 border-blue-500/10"
+                            )}>
+                                <p className={cn(
+                                    "text-[8px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-2",
+                                    isEditing ? "text-white/40" : "text-blue-400/40"
+                                )}>
                                     <StickyNote className="w-2.5 h-2.5" />
                                     Notas
                                 </p>
-                                <p className="text-[11px] font-medium text-blue-300 italic opacity-80 leading-relaxed">
-                                    "{cita.notas}"
-                                </p>
+                                {!isEditing ? (
+                                    <p className="text-[11px] font-medium text-blue-300 italic opacity-80 leading-relaxed">
+                                        "{cita.notas}"
+                                    </p>
+                                ) : (
+                                    <Textarea 
+                                        value={notasEdit}
+                                        onChange={(e) => setNotasEdit(e.target.value)}
+                                        placeholder="Escribe notas aquí..."
+                                        className="bg-transparent border-none text-[12px] text-white p-0 focus-visible:ring-0 min-h-[60px] resize-none font-medium italic"
+                                    />
+                                )}
                             </div>
                         )}
                     </div>

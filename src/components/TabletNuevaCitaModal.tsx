@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO } from '@/lib/utils'
 import { ClientAutocomplete } from './ClientAutocomplete'
 import {
     Store,
@@ -64,14 +64,21 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
     const [origen, setOrigen] = useState<'walkin' | 'whatsapp' | 'telefono'>('walkin')
 
     const getHoyStr = () => {
-        return new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'America/Hermosillo',
-            year: 'numeric', month: '2-digit', day: '2-digit'
-        }).format(new Date())
+        return getHermosilloDateStr(new Date())
     }
 
     const [fecha, setFecha] = useState(getHoyStr())
     const [citasParaFecha, setCitasParaFecha] = useState<any[]>(citasDelDia)
+    
+    // Sincronizar con las citas que vienen del padre (AgendaTimeline)
+    useEffect(() => {
+        if (citasDelDia) {
+            const filtered = barberoId ? citasDelDia.filter((c: any) => String(c.barbero_id) === String(barberoId)) : citasDelDia
+            console.log("🔄 [TabletNuevaCitaModal] Sincronizando citasDelDia:", filtered.length)
+            setCitasParaFecha(filtered)
+        }
+    }, [citasDelDia, barberoId])
+
     const [bloqueosParaFecha, setBloqueosParaFecha] = useState<any[]>([])
     const [almuerzoBarbero, setAlmuerzoBarbero] = useState<any>(null)
     const [horarioSucursal, setHorarioSucursal] = useState<any>(horarioSucursalProps || null)
@@ -88,15 +95,20 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             setIsRefreshing(true)
             const supabase = createClient()
 
-            // Citas: Always fetch from API to ensure real-time data when modal opens
-            const { data: citasData } = await supabase.from('vista_citas_app').select('*').eq('fecha_cita_local', fecha)
-            if (citasData) {
-                const filtered = barberoId ? citasData.filter((c: any) => String(c.barbero_id) === String(barberoId)) : citasData
-                console.log(`📡 [TabletNuevaCitaModal] Citas encontradas (${fecha}):`, filtered.length)
-                setCitasParaFecha(filtered)
-            } else {
-                console.log(`📡 [TabletNuevaCitaModal] No se encontraron citas para ${fecha}`)
-                setCitasParaFecha([])
+            // Citas: Intentar obtener las más frescas del servidor al abrir el modal
+            try {
+                const { data: citasData } = await supabase.from('vista_citas_app')
+                    .select('*')
+                    .eq('fecha_cita_local', fecha)
+                    .neq('estado', 'cancelada')
+                
+                if (citasData) {
+                    const filtered = barberoId ? citasData.filter((c: any) => String(c.barbero_id) === String(barberoId)) : citasData
+                    console.log(`📡 [TabletNuevaCitaModal] Sync exitoso (${fecha}):`, filtered.length)
+                    setCitasParaFecha(filtered)
+                }
+            } catch (err) {
+                console.error("Error refreshing appointments:", err)
             }
 
             // Bloqueos y Almuerzo
@@ -286,42 +298,41 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             const fechaFinObj = new Date(fechaInicioObj.getTime() + duracion * 60000)
 
             // --- VALIDACIÓN DE COLISIONES ---
-            const startMins = fechaInicioObj.getHours() * 60 + fechaInicioObj.getMinutes()
-            const endMins = fechaFinObj.getHours() * 60 + fechaFinObj.getMinutes()
+            const nStartMs = fechaInicioObj.getTime()
+            const nEndMs = fechaFinObj.getTime()
 
             const colisionProhibida = citasParaFecha.find((c: any) => {
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
 
-                const cStart = new Date(c.timestamp_inicio_local)
-                const cEnd = new Date(c.timestamp_fin_local)
-                const cSMins = cStart.getHours() * 60 + cStart.getMinutes()
-                const cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
+                const cStart = new Date(c.timestamp_inicio_local).getTime()
+                const cEnd = new Date(c.timestamp_fin_local).getTime()
 
-                const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada']
-                if (!estadosProhibidos.includes(c.estado)) return false
-
-                const overlaps = (startMins < cEMins && endMins > cSMins)
-                return overlaps
+                // Interval Overlap: (A.start < B.end) && (A.end > B.start)
+                return (nStartMs < cEnd && nEndMs > cStart)
             })
 
             if (colisionProhibida) {
-                setError(`No es posible agendar en este horario porque coincide con una cita ${colisionProhibida.estado.replace('_', ' ')}.`)
+                const hCita = new Date(colisionProhibida.timestamp_inicio_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
+                setError(`Conflicto de horario: Ya existe una cita de ${colisionProhibida.cliente_nombre} de ${hCita} a ${colisionProhibida.hora_fin_local || ''}.`)
                 setLoading(false)
                 return
             }
 
-            // Formatear el timestamp_fin_local resultante en el mismo string con timezone de Hermosillo
-            const finStrFormatter = new Intl.DateTimeFormat('en-GB', {
-                timeZone: 'America/Hermosillo',
-                hour: '2-digit', minute: '2-digit', second: '2-digit',
-                year: 'numeric', month: '2-digit', day: '2-digit'
+            // --- VALIDACIÓN DE BLOQUEOS ---
+            const enBloqueo = bloqueosParaFecha.some(b => {
+                const bStart = new Date(b.timestamp_inicio || b.fecha_inicio).getTime()
+                const bEnd = new Date(b.timestamp_fin || b.fecha_fin).getTime()
+                return (nStartMs < bEnd && nEndMs > bStart)
             })
-            // EnGB arroja DD/MM/YYYY, HH:MM:SS. Lo necesitamos armar manualmente.
-            // Para más facilidad, tomamos las piezas de Intl.DateTimeFormat
-            const parts = finStrFormatter.formatToParts(fechaFinObj)
-            const p = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {} as any)
-            const timestampFinCompleto = `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:00${TZ_OFFSET}`
+
+            if (enBloqueo) {
+                setError("El horario seleccionado está bloqueado administrativamente.")
+                setLoading(false)
+                return
+            }
+
+            const timestampFinCompleto = formatToHermosilloISO(fechaFinObj)
 
             // API Payload
             const payload = {
@@ -420,62 +431,54 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
         // La partición de horas es fija de 30 minutos (el usuario prefiere ignorar la duración del servicio para mostrar disponibilidad)
         const duracionSlotMin = 30
 
-        const getSlotStatus = (start: Date, end: Date) => {
+        const getSlotStatus = (start: Date) => {
             const ahora = new Date()
+            const nStartMs = start.getTime()
 
-            // Comparar minutos totales del día para mayor precisión
-            const startMins = start.getHours() * 60 + start.getMinutes()
-            const endMins = end.getHours() * 60 + end.getMinutes()
+            // Calculate effective end time for the *proposed* appointment based on selected service duration
+            const proposedServiceDuration = selectedService ? selectedService.duracion_minutos : 30;
+            const nCDurBlocks = Math.max(1, Math.floor(proposedServiceDuration / 30));
+            const nEndMs = nStartMs + (nCDurBlocks * 30 * 60000); // Effective end time for the proposed slot
 
-            const estadosFinalizados = ['completada', 'finalizada', 'cobrada', 'por_cobrar']
-
-            // 1. Buscar cita en el slot PRIMERO (antes de evaluar 'past')
-            //    Así detectamos correctamente las citas finalizadas en el pasado
+            // 1. Citas (Appointments)
             const citaOcupada = citasParaFecha.find(c => {
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
 
-                // Usamos las horas locales de la vista si están disponibles para máxima precisión
-                let cSMins, cEMins
-                if (c.hora_cita_local && c.hora_fin_local) {
-                    // La vista devuelve formato "HH:MI AM" (ej: "06:00 PM")
-                    cSMins = parse12hToMins(c.hora_cita_local)
-                    cEMins = parse12hToMins(c.hora_fin_local)
-                } else {
-                    const cStart = new Date(c.timestamp_inicio_local)
-                    const cEnd = new Date(c.timestamp_fin_local)
-                    cSMins = cStart.getHours() * 60 + cStart.getMinutes()
-                    cEMins = cEnd.getHours() * 60 + cEnd.getMinutes()
-                }
+                const cStart = new Date(c.timestamp_inicio_local).getTime()
+                const cEndOriginal = new Date(c.timestamp_fin_local).getTime()
+                const cDur = Math.round((cEndOriginal - cStart) / 60000) // Duration in minutes
+                const cDurBlocks = Math.max(1, Math.floor(cDur / 30))
+                const cEndEffective = cStart + (cDurBlocks * 30 * 60000) // Effective end time for existing appointment
 
-                // LÓGICA DE SLOT ÚNICO (Petición del usuario):
-                // Una cita solo bloquea el slot de 30 minutos donde COMIENZA.
-                // Ignoramos la duración del servicio para dejar libres los "siguientes horarios".
-                if (cSMins >= startMins && cSMins < endMins) {
-                    return true
-                }
-                return false
+                // Interval Overlap: (A.start < B.end) && (A.end > B.start)
+                return (nStartMs < cEndEffective && nEndMs > cStart)
             })
 
-            // 2. Slot del pasado con cita ya finalizada/cobrada → verde inhabilitado 'HECHO'
-            if (citaOcupada && estadosFinalizados.includes(citaOcupada.estado) && start < ahora) return 'finalizada'
-            // 3. Slot ocupado por cita pendiente/en curso → rojo 'OCUPADO'
-            if (citaOcupada) return 'ocupado'
-            // 4. Slot del pasado sin cita → atenuado pero seleccionable (solo hoy)
-            if (start < ahora && fecha === getHoyStr()) return 'past'
+            const estadosFinalizados = ['completada', 'finalizada', 'cobrada', 'por_cobrar']
+            if (citaOcupada) {
+                if (estadosFinalizados.includes(citaOcupada.estado) && start < ahora) return 'finalizada'
+                return 'ocupado'
+            }
 
+            // 2. Bloqueos manuales
             const bloqueado = bloqueosParaFecha.some(b => {
-                const bStart = new Date(b.fecha_inicio)
-                const bEnd = new Date(b.fecha_fin)
-                return start < bEnd && end > bStart
+                const bStart = new Date(b.timestamp_inicio || b.fecha_inicio).getTime()
+                const bEnd = new Date(b.timestamp_fin || b.fecha_fin).getTime()
+                return (nStartMs < bEnd && nEndMs > bStart)
             })
             if (bloqueado) return 'bloqueado'
 
+            // 3. Almuerzo
             if (almuerzoBarbero && almuerzoBarbero.inicio && almuerzoBarbero.fin) {
-                const almuerzoStart = new Date(`${fecha}T${almuerzoBarbero.inicio}:00-07:00`)
-                const almuerzoEnd = new Date(`${fecha}T${almuerzoBarbero.fin}:00-07:00`)
-                if (start < almuerzoEnd && end > almuerzoStart) return 'bloqueado'
+                const aStart = new Date(`${fecha}T${almuerzoBarbero.inicio}:00-07:00`).getTime()
+                const aEnd = new Date(`${fecha}T${almuerzoBarbero.fin}:00-07:00`).getTime()
+                if (nStartMs < aEnd && nEndMs > aStart) return 'bloqueado'
             }
+
+            // 4. Past check
+            if (start < ahora && fecha === getHoyStr()) return 'past'
+
             return 'libre'
         }
 
@@ -487,7 +490,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
 
             const slotStart = new Date(`${fecha}T${hourValue}:00-07:00`)
             const slotEnd = new Date(slotStart.getTime() + duracionSlotMin * 60000)
-            const status = getSlotStatus(slotStart, slotEnd)
+            const status = getSlotStatus(slotStart)
 
             slots.push({ value: hourValue, label, status })
 
@@ -509,7 +512,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             }
 
             if (isWithinClosing) {
-                const halfStatus = getSlotStatus(halfSlotStart, halfSlotEnd)
+                const halfStatus = getSlotStatus(halfSlotStart)
                 slots.push({ value: halfHourValue, label: halfLabel, status: halfStatus })
             }
         }
