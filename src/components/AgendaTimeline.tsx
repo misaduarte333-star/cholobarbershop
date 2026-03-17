@@ -946,22 +946,22 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 </div>
             </div>
 
-            <div className="shrink-0 bg-black/40 backdrop-blur-xl border-t border-white/5 p-3">
-                <div className="flex items-center justify-between px-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.3)]" />
+            <div className="shrink-0 bg-black/40 backdrop-blur-xl border-t border-white/5 p-3 pb-safe">
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em] text-white/40">
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.3)]" />
                         <span>Confirmada</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
                         <span>En Proceso</span>
                     </div>
-                    <div className="flex items-center gap-2 hidden sm:flex">
-                        <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
                         <span>Por Cobrar</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-zinc-500 shadow-[0_0_8px_rgba(113,113,122,0.1)]" />
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 shadow-[0_0_8px_rgba(113,113,122,0.1)]" />
                         <span>Finalizada</span>
                     </div>
                 </div>
@@ -969,10 +969,24 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 <div className="mt-3 flex gap-2">
                     <Button
                         onClick={() => setShowCorteTurno(true)}
-                        className="flex-1 bg-white/[0.03] hover:bg-white/[0.08] text-white border border-white/10 h-10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] gap-2 transition-all group/btn"
+                        className={cn(
+                            "flex-1 border h-10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] gap-2 transition-all group/btn shadow-lg",
+                            corteExistente 
+                                ? "bg-emerald-600/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-600/20 shadow-emerald-900/10" 
+                                : "bg-white/[0.03] hover:bg-white/[0.08] text-white border-white/10 shadow-black/20"
+                        )}
                     >
-                        <BarChart3 className="w-3.5 h-3.5 text-primary group-hover/btn:scale-110 transition-transform" />
-                        Cerrar Turno
+                        {corteExistente ? (
+                            <>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 group-hover/btn:scale-110 transition-transform" />
+                                Turno Cerrado
+                            </>
+                        ) : (
+                            <>
+                                <BarChart3 className="w-3.5 h-3.5 text-primary group-hover/btn:scale-110 transition-transform" />
+                                Cerrar Turno
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>
@@ -1165,26 +1179,65 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                     <div className="px-8 pb-8 space-y-6">
                         {/* Metrics Grid */}
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Total Bruto</p>
+                            <div className={cn(
+                                "p-4 border rounded-2xl transition-colors",
+                                corteExistente 
+                                    ? "bg-emerald-500/5 border-emerald-500/10" 
+                                    : "bg-white/[0.02] border-white/5"
+                            )}>
+                                <p className={cn(
+                                    "text-[8px] font-black uppercase tracking-widest mb-1",
+                                    corteExistente ? "text-emerald-500/40" : "text-white/20"
+                                )}>Total Bruto</p>
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-xl font-black text-white">${metrics.totalBruto}</span>
+                                    <span className={cn(
+                                        "text-xl font-black",
+                                        corteExistente ? "text-emerald-400" : "text-white"
+                                    )}>${metrics.totalBruto}</span>
                                 </div>
                             </div>
-                            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Tus Cortes</p>
+                            <div className={cn(
+                                "p-4 border rounded-2xl transition-colors",
+                                corteExistente 
+                                    ? "bg-emerald-500/5 border-emerald-500/10" 
+                                    : "bg-white/[0.02] border-white/5"
+                            )}>
+                                <p className={cn(
+                                    "text-[8px] font-black uppercase tracking-widest mb-1",
+                                    corteExistente ? "text-emerald-500/40" : "text-white/20"
+                                )}>Tus Cortes</p>
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-xl font-black text-primary">{metrics.totalCortes}</span>
+                                    <span className={cn(
+                                        "text-xl font-black",
+                                        corteExistente ? "text-emerald-400" : "text-primary"
+                                    )}>{metrics.totalCortes}</span>
                                     <span className="text-[10px] font-bold text-white/20 uppercase">und</span>
                                 </div>
                             </div>
-                            <div className="col-span-2 p-5 bg-primary/5 border border-primary/10 rounded-2xl flex items-center justify-between">
+                            <div className={cn(
+                                "col-span-2 p-5 border rounded-2xl flex items-center justify-between transition-colors",
+                                corteExistente 
+                                    ? "bg-emerald-500/10 border-emerald-500/20" 
+                                    : "bg-primary/5 border-primary/10"
+                            )}>
                                 <div>
-                                    <p className="text-[8px] font-black text-primary uppercase tracking-widest mb-1">Tu Comisión ({metrics.comision_porcentaje}%)</p>
-                                    <p className="text-2xl font-black text-primary leading-none">${metrics.comision}</p>
+                                    <p className={cn(
+                                        "text-[8px] font-black uppercase tracking-widest mb-1",
+                                        corteExistente ? "text-emerald-500/60" : "text-primary"
+                                    )}>Tu Comisión ({metrics.comision_porcentaje}%)</p>
+                                    <p className={cn(
+                                        "text-2xl font-black leading-none",
+                                        corteExistente ? "text-emerald-400" : "text-primary"
+                                    )}>${metrics.comision}</p>
                                 </div>
-                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <TrendingUp className="w-6 h-6 text-primary" />
+                                <div className={cn(
+                                    "w-12 h-12 rounded-full flex items-center justify-center",
+                                    corteExistente ? "bg-emerald-500/10" : "bg-primary/10"
+                                )}>
+                                    <TrendingUp className={cn(
+                                        "w-6 h-6",
+                                        corteExistente ? "text-emerald-500" : "text-primary"
+                                    )} />
                                 </div>
                             </div>
                         </div>
@@ -1203,14 +1256,26 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex gap-4 items-start">
-                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                            <div className={cn(
+                                "p-5 border rounded-2xl flex gap-4 items-start transition-colors",
+                                corteExistente
+                                    ? "bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]"
+                                    : "bg-emerald-500/5 border-emerald-500/20"
+                            )}>
+                                <div className={cn(
+                                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                                    corteExistente ? "bg-emerald-500/20" : "bg-emerald-500/10"
+                                )}>
                                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-black text-emerald-500 uppercase tracking-tight mb-1">Turno Limpio</p>
+                                    <p className="text-xs font-black text-emerald-500 uppercase tracking-tight mb-1">
+                                        {corteExistente ? 'Corte Realizado' : 'Turno Limpio'}
+                                    </p>
                                     <p className="text-[11px] text-white/60 leading-relaxed">
-                                        Todas las citas de hoy han sido procesadas correctamente. Puedes proceder con el cierre.
+                                        {corteExistente 
+                                            ? 'Este turno ya ha sido cerrado y los datos están sincronizados.' 
+                                            : 'Todas las citas de hoy han sido procesadas correctamente. Puedes proceder con el cierre.'}
                                     </p>
                                 </div>
                             </div>
@@ -1230,6 +1295,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                 monto_bruto: metrics.totalBruto,
                                                 comision_barbero: metrics.comision,
                                                 total_servicios: metrics.totalCortes,
+                                                tipo: 'diario',
                                                 created_at: new Date().toISOString()
                                             } as any)
 

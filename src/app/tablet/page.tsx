@@ -491,7 +491,7 @@ export default function TabletDashboard() {
     if (!barbero) return null
 
     return (
-        <div className="h-screen bg-[#0A0C12] text-white flex flex-col overflow-hidden font-sans relative selection:bg-primary selection:text-black">
+        <div className="h-[100dvh] bg-[#0A0C12] text-white flex flex-col overflow-hidden font-sans relative selection:bg-primary selection:text-black">
             {/* Background Effects */}
             <div className="absolute inset-0 z-0 bg-radial-at-tl from-primary/5 via-transparent to-transparent opacity-60"></div>
             <div className="absolute inset-0 z-0 bg-radial-at-br from-blue-500/5 via-transparent to-transparent opacity-40"></div>

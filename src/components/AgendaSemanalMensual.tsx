@@ -1,9 +1,21 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import type { CitaDesdeVista } from '@/lib/types'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Ban, Utensils } from 'lucide-react'
+import { Ban, Utensils, BarChart3, CheckCircle2, Wallet, AlertCircle, CircleDollarSign, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase'
+import { toast } from 'sonner'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog"
 
 interface AgendaSemanalMensualProps {
     citas: CitaDesdeVista[]
@@ -269,6 +281,24 @@ function VistaMensual({ citas, bloqueos, days, fecha }: { citas: CitaDesdeVista[
 // ---------------------------------------------------------------------------
 
 export function AgendaSemanalMensual({ citas, bloqueos, almuerzoBarbero, fecha, vista, onUpdate }: AgendaSemanalMensualProps) {
+    const supabase = createClient()
+    const [showCorteSemanal, setShowCorteSemanal] = useState(false)
+    const [loadingCorte, setLoadingCorte] = useState(false)
+    const [corteExistente, setCorteExistente] = useState(false)
+    const [barbero, setBarbero] = useState<any>(null)
+
+    // Cargar sesión del barbero
+    useEffect(() => {
+        const sessionStr = localStorage.getItem('barbero_session')
+        if (sessionStr) {
+            try {
+                setBarbero(JSON.parse(sessionStr))
+            } catch (e) {
+                console.error('Error parsing session:', e)
+            }
+        }
+    }, [])
+
     const days = useMemo(() => {
         const result: { dateStr: string, label: string }[] = []
         const base = new Date(`${fecha}T12:00:00-07:00`)
@@ -288,13 +318,208 @@ export function AgendaSemanalMensual({ citas, bloqueos, almuerzoBarbero, fecha, 
         return result
     }, [fecha, vista])
 
+    // Verificar si ya existe un corte semanal para esta semana (usando el primer día de la semana como referencia)
+    useEffect(() => {
+        const checkCorte = async () => {
+            if (!barbero || vista !== 'semana' || days.length === 0) return
+            const { data } = await supabase
+                .from('cortes_turno' as any)
+                .select('id')
+                .eq('barbero_id', barbero.id)
+                .eq('fecha_corte', days[0].dateStr)
+                .eq('tipo', 'semanal')
+                .single()
+            
+            setCorteExistente(!!data)
+        }
+        checkCorte()
+    }, [barbero, vista, days, supabase])
+
+    const metrics = useMemo(() => {
+        if (vista !== 'semana') return null
+        const finalizadas = citas.filter(c => c.estado === 'finalizada' || c.estado === 'por_cobrar')
+        const pendientes = citas.filter(c => !['finalizada', 'cancelada', 'no_show'].includes(c.estado))
+        
+        const totalBruto = finalizadas.reduce((acc, c) => acc + (c.monto_pagado || c.servicio_precio || 0), 0)
+        const comision_porcentaje = barbero?.comision_porcentaje || 50
+        const comision = totalBruto * (comision_porcentaje / 100)
+        
+        return {
+            totalBruto,
+            comision,
+            totalCortes: finalizadas.length,
+            pendientes
+        }
+    }, [citas, vista, barbero])
+
     return (
-        <div className="w-full pb-10 animate-fade-in relative">
-            {vista === 'semana' ? (
-                <VistaSemanal citas={citas} bloqueos={bloqueos} almuerzoBarbero={almuerzoBarbero} days={days} />
-            ) : (
-                <VistaMensual citas={citas} bloqueos={bloqueos} days={days} fecha={fecha} />
+        <div className="w-full pb-10 animate-fade-in relative flex flex-col h-full">
+            <div className="flex-1 overflow-hidden">
+                {vista === 'semana' ? (
+                    <VistaSemanal citas={citas} bloqueos={bloqueos} almuerzoBarbero={almuerzoBarbero} days={days} />
+                ) : (
+                    <VistaMensual citas={citas} bloqueos={bloqueos} days={days} fecha={fecha} />
+                )}
+            </div>
+
+            {vista === 'semana' && metrics && (
+                <div className="shrink-0 bg-black/40 backdrop-blur-xl border-t border-white/5 p-3 pb-safe mt-4 rounded-2xl">
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em] text-white/40 mb-3">
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.3)]" />
+                            <span>Confirmada</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
+                            <span>En Proceso</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
+                            <span>Por Cobrar</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 shadow-[0_0_8px_rgba(113,113,122,0.1)]" />
+                            <span>Finalizada</span>
+                        </div>
+                    </div>
+
+                    <Button
+                        onClick={() => setShowCorteSemanal(true)}
+                        className={cn(
+                            "w-full border h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] gap-2 transition-all group/btn shadow-lg",
+                            corteExistente 
+                                ? "bg-emerald-600/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-600/20 shadow-emerald-900/10" 
+                                : "bg-white/[0.03] hover:bg-white/[0.08] text-white border-white/10 shadow-black/20"
+                        )}
+                    >
+                        {corteExistente ? (
+                            <>
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500 group-hover/btn:scale-110 transition-transform" />
+                                Semana Cerrada
+                            </>
+                        ) : (
+                            <>
+                                <BarChart3 className="w-4 h-4 text-primary group-hover/btn:scale-110 transition-transform" />
+                                Cerrar Semana
+                            </>
+                        )}
+                    </Button>
+                </div>
             )}
+
+            {/* MODAL CORTE SEMANAL */}
+            <Dialog open={showCorteSemanal} onOpenChange={setShowCorteSemanal}>
+                <DialogContent className="bg-[#050608] border-white/5 text-white rounded-[2.5rem] sm:max-w-md w-[95vw] shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-0 overflow-hidden outline-none">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-amber-500 to-primary/50 opacity-50" />
+
+                    <DialogHeader className="pt-10 px-8 pb-4">
+                        <div className="flex items-center gap-4 mb-2">
+                            <div className={cn(
+                                "w-12 h-12 rounded-2xl flex items-center justify-center border shrink-0 transition-colors",
+                                corteExistente 
+                                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
+                                    : "bg-primary/10 border-primary/20 text-primary"
+                            )}>
+                                {corteExistente ? <CheckCircle2 className="w-6 h-6" /> : <Wallet className="w-6 h-6" />}
+                            </div>
+                            <div className="flex flex-col text-left">
+                                <DialogTitle className="text-xl font-black uppercase tracking-tighter leading-none">Cierre de Semana</DialogTitle>
+                                <DialogDescription className="text-[10px] font-bold text-white/20 uppercase tracking-widest mt-1">
+                                    Resumen de actividad semanal
+                                </DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="px-8 pb-8 space-y-6">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 transition-colors hover:bg-white/[0.04]">
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Total Bruto</p>
+                                <p className="text-xl font-black text-white italic">${metrics?.totalBruto.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 transition-colors hover:bg-white/[0.04]">
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Tu Comisión</p>
+                                <p className="text-xl font-black text-primary italic">${metrics?.comision.toLocaleString()}</p>
+                            </div>
+                        </div>
+
+                        {metrics && metrics.pendientes.length > 0 ? (
+                            <div className="p-5 bg-red-500/5 border border-red-500/20 rounded-2xl flex gap-4 items-start">
+                                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-xs font-black text-red-500 uppercase tracking-tight mb-1">Citas Pendientes</p>
+                                    <p className="text-[10px] text-white/60 leading-relaxed">
+                                        Tienes <span className="text-white font-bold">{metrics.pendientes.length} citas sin finalizar</span> en la semana. Debes gestionarlas antes de realizar el cierre semanal.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex gap-4 items-start">
+                                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-xs font-black text-emerald-500 uppercase tracking-tight mb-1">Semana Lista</p>
+                                    <p className="text-[10px] text-white/60 leading-relaxed">
+                                        Todas las citas de la semana han sido procesadas. Puedes proceder con el cierre correspondiente.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-3 pt-2">
+                            <Button
+                                disabled={metrics && metrics.pendientes.length > 0 || loadingCorte}
+                                onClick={async () => {
+                                    setLoadingCorte(true)
+                                    try {
+                                        const { error } = await supabase
+                                            .from('cortes_turno' as any)
+                                            .upsert({
+                                                barbero_id: barbero.id,
+                                                sucursal_id: barbero.sucursal_id,
+                                                fecha_corte: days[0].dateStr, // Referencia al lunes de la semana
+                                                monto_bruto: metrics?.totalBruto,
+                                                comision_barbero: metrics?.comision,
+                                                total_servicios: metrics?.totalCortes,
+                                                tipo: 'semanal',
+                                                created_at: new Date().toISOString()
+                                            } as any)
+
+                                        if (error) throw error
+
+                                        toast.success(corteExistente ? "Cierre Actualizado" : "Semana Cerrada", {
+                                            icon: <CircleDollarSign className="w-5 h-5 text-primary" />
+                                        })
+                                        setCorteExistente(true)
+                                        setShowCorteSemanal(false)
+                                        onUpdate()
+                                    } catch (err: any) {
+                                        toast.error("Error al guardar", { description: err.message })
+                                    } finally {
+                                        setLoadingCorte(false)
+                                    }
+                                }}
+                                className={cn(
+                                    "w-full h-14 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl",
+                                    metrics && metrics.pendientes.length > 0
+                                        ? "bg-white/5 text-white/20 border border-white/5 cursor-not-allowed"
+                                        : corteExistente
+                                            ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20"
+                                            : "bg-primary text-black hover:bg-primary/90 shadow-primary/20"
+                                )}
+                            >
+                                {loadingCorte ? <Loader2 className="w-4 h-4 animate-spin" /> : metrics && metrics.pendientes.length > 0 ? 'Cierre Bloqueado' : corteExistente ? 'Actualizar Cierre Semanal' : 'Confirmar Cierre Semanal'}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowCorteSemanal(false)}
+                                className="w-full text-white/20 hover:text-white hover:bg-white/5 font-black uppercase tracking-widest text-[9px] py-4 rounded-xl"
+                            >
+                                Cancelar
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
