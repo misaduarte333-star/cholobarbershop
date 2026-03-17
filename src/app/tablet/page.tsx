@@ -88,9 +88,9 @@ export default function TabletDashboard() {
 
     const shiftFechaAgenda = (days: number) => {
         const d = new Date(`${fechaAgenda}T12:00:00-07:00`)
-        d.setDate(d.getDate() + days)
+        const step = vistaAgenda === 'semana' ? days * 7 : days
+        d.setDate(d.getDate() + step)
         setFechaAgenda(d.toLocaleDateString('en-CA'))
-        setVistaAgenda('dia')
     }
 
     const getRelativeDateLabel = (dateStr: string) => {
@@ -98,9 +98,27 @@ export default function TabletDashboard() {
             timeZone: 'America/Hermosillo',
             year: 'numeric', month: '2-digit', day: '2-digit'
         }).format(new Date())
-        if (dateStr === hoy) return 'Hoy'
 
         const target = new Date(`${dateStr}T12:00:00-07:00`)
+
+        if (vistaAgenda === 'semana') {
+            // Calculate start and end of the week (Monday to Sunday)
+            const dayOfWeek = target.getDay() // 0 is Sunday, 1 is Monday
+            const startOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+            const endOffset = startOffset + 6
+            
+            const startD = new Date(target)
+            startD.setDate(target.getDate() + startOffset)
+            const endD = new Date(target)
+            endD.setDate(target.getDate() + endOffset)
+
+            const startStr = startD.getDate()
+            const endStr = `${endD.getDate()} ${endD.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')}`
+            return `${startStr} - ${endStr}`
+        }
+
+        if (dateStr === hoy) return 'Hoy'
+
         const hoyObj = new Date(`${hoy}T12:00:00-07:00`)
         const diffTime = target.getTime() - hoyObj.getTime()
         const diffDays = Math.round(diffTime / (1000 * 3600 * 24))
@@ -698,6 +716,10 @@ export default function TabletDashboard() {
 
                                 <Button
                                     onClick={() => setVistaAgenda('semana')}
+                                    onDoubleClick={() => setFechaAgenda(new Intl.DateTimeFormat('en-CA', {
+                                        timeZone: 'America/Hermosillo',
+                                        year: 'numeric', month: '2-digit', day: '2-digit'
+                                    }).format(new Date()))}
                                     className={cn(
                                         "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-colors h-[34px] flex items-center shrink-0 shadow-none border",
                                         vistaAgenda === 'semana' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
@@ -724,7 +746,10 @@ export default function TabletDashboard() {
                                         ref={datePickerRef}
                                         type="date"
                                         value={fechaAgenda}
-                                        onChange={(e) => { setFechaAgenda(e.target.value); setVistaAgenda('dia') }}
+                                        onChange={(e) => { 
+                                            setFechaAgenda(e.target.value); 
+                                            setVistaAgenda('dia') 
+                                        }}
                                         className="absolute inset-0 opacity-0 pointer-events-none"
                                         style={{ colorScheme: 'dark' }}
                                     />

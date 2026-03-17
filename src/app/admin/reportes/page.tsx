@@ -27,21 +27,37 @@ export default function ReportesPage() {
     const cargarReportes = useCallback(async () => {
         setLoading(true)
         try {
-            const { data: citas, error } = await supabase
-                .from('vista_citas_app')
-                .select('*')
-                .gte('fecha_cita_local', dateRange.start)
-                .lte('fecha_cita_local', dateRange.end)
-                .in('estado', ['finalizada', 'confirmada', 'en_proceso'])
+            const [citasRes, cortesRes] = await Promise.all([
+                supabase
+                    .from('vista_citas_app')
+                    .select('*')
+                    .gte('fecha_cita_local', dateRange.start)
+                    .lte('fecha_cita_local', dateRange.end)
+                    .in('estado', ['finalizada', 'confirmada', 'en_proceso']),
+                supabase
+                    .from('cortes_turno')
+                    .select('fecha_corte')
+                    .gte('fecha_corte', dateRange.start)
+                    .lte('fecha_corte', dateRange.end)
+                    .eq('tipo', 'diario')
+            ])
 
-            if (error) throw error
+            if (citasRes.error) throw citasRes.error
+            if (cortesRes.error) throw cortesRes.error
 
-            if (citas) {
-                const castedCitas = citas as CitaDesdeVista[]
-                // Calculate Stats
-                const finalizadas = castedCitas.filter(c => c.estado === 'finalizada')
+            if (citasRes.data) {
+                const castedCitas = citasRes.data as CitaDesdeVista[]
+                const cortesFechas = new Set((cortesRes.data || []).map((c: any) => c.fecha_corte))
+
+                // Calculate Stats - ONLY include appointments on days that have been closed
+                const finalizadas = castedCitas.filter(c => {
+                    if (c.estado !== 'finalizada') return false
+                    const dKey = c.fecha_cita_local || (c.timestamp_inicio_local ? c.timestamp_inicio_local.split('T')[0] : '')
+                    return cortesFechas.has(dKey)
+                })
+
                 const totalIngresos = finalizadas.reduce((sum, c) => sum + (c.servicio_precio || 0), 0)
-                const totalCitas = castedCitas.length
+                const totalCitas = castedCitas.length // Keep total appointments overall
                 const ticketPromedio = finalizadas.length > 0 ? totalIngresos / finalizadas.length : 0
 
                 setStats({

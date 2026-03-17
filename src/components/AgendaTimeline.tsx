@@ -17,7 +17,8 @@ import {
     TrendingUp,
     CircleDollarSign,
     Wallet,
-    BarChart3
+    BarChart3,
+    Loader2
 } from 'lucide-react'
 import { toast } from "sonner"
 import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
@@ -31,6 +32,16 @@ import {
     DialogFooter,
     DialogDescription,
 } from "@/components/ui/dialog"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO } from "@/lib/utils"
 
@@ -284,17 +295,38 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const [showCorteTurno, setShowCorteTurno] = useState(false)
     const [corteExistente, setCorteExistente] = useState<any>(null)
     const [loadingCorte, setLoadingCorte] = useState(false)
+    const [showEarlyCloseAlert, setShowEarlyCloseAlert] = useState(false)
+
+    // Determine if current time is before the scheduled closing time
+    const closingTimeStr: string = useMemo(() => {
+        if (horarioSucursal && horarioSucursal[nombreDia]?.cierre) {
+            return horarioSucursal[nombreDia].cierre as string // e.g. "20:00"
+        }
+        return '20:00'
+    }, [horarioSucursal, nombreDia])
+
+    const isEarlyClosure = useMemo(() => {
+        // Only warn when the viewDate is today and the current time is before closing time
+        if (viewDate !== todayLocalStr) return false
+        const [ch, cm] = closingTimeStr.split(':').map(Number)
+        const closingMins = ch * 60 + (cm || 0)
+        const nowMins = currentTime.getHours() * 60 + currentTime.getMinutes()
+        return nowMins < closingMins
+    }, [closingTimeStr, currentTime, viewDate, todayLocalStr])
 
     useEffect(() => {
         const checkCorte = async () => {
             if (!barbero?.id || !viewDate) return
             setLoadingCorte(true)
+            setCorteExistente(null)
             try {
                 const { data, error } = await supabase
                     .from('cortes_turno' as any)
                     .select('*')
                     .eq('barbero_id', barbero.id)
                     .eq('fecha_corte', viewDate)
+                    .eq('tipo', 'diario')
+                    .limit(1)
                     .maybeSingle()
 
                 if (error) throw error
@@ -306,10 +338,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             }
         }
 
-        if (showCorteTurno) {
-            checkCorte()
-        }
-    }, [showCorteTurno, barbero?.id, viewDate])
+        checkCorte()
+    }, [barbero?.id, viewDate])
 
     // Refs for drag state tracking
     const isDraggingRef = useRef(false)
@@ -967,16 +997,30 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 </div>
 
                 <div className="mt-3 flex gap-2">
+                    {viewDate > todayLocalStr ? (
+                        <div className="flex-1 border h-10 rounded-xl bg-white/[0.01] border-white/5 text-white/15 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] cursor-not-allowed select-none">
+                            <AlertCircle className="w-3.5 h-3.5 opacity-40" />
+                            <span>Día Futuro — No disponible</span>
+                        </div>
+                    ) : (
                     <Button
                         onClick={() => setShowCorteTurno(true)}
+                        disabled={loadingCorte}
                         className={cn(
-                            "flex-1 border h-10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] gap-2 transition-all group/btn shadow-lg",
-                            corteExistente 
-                                ? "bg-emerald-600/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-600/20 shadow-emerald-900/10" 
-                                : "bg-white/[0.03] hover:bg-white/[0.08] text-white border-white/10 shadow-black/20"
+                            "flex-1 border h-10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] gap-2 transition-all shadow-lg",
+                            loadingCorte
+                                ? "bg-white/[0.02] border-white/5 text-white/20 cursor-default"
+                                : corteExistente 
+                                    ? "bg-emerald-600/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-600/20 shadow-emerald-900/10 group/btn" 
+                                    : "bg-white/[0.03] hover:bg-white/[0.08] text-white border-white/10 shadow-black/20 group/btn"
                         )}
                     >
-                        {corteExistente ? (
+                        {loadingCorte ? (
+                            <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin opacity-50" />
+                                <span className="opacity-50">Cargando...</span>
+                            </>
+                        ) : corteExistente ? (
                             <>
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 group-hover/btn:scale-110 transition-transform" />
                                 Turno Cerrado
@@ -988,6 +1032,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                             </>
                         )}
                     </Button>
+                    )}
                 </div>
             </div>
 
@@ -1285,22 +1330,27 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                             <Button
                                 disabled={metrics.pendientes.length > 0 || loadingCorte}
                                 onClick={async () => {
+                                    if (isEarlyClosure && !corteExistente) {
+                                        setShowEarlyCloseAlert(true)
+                                        return
+                                    }
                                     try {
+                                        setLoadingCorte(true)
+                                        const insertPayload = {
+                                            barbero_id: barbero.id,
+                                            sucursal_id: barbero.sucursal_id,
+                                            fecha_corte: viewDate,
+                                            monto_bruto: metrics.totalBruto,
+                                            comision_barbero: metrics.comision,
+                                            total_servicios: metrics.totalCortes,
+                                            tipo: 'diario',
+                                            created_at: corteExistente?.created_at || new Date().toISOString()
+                                        }
                                         const { error } = await supabase
                                             .from('cortes_turno' as any)
-                                            .upsert({
-                                                barbero_id: barbero.id,
-                                                sucursal_id: barbero.sucursal_id,
-                                                fecha_corte: viewDate,
-                                                monto_bruto: metrics.totalBruto,
-                                                comision_barbero: metrics.comision,
-                                                total_servicios: metrics.totalCortes,
-                                                tipo: 'diario',
-                                                created_at: new Date().toISOString()
-                                            } as any)
-
+                                            .upsert(insertPayload as any)
                                         if (error) throw error
-
+                                        setCorteExistente(insertPayload)
                                         toast.success(corteExistente ? "Corte Actualizado" : "Turno Cerrado Correctamente", {
                                             description: "El resumen ha sido guardado en el sistema.",
                                             icon: <CircleDollarSign className="w-5 h-5 text-primary" />
@@ -1311,6 +1361,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                         toast.error("Error al Guardar Corte", {
                                             description: err.message || "No se pudo persistir el cierre de turno."
                                         })
+                                    } finally {
+                                        setLoadingCorte(false)
                                     }
                                 }}
                                 className={cn(
@@ -1336,6 +1388,97 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Early Closure Alert Dialog */}
+            <AlertDialog open={showEarlyCloseAlert} onOpenChange={setShowEarlyCloseAlert}>
+                <AlertDialogContent className="bg-[#0d0f14] border border-amber-500/20 rounded-3xl shadow-2xl shadow-amber-500/10 max-w-md">
+                    <AlertDialogHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                                <AlertTriangle className="w-6 h-6 text-amber-400" />
+                            </div>
+                            <div>
+                                <AlertDialogTitle className="text-white font-black uppercase tracking-widest text-base">
+                                    Cierre Anticipado
+                                </AlertDialogTitle>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-amber-400/70 mt-0.5">
+                                    Aún no es la hora de cierre
+                                </p>
+                            </div>
+                        </div>
+                        <AlertDialogDescription className="text-white/50 text-xs leading-relaxed">
+                            Estás intentando cerrar el turno antes de la hora programada de cierre
+                            ({closingTimeStr}). Aún pueden llegar más citas o estar pendientes por
+                            gestionar. ¿Deseas confirmar el cierre de todas formas?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 my-2 flex items-center gap-4">
+                        <div className="flex flex-col items-center">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30">Hora actual</span>
+                            <span className="text-2xl font-black text-white tabular-nums">
+                                {currentTime.getHours().toString().padStart(2, '0')}:{currentTime.getMinutes().toString().padStart(2, '0')}
+                            </span>
+                        </div>
+                        <div className="flex-1 h-[1px] bg-amber-500/20 relative">
+                            <div className="absolute inset-y-0 right-0 flex items-center">
+                                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30">Cierre programado</span>
+                            <span className="text-2xl font-black text-amber-400 tabular-nums">{closingTimeStr}</span>
+                        </div>
+                    </div>
+
+                    <AlertDialogFooter className="flex gap-2 mt-2">
+                        <AlertDialogCancel
+                            className="flex-1 h-12 rounded-2xl bg-white/5 border border-white/10 text-white/60 font-black text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white"
+                            onClick={() => setShowEarlyCloseAlert(false)}
+                        >
+                            Esperar al cierre
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className="flex-1 h-12 rounded-2xl bg-amber-500 text-black font-black text-[10px] uppercase tracking-widest hover:bg-amber-400 shadow-lg shadow-amber-500/20"
+                            onClick={async () => {
+                                setShowEarlyCloseAlert(false)
+                                try {
+                                    setLoadingCorte(true)
+                                    const insertPayload = {
+                                        barbero_id: barbero.id,
+                                        sucursal_id: barbero.sucursal_id,
+                                        fecha_corte: viewDate,
+                                        monto_bruto: metrics.totalBruto,
+                                        comision_barbero: metrics.comision,
+                                        total_servicios: metrics.totalCortes,
+                                        tipo: 'diario',
+                                        created_at: corteExistente?.created_at || new Date().toISOString()
+                                    }
+                                    const { error } = await supabase
+                                        .from('cortes_turno' as any)
+                                        .upsert(insertPayload as any)
+                                    if (error) throw error
+                                    setCorteExistente(insertPayload)
+                                    toast.success("Turno Cerrado Correctamente", {
+                                        description: "El resumen ha sido guardado en el sistema.",
+                                        icon: <CircleDollarSign className="w-5 h-5 text-primary" />
+                                    })
+                                    setShowCorteTurno(false)
+                                } catch (err: any) {
+                                    console.error('Error saving shift closing:', err)
+                                    toast.error("Error al Guardar Corte", {
+                                        description: err.message || "No se pudo persistir el cierre de turno."
+                                    })
+                                } finally {
+                                    setLoadingCorte(false)
+                                }
+                            }}
+                        >
+                            Confirmar cierre anticipado
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
         </div>
     )

@@ -318,19 +318,28 @@ export function AgendaSemanalMensual({ citas, bloqueos, almuerzoBarbero, fecha, 
         return result
     }, [fecha, vista])
 
-    // Verificar si ya existe un corte semanal para esta semana (usando el primer día de la semana como referencia)
+    // Verificar si hay cortes diarios existentes para los días de esta semana
     useEffect(() => {
         const checkCorte = async () => {
             if (!barbero || vista !== 'semana' || days.length === 0) return
+            
+            setCorteExistente(false)
+            setLoadingCorte(true)
+            
+            const dateStrs = days.map(d => d.dateStr)
+            
+            // Check if there are ANY daily closures already submitted for this week's days
             const { data } = await supabase
                 .from('cortes_turno' as any)
-                .select('id')
+                .select('id, fecha_corte')
                 .eq('barbero_id', barbero.id)
-                .eq('fecha_corte', days[0].dateStr)
-                .eq('tipo', 'semanal')
-                .single()
+                .in('fecha_corte', dateStrs)
+                .eq('tipo', 'diario')
             
-            setCorteExistente(!!data)
+            // Consider the week "closed" fully ONLY if all 7 days have a daily closure record.
+            // A week with 1 closed shift does not mean the entire week is closed.
+            setCorteExistente((data && data.length === 7) ? true : false)
+            setLoadingCorte(false)
         }
         checkCorte()
     }, [barbero, vista, days, supabase])
@@ -351,6 +360,16 @@ export function AgendaSemanalMensual({ citas, bloqueos, almuerzoBarbero, fecha, 
             pendientes
         }
     }, [citas, vista, barbero])
+
+    const { esSemanaFutura, esSemanaActual } = useMemo(() => {
+        if (days.length === 7) {
+            const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Hermosillo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+            const future = todayStr < days[0].dateStr          // today is BEFORE the week start
+            const current = todayStr >= days[0].dateStr && todayStr <= days[6].dateStr  // today is IN this week
+            return { esSemanaFutura: future, esSemanaActual: current }
+        }
+        return { esSemanaFutura: false, esSemanaActual: false }
+    }, [days])
 
     return (
         <div className="w-full pb-10 animate-fade-in relative flex flex-col h-full">
@@ -383,6 +402,12 @@ export function AgendaSemanalMensual({ citas, bloqueos, almuerzoBarbero, fecha, 
                         </div>
                     </div>
 
+                    {(esSemanaFutura || esSemanaActual) && !corteExistente ? (
+                        <div className="w-full border h-12 rounded-xl bg-white/[0.01] border-white/5 text-white/15 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] cursor-not-allowed select-none">
+                            <AlertCircle className="w-4 h-4 opacity-40" />
+                            <span>{esSemanaFutura ? 'Semana Futura — No disponible' : 'Semana en Curso — Aún no cerrada'}</span>
+                        </div>
+                    ) : (
                     <Button
                         onClick={() => setShowCorteSemanal(true)}
                         className={cn(
@@ -404,6 +429,7 @@ export function AgendaSemanalMensual({ citas, bloqueos, almuerzoBarbero, fecha, 
                             </>
                         )}
                     </Button>
+                    )}
                 </div>
             )}
 
@@ -443,7 +469,17 @@ export function AgendaSemanalMensual({ citas, bloqueos, almuerzoBarbero, fecha, 
                             </div>
                         </div>
 
-                        {metrics && metrics.pendientes.length > 0 ? (
+                        {esSemanaFutura ? (
+                            <div className="p-5 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex gap-4 items-start">
+                                <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-xs font-black text-amber-500 uppercase tracking-tight mb-1">Semana en Curso</p>
+                                    <p className="text-[10px] text-white/60 leading-relaxed">
+                                        Debes esperar a que finalice el último día de la semana (Domingo) para realizar el cierre semanal.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : metrics && metrics.pendientes.length > 0 ? (
                             <div className="p-5 bg-red-500/5 border border-red-500/20 rounded-2xl flex gap-4 items-start">
                                 <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                                 <div>
@@ -453,7 +489,7 @@ export function AgendaSemanalMensual({ citas, bloqueos, almuerzoBarbero, fecha, 
                                     </p>
                                 </div>
                             </div>
-                        ) : (
+                        ) : !corteExistente ? (
                             <div className="p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex gap-4 items-start">
                                 <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
                                 <div>
@@ -463,30 +499,50 @@ export function AgendaSemanalMensual({ citas, bloqueos, almuerzoBarbero, fecha, 
                                     </p>
                                 </div>
                             </div>
-                        )}
+                        ) : null}
 
                         <div className="flex flex-col gap-3 pt-2">
-                            <Button
-                                disabled={metrics && metrics.pendientes.length > 0 || loadingCorte}
-                                onClick={async () => {
-                                    setLoadingCorte(true)
-                                    try {
+                                    <Button
+                                        disabled={esSemanaFutura || (metrics && metrics.pendientes.length > 0) || loadingCorte}
+                                        onClick={async () => {
+                                            setLoadingCorte(true)
+                                            try {
+                                                // Inicializar todos los días visibles de la semana con valores en 0
+                                                const porDia = days.reduce((acc, currentDay) => {
+                                                    acc[currentDay.dateStr] = { bruto: 0, cortes: 0 }
+                                                    return acc
+                                                }, {} as Record<string, { bruto: number, cortes: number }>)
+
+                                                // Sumar los valores de las citas finalizadas a sus respectivos días
+                                                const finalizadas = citas.filter(c => c.estado === 'finalizada' || c.estado === 'por_cobrar')
+                                        finalizadas.forEach(c => {
+                                            const dateStr = c.fecha_cita_local || (c.timestamp_inicio_local ? c.timestamp_inicio_local.split('T')[0] : '')
+                                            if (porDia[dateStr] !== undefined) {
+                                                porDia[dateStr].bruto += (c.monto_pagado || c.servicio_precio || 0)
+                                                porDia[dateStr].cortes += 1
+                                            }
+                                        })
+
+                                        const comision_porcentaje = barbero?.comision_porcentaje || 50
+                                        const upsertPayloads = Object.entries(porDia).map(([fecha, datos]) => ({
+                                            barbero_id: barbero.id,
+                                            sucursal_id: barbero.sucursal_id,
+                                            fecha_corte: fecha,
+                                            monto_bruto: datos.bruto,
+                                            comision_barbero: datos.bruto * (comision_porcentaje / 100),
+                                            total_servicios: datos.cortes,
+                                            tipo: 'diario',
+                                            created_at: new Date().toISOString()
+                                        }))
+
                                         const { error } = await supabase
                                             .from('cortes_turno' as any)
-                                            .upsert({
-                                                barbero_id: barbero.id,
-                                                sucursal_id: barbero.sucursal_id,
-                                                fecha_corte: days[0].dateStr, // Referencia al lunes de la semana
-                                                monto_bruto: metrics?.totalBruto,
-                                                comision_barbero: metrics?.comision,
-                                                total_servicios: metrics?.totalCortes,
-                                                tipo: 'semanal',
-                                                created_at: new Date().toISOString()
-                                            } as any)
+                                            .upsert(upsertPayloads as any)
 
                                         if (error) throw error
 
-                                        toast.success(corteExistente ? "Cierre Actualizado" : "Semana Cerrada", {
+                                        toast.success(corteExistente ? "Cierres Diarios Actualizados" : "Semana Cerrada (Cierres Diarios)", {
+                                            description: "Se han guardado los cierres diarios correspondientes.",
                                             icon: <CircleDollarSign className="w-5 h-5 text-primary" />
                                         })
                                         setCorteExistente(true)

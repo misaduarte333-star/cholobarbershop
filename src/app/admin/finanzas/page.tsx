@@ -145,17 +145,38 @@ export default function FinanzasPage() {
             const start = startOfMonth(new Date()).toISOString()
             const end = endOfMonthDate(new Date()).toISOString()
 
-            const { data, error } = await supabase
-                .from('vista_citas_app')
-                .select('servicio_precio')
-                .eq('barbero_id', barberoId)
-                .gte('timestamp_inicio_local', start)
-                .lte('timestamp_inicio_local', end)
-                .in('estado', ['finalizada', 'confirmada', 'en_proceso'])
+            const [citasRes, cortesRes] = await Promise.all([
+                supabase
+                    .from('vista_citas_app')
+                    .select('servicio_precio, fecha_cita_local, timestamp_inicio_local, estado')
+                    .eq('barbero_id', barberoId)
+                    .gte('timestamp_inicio_local', start)
+                    .lte('timestamp_inicio_local', end)
+                    .in('estado', ['finalizada', 'confirmada', 'en_proceso']),
+                supabase
+                    .from('cortes_turno')
+                    .select('fecha_corte')
+                    .gte('fecha_corte', start)
+                    .lte('fecha_corte', end)
+                    .eq('tipo', 'diario')
+            ])
 
-            if (error) throw error
+            if (citasRes.error) throw citasRes.error
+            if (cortesRes.error) throw cortesRes.error
             
-            const total = (data as any[]).reduce((sum, cita) => sum + (cita.servicio_precio || 0), 0)
+            const cortesFechas = new Set((cortesRes.data || []).map((c: any) => c.fecha_corte))
+
+            let total = 0
+            if (citasRes.data) {
+                citasRes.data.forEach((cita: any) => {
+                    if (cita.estado !== 'finalizada') return
+                    const dKey = cita.fecha_cita_local || (cita.timestamp_inicio_local ? cita.timestamp_inicio_local.split('T')[0] : '')
+                    if (cortesFechas.has(dKey)) {
+                        total += (cita.servicio_precio || 0)
+                    }
+                })
+            }
+            
             setBarberoIncome(total)
         } catch (error) {
             console.error('Error fetching barbero income:', error)
@@ -401,11 +422,11 @@ export default function FinanzasPage() {
     }, [gastos])
 
     return (
-        <div className="space-y-8 animate-fade-in p-4 sm:p-6 md:p-0">
+        <div className="space-y-3 sm:space-y-6 animate-fade-in px-1 sm:px-2 md:px-0">
             {/* Header */}
             <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-4">
                 <div className="space-y-1">
-                    <h1 className="text-4xl sm:text-3xl font-black text-white uppercase tracking-tighter font-display leading-none">
+                    <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter font-display leading-none">
                         Gestión <span className="text-gradient-gold">Financiera</span>
                     </h1>
                     <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em]">Control de Gastos y Ahorro</p>
@@ -579,7 +600,7 @@ export default function FinanzasPage() {
             </header>
 
             {/* Savings Breakdown Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                 <SavingsCard 
                     label="Meta Diaria" 
                     value={savingsMetrics.diario} 
@@ -601,115 +622,174 @@ export default function FinanzasPage() {
                     desc="Total de gastos de este mes"
                     color="indigo"
                 />
+                {/* Pagos Vencidos */}
                 <Card className={cn(
-                    "glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2rem] relative group hover:scale-[1.02] transition-all duration-300",
-                    savingsMetrics.vencidos > 0 && "border-red-500/30 bg-red-500/5 shadow-[0_0_30px_rgba(239,68,68,0.1)]"
+                    "glass-card border-white/5 bg-black/40 overflow-hidden rounded-2xl relative group hover:scale-[1.02] transition-all duration-300",
+                    savingsMetrics.vencidos > 0 && "border-red-500/30 bg-red-500/5"
                 )}>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-4">
+                    <CardContent className="p-2.5 sm:p-4">
+                        <div className="flex items-center gap-2 mb-1.5">
                             <div className={cn(
-                                "w-12 h-12 rounded-2xl flex items-center justify-center border text-2xl transition-all",
-                                savingsMetrics.vencidos > 0 
-                                    ? "bg-red-500/10 text-red-400 border-red-500/30 shadow-red-500/10" 
-                                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 opacity-50 shadow-emerald-500/5"
+                                "w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center border text-sm transition-all",
+                                savingsMetrics.vencidos > 0
+                                    ? "bg-red-500/10 text-red-400 border-red-500/30"
+                                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 opacity-50"
                             )}>
-                                <span className={cn("material-icons-round", savingsMetrics.vencidos > 0 && "animate-pulse")}>
+                                <span className={cn("material-icons-round text-sm", savingsMetrics.vencidos > 0 && "animate-pulse")}>
                                     {savingsMetrics.vencidos > 0 ? 'warning' : 'verified'}
                                 </span>
                             </div>
+                            <p className="text-[7px] sm:text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Vencidos</p>
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Pagos Vencidos</p>
-                            <div className="flex items-baseline gap-1">
-                                <span className={cn(
-                                    "text-3xl font-black tracking-tighter",
-                                    savingsMetrics.vencidos > 0 ? "text-red-400" : "text-white"
-                                )}>{savingsMetrics.vencidos}</span>
-                            </div>
-                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-relaxed mt-2">
-                                {savingsMetrics.vencidos > 0 ? 'Facturas atrasadas' : 'Todo al día'}
-                            </p>
-                        </div>
-                        {savingsMetrics.vencidos > 0 && (
-                            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full blur-3xl opacity-20 bg-red-500" />
-                        )}
+                        <span className={cn("text-base sm:text-xl font-black tracking-tighter", savingsMetrics.vencidos > 0 ? "text-red-400" : "text-white")}>
+                            {savingsMetrics.vencidos}
+                        </span>
+                        <p className="text-[6px] sm:text-[7px] font-bold text-white/20 uppercase tracking-widest mt-0.5">
+                            {savingsMetrics.vencidos > 0 ? 'Atrasados' : 'Al día'}
+                        </p>
+                        {savingsMetrics.vencidos > 0 && <div className="absolute -right-3 -bottom-3 w-14 h-14 rounded-full blur-2xl opacity-20 bg-red-500" />}
                     </CardContent>
                 </Card>
 
-                {/* Pagos Mañana (New Alert) */}
+                {/* Pagos Mañana */}
                 <Card className={cn(
-                    "glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2rem] relative group hover:scale-[1.02] transition-all duration-300",
-                    savingsMetrics.manana > 0 && "border-amber-500/30 bg-amber-500/5 shadow-[0_0_30px_rgba(245,158,11,0.1)]"
+                    "glass-card border-white/5 bg-black/40 overflow-hidden rounded-2xl relative group hover:scale-[1.02] transition-all duration-300",
+                    savingsMetrics.manana > 0 && "border-amber-500/30 bg-amber-500/5"
                 )}>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-4">
+                    <CardContent className="p-2.5 sm:p-4">
+                        <div className="flex items-center gap-2 mb-1.5">
                             <div className={cn(
-                                "w-12 h-12 rounded-2xl flex items-center justify-center border text-2xl transition-all",
-                                savingsMetrics.manana > 0 
-                                    ? "bg-amber-500/10 text-amber-400 border-amber-500/30 shadow-amber-500/10" 
-                                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 opacity-50 shadow-emerald-500/5"
+                                "w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center border text-sm transition-all",
+                                savingsMetrics.manana > 0
+                                    ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 opacity-50"
                             )}>
-                                <span className={cn("material-icons-round", savingsMetrics.manana > 0 && "animate-bounce")}>
+                                <span className={cn("material-icons-round text-sm", savingsMetrics.manana > 0 && "animate-bounce")}>
                                     {savingsMetrics.manana > 0 ? 'notification_important' : 'verified'}
                                 </span>
                             </div>
+                            <p className="text-[7px] sm:text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Mañana</p>
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Pagos Mañana</p>
-                            <div className="flex items-baseline gap-1">
-                                <span className={cn(
-                                    "text-3xl font-black tracking-tighter",
-                                    savingsMetrics.manana > 0 ? "text-amber-400" : "text-white"
-                                )}>{savingsMetrics.manana}</span>
-                            </div>
-                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-relaxed mt-2">
-                                {savingsMetrics.manana > 0 ? 'Vencen pronto' : 'Sin pendientes mañana'}
-                            </p>
-                        </div>
-                        {savingsMetrics.manana > 0 && (
-                            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full blur-3xl opacity-20 bg-amber-500" />
-                        )}
+                        <span className={cn("text-base sm:text-xl font-black tracking-tighter", savingsMetrics.manana > 0 ? "text-amber-400" : "text-white")}>
+                            {savingsMetrics.manana}
+                        </span>
+                        <p className="text-[6px] sm:text-[7px] font-bold text-white/20 uppercase tracking-widest mt-0.5">
+                            {savingsMetrics.manana > 0 ? 'Vencen pronto' : 'Sin pendientes'}
+                        </p>
+                        {savingsMetrics.manana > 0 && <div className="absolute -right-3 -bottom-3 w-14 h-14 rounded-full blur-2xl opacity-20 bg-amber-500" />}
                     </CardContent>
                 </Card>
             </div>
 
+            {/* Quick Payments Summary Table */}
+            <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-2xl">
+                <CardHeader className="p-3 sm:p-5 pb-0">
+                    <CardTitle className="text-sm sm:text-base font-black text-white uppercase tracking-tight flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                            <span className="material-icons-round text-sm">receipt_long</span>
+                        </div>
+                        Resumen de Pagos
+                        <Badge variant="outline" className="text-[8px] border-white/10 text-white/30 ml-auto font-black">{gastos.length} registros</Badge>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 mt-2">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-white/5 bg-white/5">
+                                    <th className="text-left px-3 sm:px-5 py-2 text-[8px] font-black uppercase tracking-widest text-white/30">Concepto</th>
+                                    <th className="text-center px-2 py-2 text-[8px] font-black uppercase tracking-widest text-white/30 hidden sm:table-cell">Fecha</th>
+                                    <th className="text-right px-2 py-2 text-[8px] font-black uppercase tracking-widest text-white/30">Monto</th>
+                                    <th className="text-center px-2 py-2 text-[8px] font-black uppercase tracking-widest text-white/30">Estado</th>
+                                    <th className="text-right px-3 sm:px-5 py-2 text-[8px] font-black uppercase tracking-widest text-white/30">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {gastos.map(gasto => {
+                                    const status = getGastoStatus(gasto)
+                                    return (
+                                        <tr key={gasto.id} className={cn(
+                                            "border-b border-white/5 hover:bg-white/5 transition-colors",
+                                            status === 'overdue' && "bg-red-500/5",
+                                            status === 'due_today' && "bg-amber-500/5"
+                                        )}>
+                                            <td className="px-3 sm:px-5 py-3">
+                                                <div className="flex items-center gap-1.5">
+                                                    {gasto.es_recurrente && <span className="material-icons-round text-[10px] text-amber-400">repeat</span>}
+                                                    <p className="text-[10px] sm:text-[11px] font-black text-white uppercase tracking-tight truncate max-w-[90px] sm:max-w-[180px]">{gasto.descripcion}</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-2 py-2 text-center hidden sm:table-cell">
+                                                <span className="text-[9px] font-bold text-white/40">{format(new Date(gasto.fecha_pago), 'dd/MM/yy')}</span>
+                                            </td>
+                                            <td className="px-2 py-2 text-right">
+                                                <span className="text-[10px] font-black text-amber-400">${gasto.monto.toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-2 py-2 text-center">
+                                                {status === 'overdue' && <Badge variant="outline" className="text-[7px] border-red-500/30 text-red-400 h-4 px-1 font-black">VENC.</Badge>}
+                                                {status === 'due_tomorrow' && <Badge variant="outline" className="text-[7px] border-amber-500/30 text-amber-400 h-4 px-1 font-black">MAÑANA</Badge>}
+                                                {status === 'due_today' && <Badge variant="outline" className="text-[7px] border-orange-500/30 text-orange-400 h-4 px-1 font-black">HOY</Badge>}
+                                                {status === 'paid' && <Badge variant="outline" className="text-[7px] border-emerald-500/30 text-emerald-400 h-4 px-1 font-black">PAGADO</Badge>}
+                                                {status === 'pending' && <Badge variant="outline" className="text-[7px] border-white/15 text-white/25 h-4 px-1 font-black">PEND.</Badge>}
+                                            </td>
+                                            <td className="px-3 sm:px-5 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {!gasto.pagado ? (
+                                                        <Button size="sm" className="h-7 px-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[8px] font-black uppercase rounded-lg hover:bg-emerald-500 hover:text-black transition-all whitespace-nowrap" onClick={() => openPayModal(gasto)}>
+                                                            Pagar
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-[8px] font-black text-emerald-400/50 uppercase tracking-widest">Pagado</span>
+                                                    )}
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white/20 hover:text-amber-400 hover:bg-amber-400/10 rounded-lg transition-colors shrink-0" onClick={() => openEditModal(gasto)}>
+                                                        <span className="material-icons-round text-xs">edit</span>
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                                {gastos.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="px-4 py-8 text-center text-white/20 text-[10px] uppercase font-black tracking-widest">Sin pagos registrados</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Break-Even Analysis Section */}
             <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2.5rem] relative group border-indigo-500/10">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-amber-500/5 opacity-50" />
-                <CardHeader className="p-8 pb-4 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <CardHeader className="p-4 sm:p-8 pb-3 sm:pb-4 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                        <CardTitle className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
-                                <span className="material-icons-round text-2xl">insights</span>
+                        <CardTitle className="text-base sm:text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
+                                <span className="material-icons-round text-lg sm:text-2xl">insights</span>
                             </div>
-                            Análisis de <span className="text-gradient-gold">Punto de Equilibrio</span>
+                            Análisis de <span className="text-gradient-gold">P.E.</span><span className="hidden sm:inline"> · Punto de Equilibrio</span>
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">Rentabilidad basada en ingresos de barberos</CardDescription>
+                        <CardDescription className="text-[9px] sm:text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">Rentabilidad basada en ingresos de barberos</CardDescription>
                     </div>
-                    
-                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-2 rounded-2xl backdrop-blur-md">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">Barbero:</span>
-                        <Select value={selectedBarberoId} onValueChange={(val) => setSelectedBarberoId(val || '')}>
-                            <SelectTrigger className="h-9 w-[180px] bg-black/40 border-white/10 text-white rounded-xl text-xs font-bold">
-                                <SelectValue placeholder="Seleccionar..." />
-                            </SelectTrigger>
-                            <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                                {barberos.map(b => (
-                                    <SelectItem key={b.id} value={b.id}>{b.nombre}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {barberos.find(b => b.id === selectedBarberoId) && (
+                        <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl">
+                            <span className="material-icons-round text-sm text-indigo-400">person</span>
+                            <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{barberos.find(b => b.id === selectedBarberoId)?.nombre}</span>
+                            {loadingIncome && <span className="material-icons-round text-xs text-white/30 animate-spin">refresh</span>}
+                        </div>
+                    )}
                 </CardHeader>
-                <CardContent className="p-8 pt-4 relative z-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                <CardContent className="p-4 sm:p-8 pt-2 sm:pt-4 relative z-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-10">
                         {/* Summary Stats */}
                         <div className="space-y-8">
                             <div className="space-y-2">
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Ingreso Actual ({barberos.find(b => b.id === selectedBarberoId)?.nombre || '...' })</p>
+                                <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Ingreso Actual ({barberos.find(b => b.id === selectedBarberoId)?.nombre || '...' })</p>
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-4xl font-black tracking-tighter text-white">${barberoIncome.toLocaleString()}</span>
-                                    <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Este mes</span>
+                                    <span className="text-2xl sm:text-4xl font-black tracking-tighter text-white">${barberoIncome.toLocaleString()}</span>
+                                    <span className="text-[9px] sm:text-[10px] font-bold text-white/20 uppercase tracking-widest">Este mes</span>
                                 </div>
                             </div>
                             
@@ -734,19 +814,19 @@ export default function FinanzasPage() {
                         </div>
 
                         {/* Threshold Analysis */}
-                        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 flex flex-col justify-between group hover:bg-white/[0.04] transition-all">
-                                <div className="space-y-4">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                                        <span className="material-icons-round">trending_up</span>
+                        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
+                            <div className="bg-white/[0.02] border border-white/5 rounded-2xl sm:rounded-3xl p-3 sm:p-6 flex flex-col justify-between group hover:bg-white/[0.04] transition-all">
+                                <div className="space-y-2 sm:space-y-4">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                        <span className="material-icons-round text-base sm:text-xl">trending_up</span>
                                     </div>
                                     <div>
-                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Umbral de Ganancia</h4>
-                                        <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-relaxed">Punto donde cada peso extra es utilidad neta</p>
+                                        <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Umbral de Ganancia</h4>
+                                        <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-relaxed hidden sm:block">Punto donde cada peso extra es utilidad neta</p>
                                     </div>
                                 </div>
-                                <div className="mt-8">
-                                    <div className="text-2xl font-black text-emerald-400 tracking-tight">
+                                <div className="mt-3 sm:mt-8">
+                                    <div className="text-xl sm:text-2xl font-black text-emerald-400 tracking-tight">
                                         {barberoIncome > savingsMetrics.mensual ? (
                                             `+$${(barberoIncome - savingsMetrics.mensual).toLocaleString()}`
                                         ) : (
@@ -754,26 +834,26 @@ export default function FinanzasPage() {
                                         )}
                                     </div>
                                     <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mt-1">
-                                        {barberoIncome > savingsMetrics.mensual ? "Utilidad Generada" : "Monto de Break-Even"}
+                                        {barberoIncome > savingsMetrics.mensual ? "Utilidad Generada" : "Break-Even"}
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 flex flex-col justify-between group hover:bg-white/[0.04] transition-all">
-                                <div className="space-y-4">
-                                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+                            <div className="bg-white/[0.02] border border-white/5 rounded-2xl sm:rounded-3xl p-3 sm:p-6 flex flex-col justify-between group hover:bg-white/[0.04] transition-all">
+                                <div className="space-y-2 sm:space-y-4">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-base sm:text-xl">
                                         ⚖️
                                     </div>
                                     <div>
-                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Ratio de Cobertura</h4>
-                                        <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-relaxed">Porcentaje de gastos cubiertos actualmente</p>
+                                        <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Ratio de Cobertura</h4>
+                                        <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-relaxed hidden sm:block">Porcentaje de gastos cubiertos actualmente</p>
                                     </div>
                                 </div>
-                                <div className="mt-8">
-                                    <div className="text-2xl font-black text-white tracking-tight">
+                                <div className="mt-3 sm:mt-8">
+                                    <div className="text-xl sm:text-2xl font-black text-white tracking-tight">
                                         {Math.round((barberoIncome / (savingsMetrics.mensual || 1)) * 100)}%
                                     </div>
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mt-1">Eficiencia Operativa</p>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mt-1">Eficiencia Op.</p>
                                 </div>
                             </div>
                         </div>
@@ -781,194 +861,19 @@ export default function FinanzasPage() {
                 </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Calendar View */}
-                <Card className="lg:col-span-8 glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2rem]">
-                    <CardHeader className="p-6 pb-2">
-                        <CardTitle className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
-                                <span className="material-icons-round text-lg">calendar_today</span>
-                            </div>
-                            Calendario de Pagos
-                        </CardTitle>
-                        <CardDescription className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Visualiza tus próximos compromisos</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-6">
-                        <div className="flex flex-col lg:flex-row gap-8">
-                            <div className="p-2 glass-card border-white/5 rounded-[1.5rem] bg-black/20 self-center lg:self-start w-full max-w-[280px]">
-                                <Calendar
-                                    mode="single"
-                                    selected={date}
-                                    onSelect={setDate}
-                                    className="rounded-xl border-none w-full scale-[0.9] origin-top"
-                                    locale={es}
-                                    modifiers={{
-                                        hasGasto: gastos.map(g => new Date(g.fecha_pago))
-                                    }}
-                                    modifiersStyles={{
-                                        hasGasto: { fontWeight: 'bold', color: '#fbbf24', textDecoration: 'underline' }
-                                    }}
-                                />
-                            </div>
-                            <div className="flex-1 space-y-4 w-full min-w-0">
-                                <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-1">Gastos Programados</h3>
-                                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {gastos.length === 0 ? (
-                                        <div className="text-center py-10 text-white/20 uppercase font-black text-[10px] tracking-widest">Sin gastos registrados</div>
-                                    ) : (
-                                        gastos.map(gasto => {
-                                            const status = getGastoStatus(gasto)
-                                            return (
-                                                <div key={gasto.id} className={cn(
-                                                    "p-4 rounded-2xl glass-card border-white/5 bg-white/[0.02] flex items-center justify-between group hover:bg-white/5 transition-all",
-                                                    status === 'overdue' && "border-red-500/20 bg-red-500/5"
-                                                )}>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={cn(
-                                                            "w-10 h-10 rounded-xl flex flex-col items-center justify-center text-[8px] font-black uppercase leading-none transition-colors",
-                                                            status === 'overdue' ? "bg-red-500/20 text-red-400" : "bg-white/5 text-white/40 group-hover:bg-primary/20 group-hover:text-primary"
-                                                        )}>
-                                                            <span className={status === 'overdue' ? "animate-pulse" : ""}>{format(new Date(gasto.fecha_pago), 'dd')}</span>
-                                                            <span>{format(new Date(gasto.fecha_pago), 'MMM', { locale: es })}</span>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[11px] font-black uppercase text-white tracking-tight flex items-center gap-2">
-                                                                {gasto.descripcion}
-                                                                {gasto.es_recurrente && (
-                                                                    <span className="material-icons-round text-[10px] text-amber-400">repeat</span>
-                                                                )}
-                                                                {status === 'overdue' && (
-                                                                    <Badge variant="outline" className="text-[8px] border-red-500/30 text-red-500 h-4 px-1 font-black">VENCIDO</Badge>
-                                                                )}
-                                                                {status === 'due_tomorrow' && (
-                                                                    <Badge variant="outline" className="text-[8px] border-amber-500/30 text-amber-500 h-4 px-1 font-black">MAÑANA</Badge>
-                                                                )}
-                                                            </p>
-                                                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-0.5">${gasto.monto.toLocaleString()}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {!gasto.pagado && (
-                                                            <Button 
-                                                                size="sm"
-                                                                className="h-7 px-3 bg-emerald-500 hover:bg-emerald-600 text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all active:scale-95"
-                                                                onClick={() => openPayModal(gasto)}
-                                                            >
-                                                                Pagar
-                                                            </Button>
-                                                        )}
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon-sm" 
-                                                            className="text-white/20 hover:text-amber-400 hover:bg-amber-400/10 transition-colors"
-                                                            onClick={() => openEditModal(gasto)}
-                                                        >
-                                                            <span className="material-icons-round text-sm">edit</span>
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Recent Transactions List */}
-                <Card className="lg:col-span-4 glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2rem]">
-                    <CardHeader className="p-6">
-                        <CardTitle className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                                <span className="material-icons-round text-lg">list_alt</span>
-                            </div>
-                            Desglose Detallado
-                        </CardTitle>
-                        <CardDescription className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Listado completo de registros</CardDescription>
-                    </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto custom-scrollbar">
-                        <Table>
-                            <TableHeader className="bg-white/5 border-b border-white/5">
-                                <TableRow className="hover:bg-transparent border-none">
-                                    <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 px-4 sm:px-6 py-4">Concepto</TableHead>
-                                    <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-right px-4 sm:px-6 py-4">Monto</TableHead>
-                                    <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-right px-4 sm:px-6 py-4">Acción</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {gastos.map((gasto) => (
-                                    <TableRow key={gasto.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
-                                        <TableCell className="px-4 sm:px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-[11px] sm:text-[10px] font-black text-white uppercase tracking-tight">{gasto.descripcion}</p>
-                                                {getGastoStatus(gasto) === 'overdue' && (
-                                                    <Badge variant="outline" className="text-[7px] border-red-500/30 text-red-500 h-3.5 px-1 font-black leading-none">VENCIDO</Badge>
-                                                )}
-                                                {getGastoStatus(gasto) === 'due_tomorrow' && (
-                                                    <Badge variant="outline" className="text-[7px] border-amber-500/30 text-amber-500 h-3.5 px-1 font-black leading-none">MAÑANA</Badge>
-                                                )}
-                                            </div>
-                                            <p className="text-[9px] sm:text-[8px] font-bold text-white/20 uppercase tracking-widest mt-1">
-                                                {format(new Date(gasto.fecha_pago), 'dd/MM/yyyy')}
-                                                {gasto.es_recurrente && <span className="ml-2 text-amber-500/50">Recurrente</span>}
-                                            </p>
-                                        </TableCell>
-                                        <TableCell className="text-right px-4 sm:px-6 py-4">
-                                            <span className="text-[12px] sm:text-[11px] font-black text-gradient-gold">${gasto.monto.toLocaleString()}</span>
-                                        </TableCell>
-                                        <TableCell className="text-right px-4 sm:px-6 py-4">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {!gasto.pagado && (
-                                                    <Button 
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-8 px-4 bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-[9px] font-black uppercase tracking-widest rounded-lg lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:bg-emerald-500 hover:text-black"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            openPayModal(gasto)
-                                                        }}
-                                                    >
-                                                        Pagar
-                                                    </Button>
-                                                )}
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8 text-white/20 hover:text-amber-400 hover:bg-amber-400/10 transition-colors rounded-lg lg:opacity-0 lg:group-hover:opacity-100"
-                                                    onClick={() => openEditModal(gasto)}
-                                                >
-                                                    <span className="material-icons-round text-lg sm:text-xs">edit</span>
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {gastos.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={3} className="h-32 text-center text-white/10 uppercase font-black text-[10px] tracking-[0.3em]">Sin registros que mostrar</TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-                </Card>
-            </div>
             {/* Payment Confirmation Dialog */}
             <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
-                <DialogContent className="sm:max-w-md bg-[#0a0a0b]/95 border-white/5 text-white backdrop-blur-2xl p-0 overflow-hidden rounded-[2.5rem] shadow-2xl shadow-emerald-500/10">
+                <DialogContent className="w-[94vw] max-w-md max-h-[90dvh] bg-[#0a0a0b]/95 border-white/5 text-white backdrop-blur-2xl p-0 overflow-y-auto rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl shadow-emerald-500/10">
                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-indigo-500/5 opacity-50 pointer-events-none" />
                     
-                    <DialogHeader className="p-8 pb-0 relative z-10">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
-                                    <span className="material-icons-round text-3xl text-emerald-400">payments</span>
+                    <DialogHeader className="p-4 sm:p-8 pb-0 relative z-10">
+                        <div className="flex items-center justify-between mb-3 sm:mb-6">
+                            <div className="flex items-center gap-3 sm:gap-4">
+                                <div className="w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+                                    <span className="material-icons-round text-lg sm:text-3xl text-emerald-400">payments</span>
                                 </div>
-                                <div className="space-y-1">
-                                    <DialogTitle className="text-2xl font-black tracking-tight text-white">Confirmar Pago</DialogTitle>
+                                <div className="space-y-0.5 sm:space-y-1">
+                                    <DialogTitle className="text-base sm:text-2xl font-black tracking-tight text-white">Confirmar Pago</DialogTitle>
                                     <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Transacción Segura</DialogDescription>
                                 </div>
                             </div>
@@ -983,36 +888,36 @@ export default function FinanzasPage() {
                         </div>
 
                         {gastoToPay && (
-                            <div className="bg-white/[0.03] border border-white/5 rounded-3xl p-6 mb-2 relative overflow-hidden group">
+                            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3 sm:p-6 mb-2 relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                    <span className="material-icons-round text-6xl">receipt_long</span>
+                                    <span className="material-icons-round text-5xl sm:text-6xl">receipt_long</span>
                                 </div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">Resumen del Gasto</p>
-                                <h4 className="text-lg font-black text-white truncate mb-3">{gastoToPay.descripcion}</h4>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-1.5 sm:mb-2">Resumen del Gasto</p>
+                                <h4 className="text-sm sm:text-lg font-black text-white truncate mb-2 sm:mb-3">{gastoToPay.descripcion}</h4>
                                 
                                 <div className="relative mt-2">
                                     <Label className="text-[9px] font-black uppercase tracking-widest text-emerald-400/50 mb-1 block">Monto a Pagar</Label>
-                                    <div className="flex items-center gap-3 bg-black/40 border border-white/10 rounded-2xl px-4 py-2 focus-within:border-emerald-500/50 transition-colors">
-                                        <span className="text-white/40 text-xl font-black">$</span>
+                                    <div className="flex items-center gap-2 sm:gap-3 bg-black/40 border border-white/10 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 focus-within:border-emerald-500/50 transition-colors">
+                                        <span className="text-white/40 text-lg sm:text-xl font-black">$</span>
                                         <input 
                                             type="number"
                                             value={montoConfirmacion}
                                             onChange={(e) => setMontoConfirmacion(e.target.value)}
-                                            className="bg-transparent border-none text-2xl font-black text-white focus:ring-0 w-full p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            className="bg-transparent border-none text-xl sm:text-2xl font-black text-white focus:ring-0 w-full p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                         <span className="text-[10px] font-bold text-white/20 uppercase">MXN</span>
                                     </div>
-                                    <p className="text-[8px] font-bold text-white/20 mt-1 uppercase italic">* Puedes modificar el monto si aumentó este periodo</p>
+                                    <p className="text-[8px] font-bold text-white/20 mt-1 uppercase italic">* Puedes modificar el monto si aumentó</p>
                                 </div>
                             </div>
                         )}
                     </DialogHeader>
 
-                    <div className="p-8 pt-6 space-y-8 relative z-10">
+                    <div className="p-4 sm:p-8 pt-3 sm:pt-6 space-y-4 sm:space-y-8 relative z-10">
                         {showRecurrenceAlert ? (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-6 text-center space-y-4">
-                                    <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto border border-amber-500/30">
+                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-center space-y-4">
+                                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto border border-amber-500/30">
                                         <span className="material-icons-round text-3xl text-amber-500">update</span>
                                     </div>
                                     <div className="space-y-2">
@@ -1047,7 +952,7 @@ export default function FinanzasPage() {
                                             <span className="material-icons-round text-xs">account_balance_wallet</span>
                                             Método de Pago
                                         </Label>
-                                        <div className="grid grid-cols-grid gap-3">
+                                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
                                             {[
                                                 { id: 'efectivo', label: 'Efectivo', icon: '💵' },
                                                 { id: 'tarjeta', label: 'Tarjeta', icon: '💳' },
@@ -1057,14 +962,14 @@ export default function FinanzasPage() {
                                                     key={m.id}
                                                     onClick={() => setMetodoPago(m.id as any)}
                                                     className={cn(
-                                                        "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all duration-300",
+                                                        "flex flex-col items-center justify-center gap-1 sm:gap-2 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all duration-300",
                                                         metodoPago === m.id 
                                                             ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400 shadow-lg shadow-emerald-500/10 scale-95" 
                                                             : "bg-white/[0.02] border-white/5 text-white/40 hover:bg-white/[0.05] hover:border-white/10"
                                                     )}
                                                 >
-                                                    <span className="text-xl">{m.icon}</span>
-                                                    <span className="text-[9px] font-black uppercase tracking-widest">{m.label}</span>
+                                                    <span className="text-lg sm:text-xl">{m.icon}</span>
+                                                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest">{m.label}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -1078,7 +983,7 @@ export default function FinanzasPage() {
                                         <div className="relative group">
                                             <Input 
                                                 placeholder="Ticket, referencia o banco..." 
-                                                className="bg-white/[0.03] border-white/10 text-white h-14 rounded-2xl focus:ring-emerald-500/20 focus:border-emerald-500/30 pl-12 transition-all"
+                                                className="bg-white/[0.03] border-white/10 text-white h-11 sm:h-14 rounded-xl sm:rounded-2xl focus:ring-emerald-500/20 focus:border-emerald-500/30 pl-12 transition-all"
                                                 value={detallesPago}
                                                 onChange={(e) => setDetallesPago(e.target.value)}
                                             />
@@ -1087,19 +992,19 @@ export default function FinanzasPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3 pt-2">
+                                <div className="flex gap-2 sm:gap-3 pt-1">
                                     <Button 
                                         type="button" 
                                         variant="ghost" 
                                         onClick={() => setIsPayDialogOpen(false)}
-                                        className="flex-1 h-14 rounded-2xl text-white/40 hover:bg-white/5 font-black uppercase tracking-widest text-[10px] border border-transparent hover:border-white/5"
+                                        className="flex-1 h-11 sm:h-14 rounded-xl sm:rounded-2xl text-white/40 hover:bg-white/5 font-black uppercase tracking-widest text-[10px] border border-transparent hover:border-white/5"
                                     >
                                         Cancelar
                                     </Button>
                                     <Button 
                                         onClick={() => handleConfirmPayment()}
                                         disabled={!metodoPago}
-                                        className="flex-[2] h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-black font-black uppercase tracking-widest text-[10px] shadow-xl shadow-emerald-500/20 group relative overflow-hidden disabled:opacity-50 disabled:grayscale"
+                                        className="flex-[2] h-11 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-black font-black uppercase tracking-widest text-[10px] shadow-xl shadow-emerald-500/20 group relative overflow-hidden disabled:opacity-50 disabled:grayscale"
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer" />
                                         <span className="relative z-10 flex items-center justify-center gap-2">
@@ -1122,29 +1027,23 @@ export default function FinanzasPage() {
 
 function SavingsCard({ label, value, icon, desc, color }: { label: string, value: number, icon: string, desc: string, color: 'blue' | 'amber' | 'indigo' }) {
     const colorClasses = {
-        blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-blue-500/5',
-        amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-amber-500/5',
-        indigo: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 shadow-indigo-500/5'
+        blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+        amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        indigo: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
     }
 
     return (
-        <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2rem] relative group hover:scale-[1.02] transition-all duration-300">
-            <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border text-2xl", colorClasses[color])}>
-                        <span className="material-icons-round">{icon}</span>
+        <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
+            <CardContent className="p-2.5 sm:p-4">
+                <div className="flex items-center gap-2 mb-1.5">
+                    <div className={cn("w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center border text-sm", colorClasses[color])}>
+                        <span className="material-icons-round text-sm">{icon}</span>
                     </div>
+                    <p className="text-[7px] sm:text-[8px] font-black text-white/30 uppercase tracking-[0.15em] leading-tight">{label}</p>
                 </div>
-                <div className="space-y-1">
-                    <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">{label}</p>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-black text-white tracking-tighter">${Math.round(value).toLocaleString()}</span>
-                    </div>
-                    <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-relaxed mt-2">{desc}</p>
-                </div>
-                
-                {/* Background Decoration */}
-                <div className={cn("absolute -right-4 -bottom-4 w-24 h-24 rounded-full blur-3xl opacity-10 transition-opacity group-hover:opacity-20", 
+                <span className="text-base sm:text-xl font-black text-white tracking-tighter">${Math.round(value).toLocaleString()}</span>
+                <p className="text-[6px] sm:text-[7px] font-bold text-white/20 uppercase tracking-widest mt-0.5 leading-tight">{desc}</p>
+                <div className={cn("absolute -right-3 -bottom-3 w-16 h-16 rounded-full blur-2xl opacity-10 transition-opacity group-hover:opacity-20",
                     color === 'blue' ? 'bg-blue-500' : color === 'amber' ? 'bg-amber-500' : 'bg-indigo-500')} />
             </CardContent>
         </Card>

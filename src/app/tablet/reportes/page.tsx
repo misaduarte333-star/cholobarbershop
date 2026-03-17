@@ -53,7 +53,7 @@ export default function TabletReportesPage() {
     const router = useRouter()
     const [barbero, setBarbero] = useState<any>(null)
     const [loading, setLoading] = useState(true)
-    const [dateRange, setDateRange] = useState<'hoy' | 'semana' | 'mes'>('semana')
+    const [dateRange, setDateRange] = useState<'hoy' | 'semana' | 'mes' | 'año'>('semana')
     const [citas, setCitas] = useState<CitaDesdeVista[]>([])
     const [cortes, setCortes] = useState<any[]>([])
     const [isRefreshing, setIsRefreshing] = useState(false)
@@ -111,6 +111,11 @@ export default function TabletReportesPage() {
             startDate = firstDay.toLocaleDateString('en-CA')
             const lastDay = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)
             endDate = lastDay.toLocaleDateString('en-CA')
+        } else if (dateRange === 'año') {
+            const firstDay = new Date(hoy.getFullYear(), 0, 1)
+            startDate = firstDay.toLocaleDateString('en-CA')
+            const lastDay = new Date(hoy.getFullYear(), 11, 31)
+            endDate = lastDay.toLocaleDateString('en-CA')
         }
 
         setActiveRange({ start: startDate, end: endDate })
@@ -132,6 +137,9 @@ export default function TabletReportesPage() {
             const [y, m] = startDate.split('-').map(Number)
             const monthLong = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][m - 1]
             setLegibleRange(`${monthLong} de ${y}`)
+        } else if (dateRange === 'año') {
+            const [y] = startDate.split('-').map(Number)
+            setLegibleRange(`Año ${y}`)
         }
 
         const { data, error } = await supabase
@@ -167,7 +175,13 @@ export default function TabletReportesPage() {
 
     // Advanced Calculations
     const metrics = useMemo(() => {
-        const finalizadas = citas.filter(c => c.estado === 'finalizada')
+        // Solo tomamos citas finalizadas de días que tengan un corte de turno registrado
+        const finalizadas = citas.filter(c => {
+            if (c.estado !== 'finalizada') return false
+            const dKey = c.fecha_cita_local || (c.timestamp_inicio_local ? c.timestamp_inicio_local.split('T')[0] : '')
+            // Verificar si este día fue cerrado
+            return cortes.some(corte => corte.fecha_corte === dKey && corte.tipo === 'diario')
+        })
 
         // Finances
         const cash = finalizadas.filter(c => c.metodo_pago === 'efectivo').reduce((acc, c) => acc + (c.monto_pagado || c.servicio_precio || 0), 0)
@@ -256,12 +270,21 @@ export default function TabletReportesPage() {
         const getCortesData = () => {
             if (!activeRange.start || dateRange === 'hoy') return []
 
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+
             if (dateRange === 'semana') {
                 const days = []
                 const start = new Date(activeRange.start + 'T12:00:00')
                 for (let i = 0; i < 7; i++) {
                     const d = new Date(start)
                     d.setDate(d.getDate() + i)
+                    
+                    const dNormalized = new Date(d)
+                    dNormalized.setHours(0, 0, 0, 0)
+                    const isToday = today.getTime() === dNormalized.getTime()
+                    const isFuture = dNormalized > today
+
                     const iso = d.toISOString().split('T')[0]
                     const corte = cortes.find(c => c.fecha_corte === iso)
                     days.push({
@@ -269,7 +292,9 @@ export default function TabletReportesPage() {
                         monto: corte ? corte.comision_barbero : null,
                         bruto: corte ? corte.monto_bruto : null,
                         servicios: corte ? corte.total_servicios : null,
-                        realizado: !!corte
+                        realizado: !!corte,
+                        esActual: isToday,
+                        esFutura: isFuture
                     })
                 }
                 return days
@@ -288,6 +313,14 @@ export default function TabletReportesPage() {
                     weekEnd.setDate(weekEnd.getDate() + 6)
                     if (weekEnd > end) weekEnd.setTime(end.getTime())
 
+                    const wsNormalized = new Date(weekStart)
+                    wsNormalized.setHours(0, 0, 0, 0)
+                    const weNormalized = new Date(weekEnd)
+                    weNormalized.setHours(23, 59, 59, 999)
+
+                    const esSemanaActual = today >= wsNormalized && today <= weNormalized
+                    const esSemanaFutura = today < wsNormalized
+
                     const weekCortes = cortes.filter(c => {
                         const d = new Date(c.fecha_corte + 'T12:00:00')
                         return d >= weekStart && d <= weekEnd
@@ -301,17 +334,55 @@ export default function TabletReportesPage() {
                     weeks.push({
                         label: `Semana ${weekNum}`,
                         periodo: `${weekStart.getDate()} - ${weekEnd.getDate()} ${weekEnd.toLocaleDateString('es-MX', { month: 'short' })}`,
-                        monto: allDaysInWeekProcessed ? weekCortes.reduce((acc, c) => acc + c.comision_barbero, 0) : null,
-                        bruto: allDaysInWeekProcessed ? weekCortes.reduce((acc, c) => acc + c.monto_bruto, 0) : null,
+                        monto: weekCortes.length > 0 ? weekCortes.reduce((acc, c) => acc + c.comision_barbero, 0) : null,
+                        bruto: weekCortes.length > 0 ? weekCortes.reduce((acc, c) => acc + c.monto_bruto, 0) : null,
                         servicios: weekCortes.reduce((acc, c) => acc + c.total_servicios, 0),
                         realizado: weekCortes.length > 0,
-                        completo: allDaysInWeekProcessed
+                        completo: allDaysInWeekProcessed,
+                        esActual: esSemanaActual,
+                        esFutura: esSemanaFutura
                     })
 
                     current.setDate(current.getDate() + 7)
                     weekNum++
                 }
                 return weeks
+            }
+
+            if (dateRange === 'año') {
+                const months = []
+                const year = new Date(activeRange.start + 'T12:00:00').getFullYear()
+                const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+                for (let m = 0; m < 12; m++) {
+                    const monthStart = new Date(year, m, 1)
+                    const monthEnd = new Date(year, m + 1, 0)
+
+                    const msNorm = new Date(monthStart)
+                    msNorm.setHours(0, 0, 0, 0)
+                    const meNorm = new Date(monthEnd)
+                    meNorm.setHours(23, 59, 59, 999)
+
+                    const esMesActual = today >= msNorm && today <= meNorm
+                    const esMesFuturo = today < msNorm
+
+                    const startIso = monthStart.toLocaleDateString('en-CA')
+                    const endIso = monthEnd.toLocaleDateString('en-CA')
+
+                    const monthCortes = cortes.filter(c => c.fecha_corte >= startIso && c.fecha_corte <= endIso)
+
+                    months.push({
+                        label: monthNames[m],
+                        periodo: `${monthStart.getDate()} - ${monthEnd.getDate()} ${monthNames[m].slice(0, 3)}`,
+                        monto: monthCortes.length > 0 ? monthCortes.reduce((acc, c) => acc + c.comision_barbero, 0) : null,
+                        bruto: monthCortes.length > 0 ? monthCortes.reduce((acc, c) => acc + c.monto_bruto, 0) : null,
+                        servicios: monthCortes.reduce((acc, c) => acc + c.total_servicios, 0),
+                        realizado: monthCortes.length > 0,
+                        completo: !esMesActual && !esMesFuturo,
+                        esActual: esMesActual,
+                        esFutura: esMesFuturo
+                    })
+                }
+                return months
             }
             return []
         }
@@ -361,7 +432,7 @@ export default function TabletReportesPage() {
                 </div>
 
                 <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-xl">
-                    {(['hoy', 'semana', 'mes'] as const).map((r) => (
+                    {(['hoy', 'semana', 'mes', 'año'] as const).map((r) => (
                         <Button
                             key={r}
                             variant="ghost"
@@ -475,7 +546,7 @@ export default function TabletReportesPage() {
                                             <div>
                                                 <CardTitle className="text-lg font-black uppercase tracking-widest text-white/90">Análisis de Cortes</CardTitle>
                                                 <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-white/20">
-                                                    {dateRange === 'semana' ? 'Desglose diario por cierres confirmados' : 'Desglose semanal de actividad'}
+                                                    {dateRange === 'semana' ? 'Desglose diario por cierres confirmados' : dateRange === 'año' ? 'Resumen mensual del año' : 'Desglose semanal de actividad'}
                                                 </CardDescription>
                                             </div>
                                             <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 text-blue-400">
@@ -487,7 +558,7 @@ export default function TabletReportesPage() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="border-white/5 hover:bg-transparent">
-                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 px-8 h-12">{dateRange === 'semana' ? 'Día' : 'Semana'}</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 px-8 h-12">{dateRange === 'semana' ? 'Día' : dateRange === 'año' ? 'Mes' : 'Semana'}</TableHead>
                                                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 h-12">Estado / Periodo</TableHead>
                                                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 h-12 text-right px-8">Tu Comisión</TableHead>
                                                 </TableRow>
@@ -503,19 +574,30 @@ export default function TabletReportesPage() {
                                                         </TableCell>
                                                      </TableRow>
                                                 ) : metrics.cortesAnálisis.map((item: any, i: number) => (
-                                                    <TableRow key={i} className="border-white/5 hover:bg-white/[0.01] transition-colors h-16">
-                                                        <TableCell className="px-8 flex flex-col justify-center h-16">
-                                                            <span className="text-xs font-black text-white uppercase">{item.label}</span>
-                                                            {item.periodo && <span className="text-[9px] font-bold text-white/20 uppercase tracking-tighter">{item.periodo}</span>}
+                                                    <TableRow key={i} className={cn("border-white/5 hover:bg-white/[0.01] transition-colors h-16", item.esActual && "bg-blue-500/5 hover:bg-blue-500/10 relative shadow-[inset_0_0_20px_rgba(59,130,246,0.1)]")}>
+                                                        <TableCell className="px-8 flex flex-col justify-center h-16 relative">
+                                                            {item.esActual && (
+                                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                                                            )}
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={cn("text-xs font-black uppercase", item.esActual ? "text-blue-400" : "text-white")}>{item.label}</span>
+                                                                {item.esActual && <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase tracking-widest animate-pulse">Actual</span>}
+                                                            </div>
+                                                            {item.periodo && <span className="text-[9px] font-bold text-white/20 uppercase tracking-tighter mt-0.5">{item.periodo}</span>}
                                                         </TableCell>
                                                         <TableCell>
-                                                            {item.realizado ? (
+                                                            {item.esFutura ? (
+                                                                <div className="flex items-center gap-2 opacity-40">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">{dateRange === 'semana' ? 'Aún no llega' : dateRange === 'año' ? 'Próximos meses' : 'Próximos días'}</span>
+                                                                </div>
+                                                            ) : item.realizado ? (
                                                                 <div className="flex items-center gap-2">
                                                                     <div className={cn(
                                                                         "w-1.5 h-1.5 rounded-full",
                                                                         item.completo !== false ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" : "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]"
                                                                     )} />
-                                                                    <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">
+                                                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", item.completo !== false ? "text-white/60" : "text-amber-400/80")}>
                                                                         {item.completo !== false ? 'Corte Finalizado' : 'Corte Parcial/Pendiente'}
                                                                     </span>
                                                                 </div>
@@ -529,9 +611,9 @@ export default function TabletReportesPage() {
                                                         <TableCell className="text-right px-8">
                                                             <span className={cn(
                                                                 "text-sm font-black italic",
-                                                                item.realizado ? "text-primary" : "text-white/10"
+                                                                (item.realizado || item.esActual) && !item.esFutura ? "text-primary" : "text-white/10"
                                                             )}>
-                                                                {item.realizado ? `$${(item.monto || 0).toLocaleString()}` : '$0'}
+                                                                {(item.realizado || (!item.esFutura && item.monto > 0)) ? `$${(item.monto || 0).toLocaleString()}` : '$0'}
                                                             </span>
                                                         </TableCell>
                                                     </TableRow>
@@ -583,8 +665,8 @@ export default function TabletReportesPage() {
                                 </Card>
                             </div>
 
-                            {/* Detailed Service Analytics */}
-                            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+                            {/* Detailed Service Analytics — hidden on 'año' view */}
+                            {dateRange !== 'año' && <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-4 px-2">
                                         <div className="h-1 w-8 bg-blue-500 rounded-full" />
@@ -665,9 +747,10 @@ export default function TabletReportesPage() {
                                         })}
                                     </div>
                                 </div>
-                            </div>
+                            </div>}
 
-                            {/* Detailed CRM Log */}
+                            {/* Detailed CRM Log — hidden on 'año' view */}
+                            {dateRange !== 'año' &&
                             <div className="mt-12 space-y-6">
                                 <div className="flex items-center gap-4 px-2">
                                     <div className="h-1 w-8 bg-purple-500 rounded-full" />
@@ -763,7 +846,7 @@ export default function TabletReportesPage() {
                                         </div>
                                     </CardContent>
                                 </Card>
-                            </div>
+                            </div>}
                         </motion.div>
                     )}
                 </AnimatePresence>
