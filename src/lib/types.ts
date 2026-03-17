@@ -54,6 +54,7 @@ export interface Barbero {
     hora_entrada: string | null
     activo: boolean
     estacion_id: number | null
+    comision_porcentaje: number | null
     created_at: string
 }
 

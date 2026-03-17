@@ -16,10 +16,13 @@ interface AgendaSemanalMensualProps {
 
 const getStatusColor = (estado: string) => {
     switch (estado) {
-        case 'confirmada': return 'bg-primary/20 border-primary text-primary'
-        case 'en_espera': return 'bg-primary/10 border-primary/50 text-white'
+        case 'confirmada': return 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
+        case 'en_espera': return 'bg-yellow-500/20 border-yellow-500 text-yellow-100'
         case 'en_proceso': return 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
-        case 'finalizada': return 'bg-slate-500/20 border-slate-500 text-slate-300'
+        case 'por_cobrar': return 'bg-blue-500/20 border-blue-500 text-blue-400'
+        case 'finalizada': return 'bg-zinc-500/20 border-zinc-500 text-zinc-300'
+        case 'cancelada': return 'bg-red-500/20 border-red-500 text-red-400'
+        case 'no_show': return 'bg-red-500/20 border-red-500 text-red-400'
         default: return 'bg-slate-700/50 border-slate-600 text-white'
     }
 }

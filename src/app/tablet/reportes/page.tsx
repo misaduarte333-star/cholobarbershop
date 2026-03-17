@@ -55,8 +55,10 @@ export default function TabletReportesPage() {
     const [loading, setLoading] = useState(true)
     const [dateRange, setDateRange] = useState<'hoy' | 'semana' | 'mes'>('semana')
     const [citas, setCitas] = useState<CitaDesdeVista[]>([])
+    const [cortes, setCortes] = useState<any[]>([])
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [activeRange, setActiveRange] = useState({ start: '', end: '' })
+    const [legibleRange, setLegibleRange] = useState('')
 
     // Auth Check
     useEffect(() => {
@@ -113,6 +115,25 @@ export default function TabletReportesPage() {
 
         setActiveRange({ start: startDate, end: endDate })
 
+        // Calculate Legible Range
+        const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+        const formatLegible = (dateStr: string) => {
+            const [y, m, d] = dateStr.split('-').map(Number)
+            const date = new Date(y, m - 1, d)
+            const dayName = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][date.getDay()]
+            return `${dayName} ${d} de ${months[m - 1]}`
+        }
+
+        if (dateRange === 'hoy') {
+            setLegibleRange(formatLegible(startDate))
+        } else if (dateRange === 'semana') {
+            setLegibleRange(`${formatLegible(startDate)} - ${formatLegible(endDate)}`)
+        } else if (dateRange === 'mes') {
+            const [y, m] = startDate.split('-').map(Number)
+            const monthLong = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][m - 1]
+            setLegibleRange(`${monthLong} de ${y}`)
+        }
+
         const { data, error } = await supabase
             .from('vista_citas_app')
             .select('*')
@@ -123,6 +144,18 @@ export default function TabletReportesPage() {
             .order('timestamp_inicio_local', { ascending: true })
 
         if (data) setCitas(data as CitaDesdeVista[])
+
+        // Fetch Cortes
+        const { data: cortesData } = await supabase
+            .from('cortes_turno' as any)
+            .select('*')
+            .eq('barbero_id', barbero.id)
+            .gte('fecha_corte', startDate)
+            .lte('fecha_corte', endDate)
+            .order('fecha_corte', { ascending: true })
+
+        if (cortesData) setCortes(cortesData)
+
         setIsRefreshing(false)
     }, [barbero, dateRange])
 
@@ -216,15 +249,88 @@ export default function TabletReportesPage() {
             { name: 'Transferencia', value: transfer + card, color: '#a855f7' }
         ].filter(p => p.value > 0)
 
-        return {
-            total, cash, transfer, card,
-            globalAvgReal, globalAvgEst,
-            serviceStats,
-            chartData,
-            count: finalizadas.length,
-            paymentData
+        const comision_porcentaje = barbero?.comision_porcentaje ?? 50
+        const comision_estimada = total * (comision_porcentaje / 100)
+
+        // Corte Analysis Data
+        const getCortesData = () => {
+            if (!activeRange.start || dateRange === 'hoy') return []
+
+            if (dateRange === 'semana') {
+                const days = []
+                const start = new Date(activeRange.start + 'T12:00:00')
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(start)
+                    d.setDate(d.getDate() + i)
+                    const iso = d.toISOString().split('T')[0]
+                    const corte = cortes.find(c => c.fecha_corte === iso)
+                    days.push({
+                        label: d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }),
+                        monto: corte ? corte.comision_barbero : null,
+                        bruto: corte ? corte.monto_bruto : null,
+                        servicios: corte ? corte.total_servicios : null,
+                        realizado: !!corte
+                    })
+                }
+                return days
+            }
+
+            if (dateRange === 'mes') {
+                const weeks = []
+                const start = new Date(activeRange.start + 'T12:00:00')
+                const end = new Date(activeRange.end + 'T12:00:00')
+                
+                let current = new Date(start)
+                let weekNum = 1
+                while (current <= end) {
+                    const weekStart = new Date(current)
+                    const weekEnd = new Date(current)
+                    weekEnd.setDate(weekEnd.getDate() + 6)
+                    if (weekEnd > end) weekEnd.setTime(end.getTime())
+
+                    const weekCortes = cortes.filter(c => {
+                        const d = new Date(c.fecha_corte + 'T12:00:00')
+                        return d >= weekStart && d <= weekEnd
+                    })
+
+                    const allDaysInWeekProcessed = (() => {
+                        const daysInWeek = Math.round((weekEnd.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+                        return weekCortes.length >= daysInWeek
+                    })()
+
+                    weeks.push({
+                        label: `Semana ${weekNum}`,
+                        periodo: `${weekStart.getDate()} - ${weekEnd.getDate()} ${weekEnd.toLocaleDateString('es-MX', { month: 'short' })}`,
+                        monto: allDaysInWeekProcessed ? weekCortes.reduce((acc, c) => acc + c.comision_barbero, 0) : null,
+                        bruto: allDaysInWeekProcessed ? weekCortes.reduce((acc, c) => acc + c.monto_bruto, 0) : null,
+                        servicios: weekCortes.reduce((acc, c) => acc + c.total_servicios, 0),
+                        realizado: weekCortes.length > 0,
+                        completo: allDaysInWeekProcessed
+                    })
+
+                    current.setDate(current.getDate() + 7)
+                    weekNum++
+                }
+                return weeks
+            }
+            return []
         }
-    }, [citas, dateRange, activeRange.start])
+
+        const cortesAnálisis = getCortesData()
+
+        return {
+            total,
+            count: finalizadas.length,
+            comision_porcentaje: barbero?.comision_porcentaje ?? 50,
+            comision_estimada: total * ((barbero?.comision_porcentaje ?? 50) / 100),
+            paymentData,
+            chartData,
+            serviceStats,
+            globalAvgEst,
+            globalAvgReal,
+            cortesAnálisis
+        }
+    }, [citas, cortes, barbero, dateRange, activeRange])
 
     if (loading) return null
 
@@ -271,7 +377,32 @@ export default function TabletReportesPage() {
                         </Button>
                     ))}
                 </div>
+
+                <div className="hidden md:flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                        <Clock className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/70">
+                            {legibleRange}
+                        </span>
+                    </div>
+                    <span className="text-[8px] font-bold uppercase tracking-tighter text-white/20">
+                        {dateRange !== 'hoy' && "Datos recuperados hasta hoy"}
+                    </span>
+                </div>
             </header>
+
+            {/* Mobile Range Indicator */}
+            <div className="md:hidden bg-blue-600/10 border-b border-white/5 px-6 py-3 flex flex-col gap-1">
+                 <div className="flex items-center gap-2">
+                    <Clock className="w-3 h-3 text-blue-400" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white/50">
+                        Periodo: <span className="text-white/90">{legibleRange}</span>
+                    </span>
+                 </div>
+                 <span className="text-[7px] font-bold uppercase tracking-tighter text-white/20">
+                    {dateRange !== 'hoy' && "Información acumulada hasta el día de hoy"}
+                 </span>
+            </div>
 
             <main className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 lg:p-12 relative z-10">
                 <AnimatePresence mode="wait">
@@ -296,15 +427,21 @@ export default function TabletReportesPage() {
                             animate={{ opacity: 1, y: 0 }}
                             className="max-w-[1600px] mx-auto space-y-8 pb-20"
                         >
-                            {/* Top row KPIs */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                            {/* Top row KPIs - Compacted to single row on LG */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
                                 <KPICard
                                     title="Ingresos Totales"
                                     value={`$${metrics.total.toLocaleString()}`}
                                     subtitle="Periodo acumulado"
                                     icon={<DollarSign className="w-5 h-5" />}
                                     color="blue"
-                                    trend={metrics.total > 0 ? "+12.5%" : undefined}
+                                />
+                                <KPICard
+                                    title={`Mi Comisión (${metrics.comision_porcentaje}%)`}
+                                    value={`$${metrics.comision_estimada.toLocaleString()}`}
+                                    subtitle="Estimado acumulado"
+                                    icon={<Wallet className="w-5 h-5" />}
+                                    color="purple"
                                 />
                                 <KPICard
                                     title="Servicios"
@@ -332,58 +469,75 @@ export default function TabletReportesPage() {
 
                             {/* Main Charts Row */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <Card className="lg:col-span-2 bg-white/[0.02] border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-xl group">
+                                 <Card className="lg:col-span-2 bg-white/[0.02] border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-xl group flex flex-col">
                                     <CardHeader className="p-8 border-b border-white/5 bg-white/[0.01]">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <CardTitle className="text-lg font-black uppercase tracking-widest text-white/90">Flujo de Ingresos</CardTitle>
-                                                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-white/20">Ingresos brutos por fecha</CardDescription>
+                                                <CardTitle className="text-lg font-black uppercase tracking-widest text-white/90">Análisis de Cortes</CardTitle>
+                                                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-white/20">
+                                                    {dateRange === 'semana' ? 'Desglose diario por cierres confirmados' : 'Desglose semanal de actividad'}
+                                                </CardDescription>
                                             </div>
                                             <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 text-blue-400">
-                                                <TrendingUp className="w-6 h-6" />
+                                                <BarChart3 className="w-6 h-6" />
                                             </div>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="p-8 h-[350px]">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={metrics.chartData}>
-                                                <defs>
-                                                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                                                <XAxis
-                                                    dataKey="label"
-                                                    axisLine={false}
-                                                    tickLine={false}
-                                                    tick={{ fill: '#ffffff30', fontSize: 10, fontWeight: 900 }}
-                                                    dy={10}
-                                                    minTickGap={20}
-                                                />
-                                                <YAxis
-                                                    axisLine={false}
-                                                    tickLine={false}
-                                                    tick={{ fill: '#ffffff30', fontSize: 10, fontWeight: 900 }}
-                                                    tickFormatter={(val) => `$${val}`}
-                                                />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem' }}
-                                                    itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
-                                                    cursor={{ stroke: '#3b82f6', strokeWidth: 2 }}
-                                                />
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="total"
-                                                    stroke="#3b82f6"
-                                                    strokeWidth={4}
-                                                    fillOpacity={1}
-                                                    fill="url(#colorTotal)"
-                                                    animationDuration={2000}
-                                                />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
+                                    <CardContent className="p-0 flex-1 overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="border-white/5 hover:bg-transparent">
+                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 px-8 h-12">{dateRange === 'semana' ? 'Día' : 'Semana'}</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 h-12">Estado / Periodo</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 h-12 text-right px-8">Tu Comisión</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {metrics.cortesAnálisis.length === 0 ? (
+                                                     <TableRow>
+                                                        <TableCell colSpan={3} className="h-40 text-center">
+                                                            <div className="flex flex-col items-center gap-2 opacity-20">
+                                                                <AlertCircle className="w-8 h-8" />
+                                                                <p className="text-[10px] font-black uppercase tracking-widest">Sin datos de corte para este periodo</p>
+                                                            </div>
+                                                        </TableCell>
+                                                     </TableRow>
+                                                ) : metrics.cortesAnálisis.map((item: any, i: number) => (
+                                                    <TableRow key={i} className="border-white/5 hover:bg-white/[0.01] transition-colors h-16">
+                                                        <TableCell className="px-8 flex flex-col justify-center h-16">
+                                                            <span className="text-xs font-black text-white uppercase">{item.label}</span>
+                                                            {item.periodo && <span className="text-[9px] font-bold text-white/20 uppercase tracking-tighter">{item.periodo}</span>}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {item.realizado ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className={cn(
+                                                                        "w-1.5 h-1.5 rounded-full",
+                                                                        item.completo !== false ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" : "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]"
+                                                                    )} />
+                                                                    <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">
+                                                                        {item.completo !== false ? 'Corte Finalizado' : 'Corte Parcial/Pendiente'}
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2 opacity-40">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                                                    <span className="text-[10px] font-black text-red-400 uppercase tracking-widest italic">Corte no realizado</span>
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-right px-8">
+                                                            <span className={cn(
+                                                                "text-sm font-black italic",
+                                                                item.realizado ? "text-primary" : "text-white/10"
+                                                            )}>
+                                                                {item.realizado ? `$${(item.monto || 0).toLocaleString()}` : '$0'}
+                                                            </span>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
                                     </CardContent>
                                 </Card>
 
@@ -633,34 +787,34 @@ interface KPICardProps {
 
 function KPICard({ title, value, subtitle, icon, color, status, trend }: KPICardProps) {
     const variants = {
-        blue: "bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]",
-        emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]",
-        amber: "bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.1)]",
-        purple: "bg-purple-500/10 text-purple-400 border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.1)]",
+        blue: "bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.05)]",
+        emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]",
+        amber: "bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]",
+        purple: "bg-purple-500/10 text-purple-400 border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.05)]",
     }
     const colorStyles = variants[color] || ""
 
     return (
-        <Card className="bg-white/[0.02] border-white/5 rounded-3xl overflow-hidden backdrop-blur-xl group hover:bg-white/[0.04] transition-all duration-500">
-            <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                    <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", colorStyles)}>
-                        {icon}
+        <Card className="bg-white/[0.02] border-white/5 rounded-2xl overflow-hidden backdrop-blur-xl group hover:bg-white/[0.04] transition-all duration-500">
+            <CardContent className="p-3 md:p-4">
+                <div className="flex justify-between items-start mb-2">
+                    <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center border", colorStyles)}>
+                        {React.cloneElement(icon as any, { className: "w-3.5 h-3.5" })}
                     </div>
                     {trend && (
-                        <div className="flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-lg text-emerald-500 text-[10px] font-black">
-                            <ArrowUpRight className="w-3 h-3" />
+                        <div className="flex items-center gap-1 bg-emerald-500/10 px-1.5 py-0.5 rounded-md text-emerald-500 text-[8px] font-black">
+                            <ArrowUpRight className="w-2.5 h-2.5" />
                             {trend}
                         </div>
                     )}
                 </div>
-                <div className="space-y-1">
-                    <p className="text-[10px] font-black text-white/30 uppercase tracking-[.2em]">{title}</p>
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-black font-display text-white tracking-tight">{value}</span>
-                        {status === 'warning' && <AlertCircle className="w-4 h-4 text-orange-400" />}
+                <div className="space-y-0.5">
+                    <p className="text-[8px] font-black text-white/30 uppercase tracking-[.15em] leading-tight">{title}</p>
+                    <div className="flex items-baseline gap-1.5">
+                        <span className="text-xl md:text-2xl font-black font-display text-white tracking-tight">{value}</span>
+                        {status === 'warning' && <AlertCircle className="w-3 h-3 text-orange-400" />}
                     </div>
-                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{subtitle}</p>
+                    <p className="text-[8px] font-bold text-white/15 uppercase tracking-wider truncate">{subtitle}</p>
                 </div>
             </CardContent>
         </Card>

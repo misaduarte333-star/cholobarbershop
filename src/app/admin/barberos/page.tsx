@@ -302,6 +302,7 @@ function getDemoBarbers(): BarberoConSucursal[] {
                 sabado: { inicio: '09:00', fin: '15:00' }
             },
             bloqueo_almuerzo: { inicio: '14:00', fin: '15:00' },
+            comision_porcentaje: 50,
             activo: true,
             hora_entrada: null,
             created_at: new Date().toISOString()
@@ -322,6 +323,7 @@ function getDemoBarbers(): BarberoConSucursal[] {
                 sabado: { inicio: '10:00', fin: '16:00' }
             },
             bloqueo_almuerzo: { inicio: '14:30', fin: '15:30' },
+            comision_porcentaje: 50,
             activo: true,
             hora_entrada: null,
             created_at: new Date().toISOString()
@@ -343,6 +345,7 @@ function getDemoBarbers(): BarberoConSucursal[] {
             bloqueo_almuerzo: null,
             activo: false,
             hora_entrada: null,
+            comision_porcentaje: 50,
             created_at: new Date().toISOString()
         }
     ]
@@ -364,6 +367,7 @@ function BarberoModal({
         estacion_id: barbero?.estacion_id?.toString() || '',
         usuario_tablet: barbero?.usuario_tablet || '',
         password: '',
+        comision_porcentaje: barbero?.comision_porcentaje?.toString() || '50',
         activo: barbero?.activo ?? true
     })
 
@@ -401,6 +405,7 @@ function BarberoModal({
                 estacion_id: parseInt(formData.estacion_id),
                 usuario_tablet: formData.usuario_tablet,
                 activo: formData.activo,
+                comision_porcentaje: parseInt(formData.comision_porcentaje) || 50,
                 horario_laboral: {
                     lunes: { inicio: '09:00', fin: '18:00' },
                     martes: { inicio: '09:00', fin: '18:00' },
@@ -522,6 +527,28 @@ function BarberoModal({
                         <label htmlFor="activo" className="text-sm text-slate-300">
                             Barbero activo
                         </label>
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <label className="block text-sm font-medium text-blue-400 mb-2">Configuración de Comisión</label>
+                        <div className="flex items-center gap-3">
+                            <div className="flex-1 relative">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={formData.comision_porcentaje}
+                                    onChange={(e) => setFormData({ ...formData, comision_porcentaje: e.target.value })}
+                                    className="input-field pr-8"
+                                    placeholder="50"
+                                    required
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">%</span>
+                            </div>
+                            <p className="text-xs text-slate-400 max-w-[200px]">
+                                Porcentaje que el barbero recibe por cada servicio finalizado.
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">

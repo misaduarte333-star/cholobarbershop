@@ -13,7 +13,11 @@ import {
     User,
     Scissors,
     CreditCard,
-    AlertCircle
+    AlertCircle,
+    TrendingUp,
+    CircleDollarSign,
+    Wallet,
+    BarChart3
 } from 'lucide-react'
 import { toast } from "sonner"
 import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
@@ -37,6 +41,7 @@ interface AgendaTimelineProps {
     horarioSucursal?: any
     fechaBase?: string
     currentTime: Date
+    barbero?: any
     onUpdate?: () => void
 }
 
@@ -54,26 +59,27 @@ function generarSlots(inicio: number, fin: number): string[] {
     return slots
 }
 
-const TimelineAppointmentCard = ({ 
-    item, 
-    cardResetKey, 
-    longPressActive, 
-    highlightedCitaId, 
-    handleDragStart, 
-    handleDragEnd, 
-    handlePointerDown, 
-    handlePointerMove, 
-    handlePointerUp, 
-    activeTimer, 
-    isEnProceso, 
-    isPorCobrar, 
-    cardBorder, 
+const TimelineAppointmentCard = ({
+    item,
+    cardResetKey,
+    longPressActive,
+    highlightedCitaId,
+    handleDragStart,
+    handleDragEnd,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    activeTimer,
+    isEnProceso,
+    isPorCobrar,
+    cardBorder,
     getStatusColor,
     handleAtenderClick,
     handleDetailsClick,
     handleMoveClick,
     handleCancelClick,
-    handleCheckoutClick
+    handleCheckoutClick,
+    actualizarEstadoDirecto
 }: any) => {
     const controls = useDragControls()
     const isThisLongPress = longPressActive === (item.tipo === 'cita' ? item.data.id : null)
@@ -128,18 +134,25 @@ const TimelineAppointmentCard = ({
                 <div className={`w-0.5 h-full rounded-full ${getStatusColor(item.tipo === 'cita' ? item.data.estado : '', item.tipo)} shrink-0`} />
                 <div className="min-w-0 flex-1 flex flex-col justify-center h-full">
                     <div className="flex justify-between items-center gap-1">
-                        <p className={`text-[9px] font-black ${item.tipo === 'bloqueo' ? 'text-red-400' : item.tipo === 'almuerzo' ? 'text-amber-400' : 'text-white'} truncate leading-none uppercase tracking-tight`}>
+                        <p className={`text-[10px] lg:text-[13px] font-black ${item.tipo === 'bloqueo' ? 'text-red-400' : item.tipo === 'almuerzo' ? 'text-amber-400' : 'text-white'} truncate leading-none uppercase tracking-tight`}>
                             {item.tipo === 'cita' ? item.data.cliente_nombre : item.tipo === 'almuerzo' ? 'ALMUERZO' : 'BLOQUEO'}
                         </p>
                         {activeTimer && (
-                            <div className="px-1 py-0.5 rounded bg-white/5 text-[6px] font-black text-primary border border-primary/20 shrink-0">
+                            <div className="px-1 py-0.5 rounded bg-white/5 text-[7px] lg:text-[9px] font-black text-primary border border-primary/20 shrink-0">
                                 {activeTimer}
                             </div>
                         )}
                     </div>
-                    <p className={`text-[6px] font-black ${item.tipo === 'cita' ? 'text-slate-500' : item.tipo === 'bloqueo' ? 'text-red-500/50' : 'text-amber-500/50'} uppercase tracking-widest leading-none mt-0.5 truncate`}>
-                        {item.tipo === 'cita' ? item.data.servicio_nombre : item.tipo === 'almuerzo' ? 'DESCANSO' : (item.data.motivo || 'OCUPADO')}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5 lg:mt-1">
+                        <p className={`text-[7px] lg:text-[10px] font-black ${item.tipo === 'cita' ? 'text-slate-500' : item.tipo === 'bloqueo' ? 'text-red-500/50' : 'text-amber-500/50'} uppercase tracking-widest leading-none truncate`}>
+                            {item.tipo === 'cita' ? item.data.servicio_nombre : item.tipo === 'almuerzo' ? 'DESCANSO' : (item.data.motivo || 'OCUPADO')}
+                        </p>
+                        {item.tipo === 'cita' && item.data.servicio_precio && (
+                            <span className="text-[7px] lg:text-[9px] font-black text-primary/60 border-l border-white/10 pl-2 leading-none">
+                                ${item.data.servicio_precio}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -155,7 +168,17 @@ const TimelineAppointmentCard = ({
                             <Play className="w-3 h-3 md:w-4 md:h-4 fill-current" />
                         </button>
                     )}
-                    
+
+                    {item.data.estado === 'en_proceso' && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); actualizarEstadoDirecto(item.data, 'por_cobrar') }}
+                            className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-black transition-all border border-emerald-500/10 group"
+                            title="Finalizar Servicio"
+                        >
+                            <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4 fill-current" />
+                        </button>
+                    )}
+
                     <div className="flex items-center gap-0.5 transition-opacity">
                         <button
                             onClick={(e) => handleDetailsClick(e, item.data)}
@@ -164,7 +187,7 @@ const TimelineAppointmentCard = ({
                         >
                             <Info className="w-3 h-3" />
                         </button>
-                        
+
                         {(item.data.estado === 'confirmada' || item.data.estado === 'en_espera' || item.data.estado === 'finalizada') && (
                             <button
                                 onClick={(e) => handleMoveClick(e, item.data)}
@@ -178,13 +201,13 @@ const TimelineAppointmentCard = ({
                         {item.data.estado === 'por_cobrar' && (
                             <button
                                 onClick={(e) => handleCheckoutClick(e, item.data)}
-                                className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-all border border-purple-500/20"
-                                title="Cobrar"
+                                className="w-7 h-7 md:w-10 md:h-10 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                                title="Cobrar Cita"
                             >
-                                <CreditCard className="w-3 h-3" />
+                                <CreditCard className="w-4 h-4 md:w-5 md:h-5" />
                             </button>
                         )}
-                        
+
                         {(item.data.estado === 'confirmada' || item.data.estado === 'en_espera' || item.data.estado === 'finalizada') && (
                             <button
                                 onClick={(e) => handleCancelClick(e, item.data)}
@@ -201,7 +224,7 @@ const TimelineAppointmentCard = ({
     )
 }
 
-export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, onUpdate }: AgendaTimelineProps) {
+export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, barbero, onUpdate }: AgendaTimelineProps) {
     // Determinar día de la semana para el horario de sucursal
     const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
     const todayLocalStr = new Intl.DateTimeFormat('en-CA', {
@@ -237,7 +260,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const slots = useMemo(() => generarSlots(horaInicio, horaFin), [horaInicio, horaFin])
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const [selectedCita, setSelectedCita] = useState<CitaDesdeVista | null>(null)
-    
+
     // Sincronizar selectedCita cuando los datos globales cambian (evita datos obsoletos en el modal)
     useEffect(() => {
         if (selectedCita) {
@@ -258,6 +281,35 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const [highlightedCitaId, setHighlightedCitaId] = useState<string | null>(null)
     const [citaActiva, setCitaActiva] = useState<CitaDesdeVista | null>(null)
     const [pendingCitaAction, setPendingCitaAction] = useState<CitaDesdeVista | null>(null)
+    const [showCorteTurno, setShowCorteTurno] = useState(false)
+    const [corteExistente, setCorteExistente] = useState<any>(null)
+    const [loadingCorte, setLoadingCorte] = useState(false)
+
+    useEffect(() => {
+        const checkCorte = async () => {
+            if (!barbero?.id || !viewDate) return
+            setLoadingCorte(true)
+            try {
+                const { data, error } = await supabase
+                    .from('cortes_turno' as any)
+                    .select('*')
+                    .eq('barbero_id', barbero.id)
+                    .eq('fecha_corte', viewDate)
+                    .maybeSingle()
+
+                if (error) throw error
+                setCorteExistente(data)
+            } catch (err) {
+                console.error('Error checking existing corte:', err)
+            } finally {
+                setLoadingCorte(false)
+            }
+        }
+
+        if (showCorteTurno) {
+            checkCorte()
+        }
+    }, [showCorteTurno, barbero?.id, viewDate])
 
     // Refs for drag state tracking
     const isDraggingRef = useRef(false)
@@ -283,6 +335,28 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const currentTimePosition = ((currentHour - horaInicio) * 2 * SLOT_HEIGHT) + (currentMinute / 30 * SLOT_HEIGHT)
 
     const targetScrollPosition = Math.max(0, ((currentHour - 1 - horaInicio) * 2 * SLOT_HEIGHT))
+
+    const metrics = useMemo(() => {
+        const todayStr = getHermosilloDateStr(new Date())
+        const targetDateStr = fechaBase || todayStr
+        const citasDeHoy = citas.filter(c => c.fecha_cita_local === targetDateStr)
+
+        const finalizadas = citasDeHoy.filter(c => c.estado === 'finalizada')
+        const totalBruto = finalizadas.reduce((acc, c) => acc + (c.monto_pagado ?? c.servicio_precio ?? 0), 0)
+        const totalCortes = finalizadas.length
+
+        // Citas que requieren acción (no finalizadas ni canceladas)
+        const pendientes = citasDeHoy.filter(c => !['finalizada', 'cancelada'].includes(c.estado))
+
+        return {
+            totalBruto,
+            totalCortes,
+            pendientes,
+            comision_porcentaje: barbero?.comision_porcentaje ?? 50,
+            comision: totalBruto * ((barbero?.comision_porcentaje ?? 50) / 100),
+            resumenPendientes: pendientes.length > 0 ? `${pendientes.length} citas por gestionar` : null
+        }
+    }, [citas, fechaBase, barbero])
 
     // Auto-center: only scroll to current time when viewing TODAY
     const todayLocal = new Intl.DateTimeFormat('en-CA', {
@@ -456,11 +530,13 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         if (tipoItem === 'almuerzo') return 'bg-amber-500'
 
         switch (estado) {
-            case 'confirmada': return 'bg-primary'
-            case 'en_espera': return 'bg-primary'
+            case 'confirmada': return 'bg-yellow-500'
+            case 'en_espera': return 'bg-yellow-500'
             case 'en_proceso': return 'bg-emerald-500'
-            case 'por_cobrar': return 'bg-purple-500'
-            case 'finalizada': return 'bg-slate-300'
+            case 'por_cobrar': return 'bg-blue-500'
+            case 'finalizada': return 'bg-zinc-800'
+            case 'cancelada': return 'bg-red-500'
+            case 'no_show': return 'bg-red-500'
             default: return 'bg-slate-500'
         }
     }
@@ -468,7 +544,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     const actualizarEstadoDirecto = async (cita: CitaDesdeVista, nuevoEstado: EstadoCita) => {
         try {
             const payload: any = { estado: nuevoEstado, updated_at: new Date().toISOString() }
-            
+
             if (nuevoEstado === 'en_proceso') {
                 payload.timestamp_inicio_servicio = new Date().toISOString()
             }
@@ -630,7 +706,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
         // Mover el inicio sumando minutos (30 min por slot)
         const newStart = new Date(originalStart.getTime() + (slotsMoved * 30 * 60000))
-        
+
         // Asegurar que el inicio caiga en :00 o :30 de Hermosillo
         const currentMins = getHermosilloMins(newStart)
         if (currentMins % 30 !== 0) {
@@ -644,7 +720,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         // --- VALIDACIÓN DE COLISIONES ROBUSTA ---
         const colisionProhibida = citas.find((c: CitaDesdeVista) => {
             if (c.id != null && cita.id != null && String(c.id) === String(cita.id)) return false
-            
+
             const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada', 'confirmada', 'en_espera']
             if (!estadosProhibidos.includes(c.estado)) return false
 
@@ -817,8 +893,11 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                         const cardBorder = item?.tipo === 'bloqueo' ? 'border-red-500/30 bg-[#16181D]/90' :
                                             item?.tipo === 'almuerzo' ? 'border-amber-500/30 bg-[#16181D]/90' :
                                                 isEnProceso ? 'border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)] bg-emerald-500/5' :
-                                                    isPorCobrar ? 'border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)] bg-purple-500/5' :
-                                                        'border-white/5 hover:border-white/10 bg-[#16181D]/90'
+                                                    isPorCobrar ? 'border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)] bg-blue-500/5' :
+                                                        item?.data?.estado === 'confirmada' ? 'border-yellow-500/40 bg-yellow-500/5' :
+                                                            item?.data?.estado === 'finalizada' ? 'border-zinc-500/20 bg-zinc-500/5' :
+                                                                item?.data?.estado === 'cancelada' ? 'border-red-500/40 bg-red-500/5' :
+                                                                    'border-white/5 hover:border-white/10 bg-[#16181D]/90'
 
                                         return (
                                             <div
@@ -851,6 +930,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                             handleMoveClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('move'); }}
                                                             handleCancelClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('cancel'); }}
                                                             handleCheckoutClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('checkout'); }}
+                                                            actualizarEstadoDirecto={actualizarEstadoDirecto}
                                                         />
                                                     ) : (
                                                         <div className="h-px w-4 bg-white/5 ml-1" />
@@ -869,7 +949,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             <div className="shrink-0 bg-black/40 backdrop-blur-xl border-t border-white/5 p-3">
                 <div className="flex items-center justify-between px-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
                     <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(245,200,66,0.3)]" />
+                        <span className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.3)]" />
                         <span>Confirmada</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -877,13 +957,23 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                         <span>En Proceso</span>
                     </div>
                     <div className="flex items-center gap-2 hidden sm:flex">
-                        <span className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.3)]" />
+                        <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
                         <span>Por Cobrar</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-slate-300 shadow-[0_0_8px_rgba(255,255,255,0.1)]" />
+                        <span className="w-2 h-2 rounded-full bg-zinc-500 shadow-[0_0_8px_rgba(113,113,122,0.1)]" />
                         <span>Finalizada</span>
                     </div>
+                </div>
+
+                <div className="mt-3 flex gap-2">
+                    <Button
+                        onClick={() => setShowCorteTurno(true)}
+                        className="flex-1 bg-white/[0.03] hover:bg-white/[0.08] text-white border border-white/10 h-10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] gap-2 transition-all group/btn"
+                    >
+                        <BarChart3 className="w-3.5 h-3.5 text-primary group-hover/btn:scale-110 transition-transform" />
+                        Cerrar Turno
+                    </Button>
                 </div>
             </div>
 
@@ -940,7 +1030,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                             Servicio en Proceso
                         </DialogTitle>
                         <DialogDescription className="text-red-400/60 text-center text-sm mt-3 font-bold uppercase tracking-widest leading-relaxed">
-                            No es posible iniciar un nuevo servicio <br/> sin finalizar el que está activo.
+                            No es posible iniciar un nuevo servicio <br /> sin finalizar el que está activo.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1037,6 +1127,146 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                 Confirmar y Mover
                             </Button>
                         </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* CORTE DE TURNO MODAL */}
+            <Dialog open={showCorteTurno} onOpenChange={setShowCorteTurno}>
+                <DialogContent className="bg-[#050608] border-white/5 text-white rounded-[2.5rem] sm:max-w-md w-[95vw] shadow-[0_20px_60px_rgba(0,0,0,0.8)] p-0 overflow-hidden outline-none">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-amber-500 to-primary/50 opacity-50" />
+
+                    <DialogHeader className="pt-10 px-8 pb-4">
+                        <div className="flex items-center gap-4 mb-2">
+                            <div className={cn(
+                                "w-12 h-12 rounded-2xl flex items-center justify-center border shrink-0 transition-colors",
+                                corteExistente 
+                                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
+                                    : (viewDate < todayLocalStr)
+                                        ? "bg-red-500/10 border-red-500/20 text-red-500"
+                                        : "bg-primary/10 border-primary/20 text-primary"
+                            )}>
+                                {corteExistente ? <CheckCircle2 className="w-6 h-6" /> : (viewDate < todayLocalStr) ? <AlertCircle className="w-6 h-6" /> : <Wallet className="w-6 h-6" />}
+                            </div>
+                            <div>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tighter leading-none">
+                                    {corteExistente ? 'Turno Cerrado' : (viewDate < todayLocalStr) ? 'Cierre Retrasado' : 'Corte de Turno'}
+                                </DialogTitle>
+                                <DialogDescription className={cn(
+                                    "text-[10px] uppercase tracking-[0.2em] font-black mt-2",
+                                    corteExistente ? "text-emerald-500/60" : (viewDate < todayLocalStr) ? "text-red-500/60" : "text-white/20"
+                                )}>
+                                    {corteExistente ? 'Resumen guardado correctamente' : (viewDate < todayLocalStr) ? 'Es necesario realizar este cierre' : 'Resumen financiero del día'}
+                                </DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="px-8 pb-8 space-y-6">
+                        {/* Metrics Grid */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Total Bruto</p>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-xl font-black text-white">${metrics.totalBruto}</span>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Tus Cortes</p>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-xl font-black text-primary">{metrics.totalCortes}</span>
+                                    <span className="text-[10px] font-bold text-white/20 uppercase">und</span>
+                                </div>
+                            </div>
+                            <div className="col-span-2 p-5 bg-primary/5 border border-primary/10 rounded-2xl flex items-center justify-between">
+                                <div>
+                                    <p className="text-[8px] font-black text-primary uppercase tracking-widest mb-1">Tu Comisión ({metrics.comision_porcentaje}%)</p>
+                                    <p className="text-2xl font-black text-primary leading-none">${metrics.comision}</p>
+                                </div>
+                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <TrendingUp className="w-6 h-6 text-primary" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Warning or Success Area */}
+                        {metrics.pendientes.length > 0 ? (
+                            <div className="p-5 bg-red-500/5 border border-red-500/20 rounded-2xl flex gap-4 items-start">
+                                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-red-500 uppercase tracking-tight mb-1">Acción Requerida</p>
+                                    <p className="text-[11px] text-white/60 leading-relaxed">
+                                        Tienes <span className="text-white font-bold">{metrics.pendientes.length} citas pendientes</span> de finalizar o cobrar. Debes gestionarlas antes de cerrar el turno.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex gap-4 items-start">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-emerald-500 uppercase tracking-tight mb-1">Turno Limpio</p>
+                                    <p className="text-[11px] text-white/60 leading-relaxed">
+                                        Todas las citas de hoy han sido procesadas correctamente. Puedes proceder con el cierre.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-3 pt-4">
+                            <Button
+                                disabled={metrics.pendientes.length > 0 || loadingCorte}
+                                onClick={async () => {
+                                    try {
+                                        const { error } = await supabase
+                                            .from('cortes_turno' as any)
+                                            .upsert({
+                                                barbero_id: barbero.id,
+                                                sucursal_id: barbero.sucursal_id,
+                                                fecha_corte: viewDate,
+                                                monto_bruto: metrics.totalBruto,
+                                                comision_barbero: metrics.comision,
+                                                total_servicios: metrics.totalCortes,
+                                                created_at: new Date().toISOString()
+                                            } as any)
+
+                                        if (error) throw error
+
+                                        toast.success(corteExistente ? "Corte Actualizado" : "Turno Cerrado Correctamente", {
+                                            description: "El resumen ha sido guardado en el sistema.",
+                                            icon: <CircleDollarSign className="w-5 h-5 text-primary" />
+                                        })
+                                        setShowCorteTurno(false)
+                                    } catch (err: any) {
+                                        console.error('Error saving shift closing:', err)
+                                        toast.error("Error al Guardar Corte", {
+                                            description: err.message || "No se pudo persistir el cierre de turno."
+                                        })
+                                    }
+                                }}
+                                className={cn(
+                                    "w-full h-16 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl",
+                                    metrics.pendientes.length > 0
+                                        ? "bg-white/5 text-white/20 border border-white/5 cursor-not-allowed"
+                                        : corteExistente
+                                            ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20"
+                                            : "bg-primary text-black hover:bg-primary/90 shadow-primary/20"
+                                )}
+                            >
+                                {loadingCorte ? 'Cargando...' : metrics.pendientes.length > 0 ? 'Cierre Bloqueado' : corteExistente ? 'Actualizar Corte' : 'Confirmar Corte y Salir'}
+                            </Button>
+
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowCorteTurno(false)}
+                                className="w-full text-white/20 hover:text-white hover:bg-white/5 font-black uppercase tracking-widest text-[9px] py-4 rounded-xl"
+                            >
+                                Regresar a la Agenda
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

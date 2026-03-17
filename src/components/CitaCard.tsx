@@ -391,11 +391,11 @@ export const CitaCard = memo(function CitaCard({
 
 
     const config = {
-        confirmada: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-primary', badgeVariant: 'outline' as const, label: 'Confirmada', badgeClass: 'bg-primary/10 text-primary border-primary/20' },
-        en_espera: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-primary', badgeVariant: 'outline' as const, label: 'En Sucursal', badgeClass: 'bg-primary/10 text-primary border-primary/20' },
+        confirmada: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-yellow-500', badgeVariant: 'outline' as const, label: 'Confirmada', badgeClass: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
+        en_espera: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-yellow-500', badgeVariant: 'outline' as const, label: 'En Sucursal', badgeClass: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
         en_proceso: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-emerald-500', badgeVariant: 'outline' as const, label: 'En Proceso', badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
         por_cobrar: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-blue-500', badgeVariant: 'outline' as const, label: 'Por Cobrar', badgeClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-        finalizada: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-slate-500', badgeVariant: 'outline' as const, label: 'Finalizada', badgeClass: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+        finalizada: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-zinc-500', badgeVariant: 'outline' as const, label: 'Finalizada', badgeClass: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
         cancelada: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'Cancelada', badgeClass: 'bg-red-500/10 text-red-400 border-red-500/20' },
         no_show: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'No Show', badgeClass: 'bg-red-500/10 text-red-400 border-red-500/20' }
     }[cita.estado] || { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-slate-500', badgeVariant: 'outline' as const, label: cita.estado, badgeClass: 'bg-slate-500/10 text-slate-400' }

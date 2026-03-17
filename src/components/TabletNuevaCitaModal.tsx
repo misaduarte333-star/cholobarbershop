@@ -306,10 +306,8 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                 if (cancelados.includes(c.estado)) return false
 
                 const cStart = new Date(c.timestamp_inicio_local).getTime()
-                const cEnd = new Date(c.timestamp_fin_local).getTime()
-
-                // Interval Overlap: (A.start < B.end) && (A.end > B.start)
-                return (nStartMs < cEnd && nEndMs > cStart)
+                // Bloquear solo si tienen exactamente la misma hora de inicio
+                return nStartMs === cStart
             })
 
             if (colisionProhibida) {
@@ -446,13 +444,8 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                 if (cancelados.includes(c.estado)) return false
 
                 const cStart = new Date(c.timestamp_inicio_local).getTime()
-                const cEndOriginal = new Date(c.timestamp_fin_local).getTime()
-                const cDur = Math.round((cEndOriginal - cStart) / 60000) // Duration in minutes
-                const cDurBlocks = Math.max(1, Math.floor(cDur / 30))
-                const cEndEffective = cStart + (cDurBlocks * 30 * 60000) // Effective end time for existing appointment
-
-                // Interval Overlap: (A.start < B.end) && (A.end > B.start)
-                return (nStartMs < cEndEffective && nEndMs > cStart)
+                // Validar solo por coincidencia de inicio del slot (independiente de duración)
+                return nStartMs === cStart
             })
 
             const estadosFinalizados = ['completada', 'finalizada', 'cobrada', 'por_cobrar']

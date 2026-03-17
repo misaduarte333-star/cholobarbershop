@@ -23,7 +23,9 @@ import {
     Volume2,
     VolumeX,
     LayoutDashboard,
-    Scissors
+    Scissors,
+    History,
+    AlertCircle
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
@@ -79,6 +81,7 @@ export default function TabletDashboard() {
     const [loadingAgenda, setLoadingAgenda] = useState(false)
     const lastTapAgenda = useRef<number>(0)
     const datePickerRef = useRef<HTMLInputElement>(null)
+    const [citasPasadasPendientes, setCitasPasadasPendientes] = useState<number>(0)
 
     // Keep citasRef in sync for stale-closure-safe comparisons (Vercel: advanced-event-handler-refs)
     useEffect(() => { citasRef.current = citas }, [citas])
@@ -286,6 +289,30 @@ export default function TabletDashboard() {
 
         syncSessionAndData()
     }, [router, supabase])
+
+    const checkPastPending = useCallback(async (barberoId: string) => {
+        const hoy = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Hermosillo',
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        }).format(new Date())
+        
+        const { count, error } = await supabase
+            .from('citas')
+            .select('*', { count: 'exact', head: true })
+            .eq('barbero_id', barberoId)
+            .lt('fecha_cita_local', hoy)
+            .not('estado', 'in', '("finalizada","cancelada","no_show")')
+            
+        if (!error && count !== null) {
+            setCitasPasadasPendientes(count)
+        }
+    }, [supabase])
+
+    useEffect(() => {
+        if (barbero?.id) {
+            checkPastPending(barbero.id)
+        }
+    }, [barbero?.id, checkPastPending])
 
     const cargarAgenda = useCallback(async (isInitialLoad = false) => {
         if (!barbero?.id) return
@@ -531,6 +558,12 @@ export default function TabletDashboard() {
                                 <Badge variant="outline" className="bg-white/5 text-white/70 border-white/15 px-3 py-1 rounded-lg">
                                     <span className="text-[14px] md:text-xs font-black uppercase tracking-widest">${totalDinero}</span>
                                 </Badge>
+                                {citasPasadasPendientes > 0 && (
+                                    <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30 px-3 py-1 gap-2 rounded-lg animate-pulse">
+                                        <History className="w-3 h-3" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">{citasPasadasPendientes} pendientes ayer</span>
+                                    </Badge>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -617,89 +650,10 @@ export default function TabletDashboard() {
             <main className="flex-1 overflow-hidden p-0 lg:p-3 xl:p-4 relative z-10 flex flex-col">
                 <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-3 xl:gap-4 max-w-[2000px] mx-auto w-full">
 
-                    {/* Column 1: Mobile Full Content / Desktop List */}
-                    <div className={`lg:col-span-8 flex flex-col h-full min-h-0 relative transition-all duration-500 ${showMobileAppointments ? 'translate-y-0 opacity-100 z-50' : 'hidden lg:flex'}`}>
-                        {/* Mobile Overlay Header */}
-                        <div className="lg:hidden flex items-center justify-between p-6 bg-black/90 backdrop-blur-xl border-b border-white/5 sticky top-0 z-[60]">
-                            <div className="flex items-center gap-4">
-                                <div className="h-1 w-6 bg-primary rounded-full" />
-                                <h2 className="text-xs font-black text-white uppercase tracking-[0.3em] font-display">Agenda del Día</h2>
-                            </div>
-                            <button onClick={() => setShowMobileAppointments(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50">
-                                <span className="material-icons-round">close</span>
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-3 lg:p-0 lg:pr-2 custom-scrollbar space-y-4 lg:space-y-6 pb-24 lg:pb-4 bg-black/40 lg:bg-transparent min-h-0 relative overflow-x-hidden">
-                            {/* Current Appointment - High Presence */}
-                            {citaEnProceso && (
-                                <div className="animate-slide-in relative group">
-                                    <div className="flex items-center gap-4 mb-4 lg:mb-5">
-                                        <div className="h-1 w-6 lg:w-8 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                                        <h2 className="text-[9px] lg:text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] font-display">Atendiendo Ahora</h2>
-                                    </div>
-                                    <div className="relative">
-                                        <div className="absolute -inset-4 bg-emerald-500/5 rounded-[2.5rem] lg:rounded-[3rem] blur-2xl opacity-40 pointer-events-none" />
-                                        <CitaCard
-                                            cita={citaEnProceso}
-                                            onUpdate={cargarCitas}
-                                            isHighlighted
-                                            currentTime={currentTime!}
-                                            allCitas={citasAgenda}
-                                            bloqueos={bloqueosAgenda}
-                                            almuerzoBarbero={almuerzoBarbero}
-                                            horarioSucursal={sucursal}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Upcoming Appointments List */}
-                            <div className="flex flex-col flex-1">
-                                <div className="flex items-center justify-between mb-4 lg:mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-1 w-6 lg:w-8 bg-white/10 rounded-full" />
-                                        <h2 className="text-[9px] lg:text-[10px] font-black text-white/40 uppercase tracking-[0.3em] font-display">Próximas Citas ({citasSiguientes.length})</h2>
-                                    </div>
-                                </div>
-
-                                {loading ? (
-                                    <div className="bg-white/5 p-12 lg:p-20 flex flex-col items-center justify-center border border-white/5 rounded-[2rem] lg:rounded-[2.5rem] shadow-2xl backdrop-blur-sm">
-                                        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
-                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse">Actualizando agenda...</p>
-                                    </div>
-                                ) : citasSiguientes.length === 0 ? (
-                                    <div className="bg-white/2 p-12 lg:p-20 text-center border border-white/5 shadow-2xl rounded-[2rem] lg:rounded-[2.5rem] group transition-all duration-700">
-                                        <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/5 text-white/10 shadow-inner">
-                                            <CheckCircle2 className="w-10 h-10" />
-                                        </div>
-                                        <p className="text-white/20 font-black uppercase tracking-[0.2em] text-[10px]">Sin más citas para hoy</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 gap-3 lg:gap-4">
-                                        {citasSiguientes.map((cita: CitaDesdeVista, index: number) => (
-                                            <div key={`cita-next-${cita.id || index}`} className="animate-slide-in" style={{ animationDelay: `${index * 50}ms` }}>
-                                                <CitaCard
-                                                    cita={cita}
-                                                    onUpdate={cargarCitas}
-                                                    currentTime={currentTime!}
-                                                    allCitas={citasAgenda}
-                                                    bloqueos={bloqueosAgenda}
-                                                    almuerzoBarbero={almuerzoBarbero}
-                                                    horarioSucursal={sucursal}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Column 2: Full Screen Calendar on Mobile / Sidebar on Desktop */}
-                    <div className={`lg:col-span-4 h-full flex flex-col min-h-0 relative ${showMobileAppointments ? 'hidden lg:flex' : 'flex'}`}>
+                    {/* Column 1: Timeline (Left on Desktop, Main on Mobile) */}
+                    <div className={`lg:col-span-8 h-full flex flex-col min-h-0 relative ${showMobileAppointments ? 'hidden lg:flex' : 'flex'}`}>
                         {/* Desktop Header for Timeline and Mobile View Switcher */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0 px-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0 px-2 lg:px-0">
                             <div className="flex items-center gap-3">
                                 <div className="h-1 w-6 bg-primary/20 rounded-full" />
                                 <h2 className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] font-display">Cronograma General</h2>
@@ -797,6 +751,7 @@ export default function TabletDashboard() {
                                             horarioSucursal={sucursal?.horario_apertura}
                                             currentTime={currentTime!}
                                             fechaBase={fechaAgenda}
+                                            barbero={barbero}
                                             onUpdate={() => cargarAgenda()}
                                         />
                                     ) : (
@@ -831,6 +786,85 @@ export default function TabletDashboard() {
                                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-black rounded-full flex items-center justify-center text-[9px] font-black border-2 border-black pointer-events-none">
                                         {citasSiguientes.length}
                                     </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Column 2: Dashboard/Sidebar (Right on Desktop, Secondary on Mobile) */}
+                    <div className={`lg:col-span-4 flex flex-col h-full min-h-0 relative transition-all duration-500 ${showMobileAppointments ? 'translate-y-0 opacity-100 z-50' : 'hidden lg:flex'}`}>
+                        {/* Mobile Overlay Header */}
+                        <div className="lg:hidden flex items-center justify-between p-6 bg-black/90 backdrop-blur-xl border-b border-white/5 sticky top-0 z-[60]">
+                            <div className="flex items-center gap-4">
+                                <div className="h-1 w-6 bg-primary rounded-full" />
+                                <h2 className="text-xs font-black text-white uppercase tracking-[0.3em] font-display">Agenda del Día</h2>
+                            </div>
+                            <button onClick={() => setShowMobileAppointments(false)} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-3 lg:p-0 custom-scrollbar space-y-4 lg:space-y-6 pb-24 lg:pb-4 bg-black/40 lg:bg-transparent min-h-0 relative overflow-x-hidden">
+                            {/* Current Appointment - Condensed for Sidebar */}
+                            {citaEnProceso && (
+                                <div className="animate-slide-in relative group">
+                                    <div className="flex items-center gap-4 mb-4 lg:mb-5">
+                                        <div className="h-1 w-6 lg:w-8 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                        <h2 className="text-[9px] lg:text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] font-display">Atendiendo Ahora</h2>
+                                    </div>
+                                    <div className="relative">
+                                        <div className="absolute -inset-4 bg-emerald-500/5 rounded-[2.5rem] lg:rounded-[3rem] blur-2xl opacity-40 pointer-events-none" />
+                                        <CitaCard
+                                            cita={citaEnProceso}
+                                            onUpdate={cargarCitas}
+                                            isHighlighted
+                                            currentTime={currentTime!}
+                                            allCitas={citasAgenda}
+                                            bloqueos={bloqueosAgenda}
+                                            almuerzoBarbero={almuerzoBarbero}
+                                            horarioSucursal={sucursal}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Upcoming Appointments List */}
+                            <div className="flex flex-col flex-1">
+                                <div className="flex items-center justify-between mb-4 lg:mb-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-1 w-6 lg:w-8 bg-white/10 rounded-full" />
+                                        <h2 className="text-[9px] lg:text-[10px] font-black text-white/40 uppercase tracking-[0.3em] font-display">Próximas Citas ({citasSiguientes.length})</h2>
+                                    </div>
+                                </div>
+
+                                {loading ? (
+                                    <div className="bg-white/5 p-8 flex flex-col items-center justify-center border border-white/5 rounded-[2rem] shadow-2xl backdrop-blur-sm">
+                                        <div className="w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+                                        <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse">Actualizando...</p>
+                                    </div>
+                                ) : citasSiguientes.length === 0 ? (
+                                    <div className="bg-white/2 p-10 text-center border border-white/5 shadow-2xl rounded-[2rem] group transition-all duration-700">
+                                        <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/5 text-white/10 shadow-inner">
+                                            <CheckCircle2 className="w-8 h-8" />
+                                        </div>
+                                        <p className="text-white/20 font-black uppercase tracking-[0.2em] text-[10px]">Sin más citas</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-3 lg:gap-4">
+                                        {citasSiguientes.map((cita: CitaDesdeVista, index: number) => (
+                                            <div key={`cita-next-${cita.id || index}`} className="animate-slide-in" style={{ animationDelay: `${index * 50}ms` }}>
+                                                <CitaCard
+                                                    cita={cita}
+                                                    onUpdate={cargarCitas}
+                                                    currentTime={currentTime!}
+                                                    allCitas={citasAgenda}
+                                                    bloqueos={bloqueosAgenda}
+                                                    almuerzoBarbero={almuerzoBarbero}
+                                                    horarioSucursal={sucursal}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </div>
