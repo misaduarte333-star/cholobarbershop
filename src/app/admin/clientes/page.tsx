@@ -15,7 +15,10 @@ import {
     Edit2,
     History,
     Trash2,
-    AlertCircle
+    AlertCircle,
+    Users,
+    Plus,
+    Clock
 } from 'lucide-react'
 import {
     AlertDialog,
@@ -60,6 +63,7 @@ export default function ClientesPage() {
     const [isSaving, setIsSaving] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isNewClient, setIsNewClient] = useState(false)
+    const [currentTime, setCurrentTime] = useState(new Date())
 
     const supabase = createClient()
 
@@ -82,7 +86,21 @@ export default function ClientesPage() {
 
     useEffect(() => {
         cargarClientes()
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+        return () => clearInterval(timer)
     }, [cargarClientes])
+    
+    const formattedDate = currentTime.toLocaleDateString('es-MX', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long' 
+    }).replace(/^\w/, (c) => c.toUpperCase())
+
+    const formattedTime = currentTime.toLocaleTimeString('es-MX', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        hour12: false 
+    })
 
     const filteredClientes = clientes.filter(c =>
         c.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -186,34 +204,55 @@ export default function ClientesPage() {
     }
 
     return (
-        <div className="space-y-6 animate-fade-in pb-10">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl md:text-4xl font-black text-white font-display tracking-tight">
-                        CRM <span className="text-gradient-gold">CLIENTES</span>
-                    </h1>
-                    <p className="text-white/40 text-xs font-black uppercase tracking-[0.3em] mt-1">
-                        Gestión y Fidelización de Clientes
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/30 group-focus-within:text-primary transition-colors" />
-                        <Input
-                            placeholder="Buscar cliente..."
-                            className="pl-10 w-full md:w-[300px] bg-black/40 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 transition-all rounded-xl"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
+            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
+                {/* Header (Desktop Only) - Compact Elite Style */}
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] flex items-center justify-center shadow-[0_0_20px_rgba(212,175,55,0.2)]">
+                            <Users className="w-7 h-7 text-black" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">
+                                CRM <span className="text-gradient-gold italic">Clientes</span>
+                            </h1>
+                            <p className="text-slate-400 mt-1 text-xs font-bold uppercase tracking-widest opacity-70">
+                                Gestión y fidelización de clientes
+                            </p>
+                        </div>
                     </div>
-                    <Button
-                        onClick={openNewClientModal}
-                        className="btn-primary rounded-xl px-4 font-black uppercase tracking-widest text-[10px] shadow-[0_10px_20px_rgba(234,179,8,0.2)]"
-                    >
-                        <UserPlus data-icon="inline-start" className="size-4" />
-                        Nuevo Cliente
-                    </Button>
+
+                    <div className="flex items-center gap-3">
+                        {/* Live Clock & Date */}
+                        <div className="hidden lg:flex flex-col items-end mr-4">
+                            <span className="text-white font-black text-xl tracking-tighter leading-none uppercase">
+                                {formattedTime}
+                            </span>
+                            <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-[0.2em]">
+                                {formattedDate}
+                            </span>
+                        </div>
+
+                        <Button 
+                            onClick={openNewClientModal}
+                            className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-bold uppercase tracking-tighter shadow-lg shadow-gold/20 h-11 px-6 rounded-xl"
+                        >
+                            <UserPlus className="w-5 h-5 mr-2" />
+                            Nuevo Cliente
+                        </Button>
+                    </div>
+                </header>
+
+            {/* Filters & Search */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0A0A0A]/60 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
+                <div className="relative group flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/30 group-focus-within:text-primary transition-colors" />
+                    <Input
+                        placeholder="Buscar por nombre, teléfono o email..."
+                        className="pl-10 w-full bg-black/40 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 transition-all rounded-xl h-11"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
             </div>
 
@@ -510,6 +549,7 @@ export default function ClientesPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            </div>
         </div>
     )
 }

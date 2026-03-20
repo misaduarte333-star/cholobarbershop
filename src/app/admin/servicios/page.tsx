@@ -3,12 +3,36 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { Servicio } from '@/lib/types'
+import { 
+    Plus, 
+    Scissors, 
+    Clock, 
+    Trash2, 
+    Edit2, 
+    Layers
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 export default function ServiciosPage() {
     const [servicios, setServicios] = useState<Servicio[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [editingServicio, setEditingServicio] = useState<Servicio | null>(null)
+    const [currentTime, setCurrentTime] = useState(new Date())
 
     const supabase = createClient()
 
@@ -35,7 +59,21 @@ export default function ServiciosPage() {
 
     useEffect(() => {
         cargarServicios()
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+        return () => clearInterval(timer)
     }, [cargarServicios])
+
+    const formattedDate = currentTime.toLocaleDateString('es-MX', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long' 
+    }).replace(/^\w/, (c) => c.toUpperCase())
+
+    const formattedTime = currentTime.toLocaleTimeString('es-MX', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        hour12: false 
+    })
 
     const handleDelete = async (id: string) => {
         if (!confirm('¿Estás seguro de eliminar este servicio?')) return
@@ -46,10 +84,11 @@ export default function ServiciosPage() {
                 const body = await res.json()
                 throw new Error(body.message || 'Error al eliminar')
             }
+            toast.success('Servicio eliminado correctamente')
             cargarServicios()
         } catch (err: any) {
             console.error('Error deleting:', err)
-            alert('Error al eliminar: ' + err.message)
+            toast.error('Error al eliminar: ' + err.message)
         }
     }
 
@@ -84,116 +123,132 @@ export default function ServiciosPage() {
     }
 
     return (
-
-        <>
-            <div className="mb-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white">Servicios</h1>
-                        <p className="text-slate-400 mt-1">Configura los servicios disponibles</p>
+        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
+            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
+                {/* Header (Desktop Only) - Compact Elite Style */}
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] flex items-center justify-center shadow-[0_0_20px_rgba(212,175,55,0.2)]">
+                            <Layers className="w-7 h-7 text-black" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">
+                                Panel de <span className="text-gradient-gold italic">Servicios</span>
+                            </h1>
+                            <p className="text-slate-400 mt-1 text-xs font-bold uppercase tracking-widest opacity-70">
+                                Catálogo y precios de barbería
+                            </p>
+                        </div>
                     </div>
-                    <button onClick={handleNew} className="btn-primary flex items-center gap-2">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Nuevo Servicio
-                    </button>
-                </div>
-            </div>
 
-            {/* Services Grid */}
+                    <div className="flex items-center gap-3">
+                        {/* Live Clock & Date */}
+                        <div className="hidden lg:flex flex-col items-end mr-4">
+                            <span className="text-white font-black text-xl tracking-tighter leading-none uppercase">
+                                {formattedTime}
+                            </span>
+                            <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-[0.2em]">
+                                {formattedDate}
+                            </span>
+                        </div>
+
+                        <Button 
+                            onClick={handleNew}
+                            className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-bold uppercase tracking-tighter shadow-lg shadow-gold/20 h-11 px-6 rounded-xl"
+                        >
+                            <Plus className="w-5 h-5 mr-2" />
+                            Nuevo Servicio
+                        </Button>
+                    </div>
+                </header>
+
             {loading ? (
-                <div className="glass-card p-12 flex items-center justify-center">
-                    <div className="spinner w-8 h-8" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="bg-white/5 h-64 animate-pulse rounded-2xl border border-white/5" />
+                    ))}
                 </div>
             ) : servicios.length === 0 ? (
-                <div className="glass-card p-12 text-center">
-                    <svg className="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
-                    </svg>
-                    <p className="text-slate-500">No hay servicios configurados</p>
-                    <button onClick={handleNew} className="btn-primary mt-4">
-                        Crear primer servicio
-                    </button>
-                </div>
+                <Card className="glass-card border-dashed border-white/10 bg-transparent py-20">
+                    <CardContent className="flex flex-col items-center text-center">
+                        <div className="size-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                            <Scissors className="size-8 text-white/20" />
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight">No hay servicios</h3>
+                        <p className="text-white/40 text-sm mt-2 max-w-xs">Comienza agregando los servicios que ofreces en tu barbería.</p>
+                        <Button onClick={handleNew} variant="outline" className="mt-8 border-primary/50 text-primary hover:bg-primary/10 rounded-xl uppercase tracking-widest text-[10px] font-black">
+                            Crear primer servicio
+                        </Button>
+                    </CardContent>
+                </Card>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {servicios.map((servicio) => (
-                        <div
+                        <Card 
                             key={servicio.id}
-                            className={`
-                glass-card p-6 transition-all duration-300 hover:scale-[1.02]
-                ${!servicio.activo ? 'opacity-60' : ''}
-              `}
+                            className={cn(
+                                "glass-card border-white/5 transition-all duration-300 hover:scale-[1.02] hover:border-primary/20 group relative overflow-hidden",
+                                !servicio.activo && "opacity-60 grayscale"
+                            )}
                         >
-                            {/* Header */}
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
-                                    </svg>
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors" />
+                            
+                            <CardHeader className="flex flex-row items-start justify-between pb-2">
+                                <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:scale-110 transition-transform">
+                                    <Scissors className="size-6 text-primary shadow-glow-gold" />
                                 </div>
-                                <button
-                                    onClick={() => toggleActivo(servicio)}
-                                    className={`
-                    relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                    ${servicio.activo ? 'bg-purple-600' : 'bg-slate-600'}
-                  `}
-                                >
-                                    <span className={`
-                    inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                    ${servicio.activo ? 'translate-x-6' : 'translate-x-1'}
-                  `} />
-                                </button>
-                            </div>
-
-                            {/* Content */}
-                            <h3 className="text-xl font-bold text-white mb-2">{servicio.nombre}</h3>
-
-                            <div className="flex items-center gap-4 text-slate-400 text-sm mb-4">
-                                <div className="flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    {servicio.duracion_minutos} min
+                                <Switch 
+                                    checked={servicio.activo}
+                                    onCheckedChange={() => toggleActivo(servicio)}
+                                    className="data-[state=checked]:bg-primary"
+                                />
+                            </CardHeader>
+                            
+                            <CardContent className="space-y-4">
+                                <div>
+                                    <h3 className="text-xl font-black text-white uppercase tracking-tighter group-hover:text-primary transition-colors">
+                                        {servicio.nombre}
+                                    </h3>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <Clock className="size-3 text-white/40" />
+                                        <p className="text-xs font-bold text-white/40 uppercase tracking-widest">
+                                            {servicio.duracion_minutos} MINUTOS
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Price */}
-                            <div className="flex items-baseline gap-1 mb-6">
-                                <span className="text-3xl font-bold text-white">
-                                    ${Math.round(servicio.precio).toLocaleString('es-MX')}
-                                </span>
-                                <span className="text-slate-400">MXN</span>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => handleEdit(servicio)}
-                                    className="flex-1 py-2 px-4 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors text-sm font-medium text-white flex items-center justify-center gap-2"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                    </svg>
-                                    Editar
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(servicio.id)}
-                                    className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 transition-colors"
-                                    title="Eliminar"
-                                >
-                                    <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
+                                <div className="flex items-end justify-between pt-4 border-t border-white/5">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-3xl font-black text-white font-display">
+                                            ${Math.round(servicio.precio)}
+                                        </span>
+                                        <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">MXN</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleEdit(servicio)}
+                                            className="size-9 rounded-xl hover:bg-white/5 text-white/40 hover:text-white"
+                                        >
+                                            <Edit2 className="size-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleDelete(servicio.id)}
+                                            className="size-9 rounded-xl hover:bg-red-500/10 text-white/40 hover:text-red-500"
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     ))}
                 </div>
             )}
 
-            {/* Modal */}
             {showModal && (
                 <ServicioModal
                     servicio={editingServicio}
@@ -204,8 +259,8 @@ export default function ServiciosPage() {
                     }}
                 />
             )}
-        </>
-
+            </div>
+        </div>
     )
 }
 
@@ -238,24 +293,6 @@ function getDemoServices(): Servicio[] {
             precio: 350,
             activo: true,
             created_at: new Date().toISOString()
-        },
-        {
-            id: '4',
-            sucursal_id: '1',
-            nombre: 'Corte + Diseño',
-            duracion_minutos: 50,
-            precio: 300,
-            activo: true,
-            created_at: new Date().toISOString()
-        },
-        {
-            id: '5',
-            sucursal_id: '1',
-            nombre: 'Corte Infantil',
-            duracion_minutos: 30,
-            precio: 180,
-            activo: false,
-            created_at: new Date().toISOString()
         }
     ]
 }
@@ -278,26 +315,6 @@ function ServicioModal({
         activo: servicio?.activo ?? true
     })
 
-    const supabase = createClient()
-
-    const [sucursalId, setSucursalId] = useState<string | null>(null)
-
-    // Fetch sucursal_id on mount
-    useEffect(() => {
-        const fetchSucursal = async () => {
-            const { data } = await (supabase
-                .from('sucursales') as any)
-                .select('id')
-                .limit(1)
-                .single()
-
-            if (data) {
-                setSucursalId(data.id)
-            }
-        }
-        fetchSucursal()
-    }, [])
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
@@ -305,8 +322,8 @@ function ServicioModal({
         try {
             const payload = {
                 nombre: formData.nombre,
-                duracion_minutos: formData.duracion_minutos,
-                precio: formData.precio,
+                duracion_minutos: parseInt(formData.duracion_minutos),
+                precio: parseFloat(formData.precio),
                 activo: formData.activo
             }
 
@@ -324,101 +341,113 @@ function ServicioModal({
                 throw new Error(body.message || 'Error al guardar')
             }
 
+            toast.success(servicio ? 'Servicio actualizado' : 'Servicio creado')
             onSave()
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error saving:', err)
-            onSave()
+            toast.error('Error: ' + err.message)
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="glass-card w-full max-w-md animate-slide-in">
-                <div className="flex items-center justify-between p-6 border-b border-slate-700">
-                    <h2 className="text-xl font-bold text-white">
-                        {servicio ? 'Editar Servicio' : 'Nuevo Servicio'}
-                    </h2>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-700 transition-colors">
-                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="glass-card border-white/10 bg-black/95 text-white max-w-md rounded-[2rem] p-0 overflow-hidden">
+                <div className="bg-gradient-to-br from-[#D4AF37]/20 to-transparent p-6 border-b border-white/5">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black font-display text-gradient-gold tracking-tight uppercase">
+                            {servicio ? 'Editar Servicio' : 'Nuevo Servicio'}
+                        </DialogTitle>
+                        <DialogDescription className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
+                            {servicio ? 'Modifica los parámetros del servicio' : 'Agrega un nuevo servicio al catálogo'}
+                        </DialogDescription>
+                    </DialogHeader>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">Nombre del Servicio</label>
-                        <input
+                    <div className="space-y-2">
+                        <Label htmlFor="nombre" className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Nombre del Servicio</Label>
+                        <Input
+                            id="nombre"
                             type="text"
                             value={formData.nombre}
                             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                            className="input-field"
-                            placeholder="Corte Clásico"
+                            className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl h-11"
+                            placeholder="Ej: Corte Degradado"
                             required
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Duración (minutos)</label>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Duración</Label>
                             <select
                                 value={formData.duracion_minutos}
                                 onChange={(e) => setFormData({ ...formData, duracion_minutos: e.target.value })}
-                                className="input-field"
+                                className="w-full bg-white/5 border border-white/10 focus:border-primary/50 text-white rounded-xl h-11 px-3 outline-none transition-all text-sm appearance-none"
                             >
-                                <option value="15">15 min</option>
-                                <option value="30">30 min</option>
-                                <option value="40">40 min</option>
-                                <option value="45">45 min</option>
-                                <option value="60">60 min</option>
-                                <option value="90">90 min</option>
-                                <option value="120">120 min</option>
+                                <option value="15" className="bg-black">15 min</option>
+                                <option value="30" className="bg-black">30 min</option>
+                                <option value="40" className="bg-black">40 min</option>
+                                <option value="45" className="bg-black">45 min</option>
+                                <option value="60" className="bg-black">60 min</option>
+                                <option value="90" className="bg-black">90 min</option>
+                                <option value="120" className="bg-black">120 min</option>
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Precio (MXN)</label>
+                        <div className="space-y-2">
+                            <Label htmlFor="precio" className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Precio (MXN)</Label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                <input
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-bold">$</span>
+                                <Input
+                                    id="precio"
                                     type="number"
                                     min="0"
                                     step="0.01"
                                     value={formData.precio}
                                     onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
-                                    className="input-field pl-8"
-                                    placeholder="250.00"
+                                    className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl h-11 pl-8 font-display font-bold"
+                                    placeholder="250"
                                     required
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <input
-                            type="checkbox"
-                            id="activo"
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                        <div className="space-y-0.5">
+                            <Label htmlFor="activo-modal" className="text-[10px] font-black text-white/60 uppercase tracking-widest cursor-pointer">Estado del Servicio</Label>
+                            <p className="text-[9px] text-white/30 uppercase font-bold tracking-tight">Disponible para los clientes</p>
+                        </div>
+                        <Switch 
+                            id="activo-modal"
                             checked={formData.activo}
-                            onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                            className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-purple-500 focus:ring-purple-500"
+                            onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                            className="data-[state=checked]:bg-primary"
                         />
-                        <label htmlFor="activo" className="text-sm text-slate-300">
-                            Servicio disponible
-                        </label>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
-                        <button type="button" onClick={onClose} className="btn-secondary">
+                    <DialogFooter className="gap-2 sm:gap-0 mt-8">
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            onClick={onClose}
+                            className="rounded-xl text-white/30 hover:text-white hover:bg-white/5 font-black uppercase tracking-widest text-[10px]"
+                        >
                             Cancelar
-                        </button>
-                        <button type="submit" disabled={loading} className="btn-primary flex items-center gap-2">
-                            {loading && <div className="spinner w-4 h-4" />}
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            disabled={loading}
+                            className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-black uppercase tracking-widest text-[10px] px-8 rounded-xl shadow-lg shadow-gold/20"
+                        >
+                            {loading && <div className="spinner w-4 h-4 mr-2" />}
                             {servicio ? 'Guardar Cambios' : 'Crear Servicio'}
-                        </button>
-                    </div>
+                        </Button>
+                    </DialogFooter>
                 </form>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     )
 }

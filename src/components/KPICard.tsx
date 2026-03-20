@@ -1,105 +1,63 @@
-'use client'
-
-import { Card } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import {
-    Calendar,
-    CheckCircle2,
-    DollarSign,
-    XCircle,
-    Users,
-    TrendingUp,
-    TrendingDown
-} from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { LucideIcon } from "lucide-react"
 
 interface KPICardProps {
-    titulo: string
-    valor: number | string
-    color: 'purple' | 'green' | 'blue' | 'red' | 'amber'
-    icon: 'calendar' | 'check' | 'money' | 'x' | 'users'
-    trend?: number
-    trendInverse?: boolean
+    title: string
+    value: string | number
+    icon: LucideIcon
+    trend?: {
+        value: number
+        isPositive: boolean
+    }
+    subtitle?: string
+    color?: "primary" | "purple" | "green" | "blue" | "red" | "amber"
 }
 
-export function KPICard({ titulo, valor, color, icon, trend, trendInverse }: KPICardProps) {
-    const colorConfig = {
-        purple: {
-            icon: 'text-purple-400',
-            iconBg: 'bg-purple-500/20'
-        },
-        green: {
-            icon: 'text-emerald-400',
-            iconBg: 'bg-emerald-500/20'
-        },
-        blue: {
-            icon: 'text-blue-400',
-            iconBg: 'bg-blue-500/20'
-        },
-        red: {
-            icon: 'text-red-400',
-            iconBg: 'bg-red-500/20'
-        },
-        amber: {
-            icon: 'text-primary',
-            iconBg: 'bg-primary/20'
-        }
-    }
-
-    const config = colorConfig[color]
-
-    const IconComponent = {
-        calendar: Calendar,
-        check: CheckCircle2,
-        money: DollarSign,
-        x: XCircle,
-        users: Users
-    }[icon]
-
-    const isPositive = trendInverse ? (trend || 0) < 0 : (trend || 0) > 0
+export function KPICard({ title, value, icon: Icon, trend, subtitle, color = "primary" }: KPICardProps) {
+    const colorClass = color === "primary" ? "text-[#D4AF37]" : 
+                      color === "amber" ? "text-amber-500" :
+                      `text-${color}-400`
+    
+    const bgClass = color === "primary" ? "bg-[#D4AF37]/10" : 
+                   color === "amber" ? "bg-amber-500/10" :
+                   `bg-${color}-500/10`
+    
+    const borderClass = color === "primary" ? "border-[#D4AF37]/20" : 
+                       color === "amber" ? "border-amber-500/20" :
+                       `border-${color}-500/20`
 
     return (
-        <Card className={cn(
-            "glass-card p-3 md:p-4 border-primary/10",
-            "transition-all duration-500 hover:scale-[1.03] hover:border-primary/30",
-            "hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] group relative overflow-hidden"
-        )}>
-            {/* Ambient Background Glow */}
-            <div className="absolute -right-8 -bottom-8 w-16 h-16 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-700 bg-primary" />
-
-            <div className="flex items-start justify-between mb-3">
-                <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center border border-white/5 shadow-inner scale-100 group-hover:scale-110 transition-transform duration-500",
-                    config.iconBg
-                )}>
-                    {IconComponent && <IconComponent className={cn("w-4 h-4", config.icon)} />}
-                </div>
-
-                {trend !== undefined && (
-                    <div className={cn(
-                        "flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-xl border appearance-none backdrop-blur-md",
-                        isPositive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
-                    )}>
-                        {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        {Math.abs(trend)}%
+        <Card className="bg-[#141414]/80 backdrop-blur-xl border-white/5 overflow-hidden group hover:border-[#D4AF37]/30 transition-all duration-300 relative">
+            <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
+                            {title}
+                        </p>
+                        <div className="flex items-baseline gap-2">
+                            <h3 className="text-2xl font-black text-white tracking-tighter">
+                                {value}
+                            </h3>
+                            {trend && (
+                                <span className={`text-[10px] font-bold ${trend.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {trend.isPositive ? '↑' : '↓'}{Math.abs(trend.value)}%
+                                </span>
+                            )}
+                        </div>
+                        {subtitle && (
+                            <p className="text-[10px] text-white/30 font-medium">
+                                {subtitle}
+                            </p>
+                        )}
                     </div>
-                )}
-            </div>
-
-            <div className="relative z-10">
-                <p className="text-white/40 text-[7px] md:text-[9px] mb-0.5 font-black uppercase tracking-[0.2em] font-display leading-tight">
-                    {titulo}
-                </p>
-                <div className={cn(
-                    "text-lg md:text-2xl font-black font-display uppercase tracking-tight leading-none drop-shadow-2xl truncate",
-                    color === 'amber' ? 'text-gradient-gold' : 'text-white'
-                )}>
-                    {valor}
+                    <div className={`w-10 h-10 rounded-xl ${bgClass} ${colorClass} flex items-center justify-center border ${borderClass} group-hover:scale-110 transition-transform duration-300`}>
+                        <Icon className="w-5 h-5" />
+                    </div>
                 </div>
-            </div>
-
-            {/* Interactive Bottom Accent */}
-            <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-brand opacity-0 group-hover:opacity-40 transition-opacity" />
+                
+                {/* Subtle progress line or accent */}
+                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </CardContent>
         </Card>
     )
 }
-

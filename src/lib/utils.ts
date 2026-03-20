@@ -36,3 +36,16 @@ export function formatToHermosilloISO(d: Date): string {
     }).format(d)
     return `${dateStr}T${timeStr}-07:00`
 }
+
+/**
+ * Extracts total minutes from a Hermosillo local timestamp string (YYYY-MM-DD HH:mm:ss)
+ * bypassing browser timezone shifts.
+ */
+export function getMinsFromHermosilloString(dateStr: string): number {
+    if (!dateStr) return 0;
+    // Extract HH:mm from "YYYY-MM-DD HH:mm:ss"
+    const timePart = dateStr.includes('T') ? dateStr.split('T')[1] : dateStr.split(' ')[1];
+    if (!timePart) return 0;
+    const [h, m] = timePart.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+}

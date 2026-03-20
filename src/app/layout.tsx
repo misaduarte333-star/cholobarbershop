@@ -34,11 +34,11 @@ export default function RootLayout({
     children: React.ReactNode
 }>) {
     return (
-        <html lang="es" className={cn(inter.variable, montserrat.variable, "font-sans", geist.variable)}>
+        <html lang="es" className={cn(inter.variable, montserrat.variable, "font-sans", geist.variable, "dark")}>
             <head>
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
             </head>
-            <body className="antialiased">
+            <body className="bg-background-dark text-slate-100 dark:bg-background-dark dark:text-slate-100 min-h-screen font-display antialiased">
                 <AuthProvider>
                     {children}
                 </AuthProvider>

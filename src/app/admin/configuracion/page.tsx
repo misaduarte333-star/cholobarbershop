@@ -2,12 +2,33 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
-
 import type { Sucursal, HorarioApertura } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Card } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
+import { 
+    Settings, 
+    Save, 
+    Clock, 
+    MapPin, 
+    Phone, 
+    CheckCircle2, 
+    AlertCircle,
+    Building2,
+    Calendar,
+    ChevronRight,
+    Loader2
+} from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function ConfiguracionPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [currentTime, setCurrentTime] = useState(new Date())
     const [sucursal, setSucursal] = useState<Sucursal | null>(null)
     const [formData, setFormData] = useState({
         nombre: '',
@@ -26,10 +47,11 @@ export default function ConfiguracionPage() {
     })
 
     const supabase = createClient()
-    const SUCURSAL_ID_TODO = '1' // TODO: Get from auth context or similar
 
     useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000)
         cargarConfiguracion()
+        return () => clearInterval(timer)
     }, [])
 
     const cargarConfiguracion = async () => {
@@ -42,11 +64,10 @@ export default function ConfiguracionPage() {
 
             if (error) {
                 console.error('Error loading config:', error)
-                // Demo data
                 setFormData({
-                    nombre: 'Barberia Demo',
-                    direccion: 'Av. Principal #123, CDMX',
-                    telefono_whatsapp: '5512345678',
+                    nombre: 'Cholo Barbershop',
+                    direccion: 'Av. Principal #123, Hermosillo, Sonora',
+                    telefono_whatsapp: '5216621234567',
                     activa: true
                 })
             } else if (data) {
@@ -88,15 +109,16 @@ export default function ConfiguracionPage() {
                     .eq('id', sucursal.id)
 
                 if (error) throw error
-            } else {
-                // Insert dummy if not exists (unlikely in prod)
-                // In real app, this should probably be restricted
             }
 
-            alert('Configuración guardada correctamente')
+            toast.success('Configuración guardada', {
+                description: 'Los cambios se han aplicado correctamente.'
+            })
         } catch (err) {
             console.error('Error saving:', err)
-            alert('Error al guardar la configuración')
+            toast.error('Error al guardar', {
+                description: 'No se pudieron guardar los cambios. Intenta de nuevo.'
+            })
         } finally {
             setSaving(false)
         }
@@ -116,176 +138,240 @@ export default function ConfiguracionPage() {
 
     if (loading) {
         return (
-            <div className="h-screen bg-slate-900 flex items-center justify-center">
-                <div className="flex items-center justify-center h-full">
-                    <div className="spinner w-8 h-8" />
+            <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
+                <div className="relative w-12 h-12">
+                    <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+                    <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
+                <p className="text-slate-400 font-medium animate-pulse uppercase tracking-widest text-xs">Cargando configuración...</p>
             </div>
         )
     }
-
     return (
-
-        <>
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white">Configuración</h1>
-                <p className="text-slate-400 mt-1">Administra los datos generales de la sucursal</p>
-            </div>
-
-            <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* General Info */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="glass-card p-6">
-                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                            Datos de la Sucursal
-                        </h2>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">Nombre del Negocio</label>
-                                <input
-                                    type="text"
-                                    value={formData.nombre}
-                                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                                    className="input-field"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">Dirección</label>
-                                <textarea
-                                    value={formData.direccion}
-                                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                                    className="input-field min-h-[80px]"
-                                    placeholder="Calle, Número, Colonia, Ciudad"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">WhatsApp de Contacto</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm flex items-center gap-1">
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118 .571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-                                        </svg>
-                                    </span>
-                                    <input
-                                        type="tel"
-                                        value={formData.telefono_whatsapp}
-                                        onChange={(e) => setFormData({ ...formData, telefono_whatsapp: e.target.value })}
-                                        className="input-field pl-10"
-                                        placeholder="5215512345678"
-                                    />
-                                </div>
-                                <p className="text-xs text-slate-500 mt-1">Formato internacional sin espacios (ej. 521...)</p>
-                            </div>
-
-                            <div className="flex items-center gap-3 pt-4">
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.activa}
-                                        onChange={(e) => setFormData({ ...formData, activa: e.target.checked })}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                                    <span className="ml-3 text-sm font-medium text-slate-300">Sucursal Activa</span>
-                                </label>
-                            </div>
+        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
+            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
+                {/* Header (Desktop Only) - Compact Elite Style */}
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
+                    <div className="flex items-center gap-3 text-white">
+                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 transition-all hover:scale-105">
+                            <Settings className="text-primary w-4 h-4 shadow-lg shadow-primary/20" />
                         </div>
+                        <h2 className="text-lg font-black tracking-tighter uppercase italic">Ajustes del Sistema</h2>
                     </div>
 
-                    <div className="glass-card p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Horario de Apertura
-                            </h2>
+                    <div className="flex items-center gap-4">
+                        {/* Time & Date - Premium Compact Style */}
+                        <div className="bg-[#141414]/90 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-1.5 flex items-center gap-4 shadow-2xl hover:border-primary/30 transition-all group">
+                            <div className="flex flex-col items-end text-white text-right">
+                                <p className="text-xs font-black tracking-tighter tabular-nums leading-tight">
+                                    {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                </p>
+                                <p className="text-[9px] text-primary font-black uppercase tracking-[0.1em] leading-tight">
+                                    {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, (c) => c.toUpperCase())}
+                                </p>
+                            </div>
+                            <div className="h-6 w-[1px] bg-white/10 group-hover:bg-primary/20 transition-colors" />
+                            <Clock className="w-4 h-4 text-slate-500 group-hover:text-primary transition-colors" />
                         </div>
 
-                        <div className="space-y-4">
-                            {dias.map((dia) => (
-                                <div key={dia} className="flex items-center gap-4 py-2 border-b border-slate-700/50 last:border-0">
-                                    <span className="w-24 capitalize text-slate-300 font-medium">{dia}</span>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="time"
-                                            value={horario[dia as keyof HorarioApertura]?.apertura || ''}
-                                            onChange={(e) => updateHorario(dia, 'apertura', e.target.value)}
-                                            className="input-field w-32 py-1"
-                                        />
-                                        <span className="text-slate-500 text-sm">a</span>
-                                        <input
-                                            type="time"
-                                            value={horario[dia as keyof HorarioApertura]?.cierre || ''}
-                                            onChange={(e) => updateHorario(dia, 'cierre', e.target.value)}
-                                            className="input-field w-32 py-1"
-                                        />
+                        <Button 
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-black uppercase tracking-tighter shadow-lg shadow-gold/20 h-10 px-6 rounded-xl"
+                        >
+                            <Save className={cn("w-4 h-4 mr-2", saving && "animate-spin")} />
+                            {saving ? 'Guardando...' : 'Guardar Cambios'}
+                        </Button>
+                    </div>
+                </header>
+
+                {/* Mobile Header */}
+                <div className="lg:hidden flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                            <Settings className="text-primary w-4 h-4" />
+                        </div>
+                        <h2 className="text-lg font-black tracking-tighter uppercase italic text-white">Ajustes</h2>
+                    </div>
+                    <Button 
+                        onClick={handleSave}
+                        disabled={saving}
+                        size="sm"
+                        className="bg-primary text-black font-black uppercase tracking-tighter h-8 rounded-lg text-[10px]"
+                    >
+                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                    </Button>
+                </div>
+
+                <form id="config-form" onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                    {/* Main Content Area */}
+                    <div className="lg:col-span-2 space-y-6 lg:space-y-8">
+                        {/* General Information Card */}
+                        <Card className="glass-card border-none bg-[#0A0A0A]/60 overflow-hidden relative group">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="p-6 lg:p-8 space-y-8">
+                                <div className="flex items-center gap-4 border-b border-white/5 pb-6">
+                                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
+                                        <Building2 className="text-primary w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-black tracking-tighter uppercase italic text-white leading-none">Datos de la Sucursal</h3>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1.5 group-hover:text-primary/50 transition-colors">Identidad y ubicación principal</p>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
 
-                {/* Sidebar / Actions */}
-                <div className="space-y-6">
-                    <div className="glass-card p-6 sticky top-8">
-                        <h3 className="text-lg font-bold text-white mb-4">Acciones</h3>
-                        <p className="text-sm text-slate-400 mb-6">
-                            Guarda los cambios para aplicarlos inmediatamente en la aplicación.
-                        </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] text-slate-500 font-black uppercase tracking-widest ml-1">Nombre Comercial</Label>
+                                        <Input
+                                            type="text"
+                                            value={formData.nombre}
+                                            onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                                            className="bg-[#141414] border-white/5 text-white focus:border-primary/50 h-11 px-4 rounded-xl transition-all"
+                                            required
+                                        />
+                                    </div>
 
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            className="w-full btn-primary flex items-center justify-center gap-2 mb-3"
-                        >
-                            {saving ? (
-                                <>
-                                    <div className="spinner w-4 h-4" />
-                                    Guardando...
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Guardar Cambios
-                                </>
-                            )}
-                        </button>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] text-slate-500 font-black uppercase tracking-widest ml-1">WhatsApp de Contacto</Label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+                                            <Input
+                                                type="tel"
+                                                value={formData.telefono_whatsapp}
+                                                onChange={(e) => setFormData({ ...formData, telefono_whatsapp: e.target.value })}
+                                                className="bg-[#141414] border-white/5 text-white focus:border-primary/50 h-11 pl-11 pr-4 rounded-xl transition-all font-mono"
+                                                placeholder="521..."
+                                            />
+                                        </div>
+                                    </div>
 
-                        <button type="button" className="w-full btn-secondary">
-                            Cancelar
-                        </button>
-                    </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <Label className="text-[10px] text-slate-500 font-black uppercase tracking-widest ml-1">Dirección Física</Label>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-4 top-4 w-4 h-4 text-slate-500" />
+                                            <Textarea
+                                                value={formData.direccion}
+                                                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                                                className="bg-[#141414] border-white/5 text-white focus:border-primary/50 min-h-[100px] pl-11 pr-4 py-3 rounded-xl transition-all"
+                                                placeholder="Calle, Número, Colonia, Ciudad..."
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
 
-                    <div className="glass-card p-6 border-l-4 border-l-blue-500">
-                        <h3 className="text-sm font-bold text-white mb-2">Estado del Sistema</h3>
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-xs">
-                                <span className="text-slate-400">Base de Datos</span>
-                                <span className="text-emerald-400 font-medium">Conectado</span>
+                                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10 group/switch transition-all hover:bg-primary/10">
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
+                                            <CheckCircle2 className="text-primary w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-tight text-white leading-none">Sucursal Activa</p>
+                                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter mt-1">Habilitar/Deshabilitar reservas online</p>
+                                        </div>
+                                    </div>
+                                    <Switch
+                                        checked={formData.activa}
+                                        onCheckedChange={(checked) => setFormData({ ...formData, activa: checked })}
+                                        className="data-[state=checked]:bg-primary"
+                                    />
+                                </div>
                             </div>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-slate-400">Versión App</span>
-                                <span className="text-slate-300">v0.1.0</span>
+                        </Card>
+
+                        {/* Store Hours Card */}
+                        <Card className="glass-card border-none bg-[#0A0A0A]/60 overflow-hidden relative group">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="p-6 lg:p-8 space-y-8">
+                                <div className="flex items-center gap-4 border-b border-white/5 pb-6">
+                                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
+                                        <Calendar className="text-primary w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-black tracking-tighter uppercase italic text-white leading-none">Horario de Atención</h3>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1.5 group-hover:text-primary/50 transition-colors">Disponibilidad semanal del negocio</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4">
+                                    {dias.map((dia) => (
+                                        <div key={dia} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group/day">
+                                            <span className="text-xs font-black uppercase tracking-widest text-slate-300 group-hover/day:text-primary transition-colors mb-2 sm:mb-0 w-24">{dia}</span>
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative flex-1 sm:flex-none">
+                                                    <Input
+                                                        type="time"
+                                                        value={horario[dia as keyof HorarioApertura]?.apertura || ''}
+                                                        onChange={(e) => updateHorario(dia, 'apertura', e.target.value)}
+                                                        className="bg-[#0F0F0F] border-white/5 text-white focus:border-primary/40 h-9 px-3 rounded-lg text-xs w-full sm:w-32 transition-all font-mono"
+                                                    />
+                                                </div>
+                                                <span className="text-[10px] font-black text-slate-600 uppercase italic">al</span>
+                                                <div className="relative flex-1 sm:flex-none">
+                                                    <Input
+                                                        type="time"
+                                                        value={horario[dia as keyof HorarioApertura]?.cierre || ''}
+                                                        onChange={(e) => updateHorario(dia, 'cierre', e.target.value)}
+                                                        className="bg-[#0F0F0F] border-white/5 text-white focus:border-primary/40 h-9 px-3 rounded-lg text-xs w-full sm:w-32 transition-all font-mono"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-slate-400">ID Sucursal</span>
-                                <code className="text-slate-500 bg-slate-900 px-1 rounded">1</code>
-                            </div>
-                        </div>
+                        </Card>
                     </div>
-                </div>
-            </form>
-        </>
+
+                    {/* Sidebar Area */}
+                    <div className="space-y-6 lg:space-y-8">
+                        {/* Actions Card - Sticky on Desktop */}
+                        <Card className="glass-card border-none bg-[#0A0A0A]/60 p-6 lg:p-8 sticky top-24 overflow-hidden group">
+                            <div className="absolute top-0 right-0 size-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors" />
+                            
+                            <div className="relative">
+                                <h3 className="text-sm font-black tracking-widest uppercase italic text-white mb-4">Mantenimiento</h3>
+                                <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-8 border-l-2 border-primary/20 pl-4 py-1">
+                                    Asegúrate de revisar todos los horarios antes de guardar. Estos cambios afectan la visibilidad en tiempo real para tus clientes.
+                                </p>
+
+                                <div className="space-y-4">
+                                    <div className="p-4 rounded-2xl bg-[#0F0F0F] border border-white/5 space-y-4">
+                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="size-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Base de Datos</span>
+                                            </div>
+                                            <span className="text-[10px] text-emerald-500 font-black uppercase tracking-widest italic">Online</span>
+                                        </div>
+                                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                                            <div className="flex items-center gap-2 text-slate-400 font-medium text-[10px] uppercase tracking-widest">
+                                                <ChevronRight className="w-2.5 h-2.5 text-primary" />
+                                                Versión
+                                            </div>
+                                            <span className="text-[10px] text-slate-200 font-black tracking-widest">v2.4.0</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-slate-400 font-medium text-[10px] uppercase tracking-widest">
+                                                <ChevronRight className="w-2.5 h-2.5 text-primary" />
+                                                ID Nodo
+                                            </div>
+                                            <span className="text-[10px] text-slate-500 font-mono font-bold tracking-tighter">SUC-782</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-3">
+                                        <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5" />
+                                        <p className="text-[9px] text-amber-500/80 font-bold uppercase tracking-tight leading-relaxed">
+                                            Los cambios en el horario afectarán las citas ya programadas si estas quedan fuera del nuevo rango.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                </form>
+            </div>
+        </div>
     )
 }

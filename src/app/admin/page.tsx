@@ -1,10 +1,26 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { KPICard } from '@/components/KPICard'
 import { AdminDailyCalendar } from '@/components/AdminDailyCalendar'
+import { cn, getHermosilloDateStr, getHermosilloMins, getMinsFromHermosilloString } from '@/lib/utils'
 import Link from 'next/link'
+import { 
+    CalendarDays, 
+    CheckCircle2, 
+    DollarSign, 
+    UserX,
+    LayoutDashboard,
+    Bell,
+    Settings,
+    Clock,
+    PlusCircle,
+    UserPlus,
+    Ban,
+    FileText,
+    Activity
+} from 'lucide-react'
 import type { KPIs, CitaDesdeVista, Barbero, Sucursal, Bloqueo } from '@/lib/types'
 
 export default function AdminDashboard() {
@@ -19,334 +35,316 @@ export default function AdminDashboard() {
 
     const supabase = createClient()
 
-    const [barberStatuses, setBarberStatuses] = useState<{
-        id: string
-        nombre: string
-        estacion: number
-        estado: 'ocupado' | 'disponible' | 'descanso'
-        cliente: string | null
-    }[]>([])
-
     const [todaysCitas, setTodaysCitas] = useState<CitaDesdeVista[]>([])
     const [allBarberos, setAllBarberos] = useState<Barbero[]>([])
     const [sucursal, setSucursal] = useState<Sucursal | null>(null)
     const [bloqueos, setBloqueos] = useState<Bloqueo[]>([])
+    const [barberStatuses, setBarberStatuses] = useState<any[]>([])
 
-    const cargarKPIs = useCallback(async (isInitialLoad = false) => {
-        const hoyLocal = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'America/Hermosillo',
-            year: 'numeric', month: '2-digit', day: '2-digit'
-        }).format(new Date())
-
-        if (isInitialLoad) setLoading(true)
+    const fetchDashboardData = useCallback(async () => {
         try {
-            // Execute all fetches in parallel for maximum speed
-            const [
-                { data: citasHoy, error: errorCitas },
-                { data: barberos, error: errorBarberos },
-                { data: sucursalData },
-                { data: bloqueosData }
-            ] = await Promise.all([
-                (supabase.from('vista_citas_app') as any).select('*').eq('fecha_cita_local', hoyLocal),
-                (supabase.from('barberos') as any).select('*').eq('activo', true).order('estacion_id'),
-                supabase.from('sucursales').select('*').eq('activa', true).single(),
-                supabase.from('bloqueos').select('*').gte('fecha_inicio', `${hoyLocal}T00:00:00`).lte('fecha_inicio', `${hoyLocal}T23:59:59`)
-            ])
+            const today = getHermosilloDateStr(new Date())
+            
+            // Fetch Sucursal (Main)
+            const { data: sucData } = await supabase
+                .from('sucursales')
+                .select('*')
+                .limit(1)
+                .single()
+            setSucursal(sucData)
 
-            if (errorCitas) throw errorCitas
-            if (errorBarberos) throw errorBarberos
+            // Fetch Barberos
+            const { data: barbData } = await supabase
+                .from('barberos')
+                .select('*')
+                .order('nombre')
+            const barberos = (barbData || []) as Barbero[]
+            setAllBarberos(barberos)
 
-            const castedCitas = (citasHoy || []) as CitaDesdeVista[]
-            setTodaysCitas(castedCitas)
-            setAllBarberos((barberos || []) as Barbero[])
-            if (sucursalData) setSucursal(sucursalData as Sucursal)
-            if (bloqueosData) setBloqueos(bloqueosData as Bloqueo[])
+            // Fetch Bloqueos
+            const { data: bloqData } = await supabase
+                .from('bloqueos')
+                .select('*')
+                .gte('fecha_inicio', `${today}T00:00:00-07:00`)
+                .lte('fecha_inicio', `${today}T23:59:59-07:00`)
+            setBloqueos((bloqData || []) as Bloqueo[])
 
-            // 3. Process FAQs/Stats
-            const completadas = castedCitas.filter((c) => c.estado === 'finalizada')
-            const noShows = castedCitas.filter((c) => c.estado === 'no_show').length
-            const ingresos = completadas.reduce((sum, c) => sum + (Number(c.servicio_precio) || 0), 0)
+            // Fetch Citas Hoy
+            const { data: citasData } = await supabase
+                .from('vista_citas_app')
+                .select('*')
+                .eq('fecha_cita_local', today)
+            
+            const citas = (citasData || []) as CitaDesdeVista[]
+            setTodaysCitas(citas)
+            
+            // Calculate KPIs
+            const finalizadas = citas.filter(c => c.estado === 'finalizada').length
+            const noShows = citas.filter(c => c.estado === 'no_show').length
+            const ingresos = citas
+                .filter(c => c.estado === 'finalizada')
+                .reduce((acc, c) => acc + (Number(c.servicio_precio) || 0), 0)
 
             setKpis({
-                citasHoy: castedCitas.length,
-                completadas: completadas.length,
+                citasHoy: citas.length,
+                completadas: finalizadas,
                 ingresos,
                 noShows
             })
 
-            // 4. Calculate Barber Status
-            if (barberos) {
-                const statuses = barberos.map((b: any) => {
-                    const activeCita = castedCitas.find((c: any) =>
-                        c.barbero_id === b.id && c.estado === 'en_proceso'
-                    )
-
-                    return {
-                        id: b.id,
-                        nombre: b.nombre.split(' ')[0],
-                        estacion: b.estacion_id,
-                        estado: activeCita ? 'ocupado' : 'disponible',
-                        cliente: activeCita ? activeCita.cliente_nombre : null
-                    }
-                })
-                setBarberStatuses(statuses as any)
-            }
-
-        } catch (err) {
-            console.error('Error loading dashboard data:', err)
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error)
         } finally {
-            if (isInitialLoad) setLoading(false)
+            setLoading(false)
         }
     }, [supabase])
 
     useEffect(() => {
-        cargarKPIs(true) // Initial load with spinner
-
-        // Supabase Realtime Subscription
-        const channel = supabase.channel('schema-db-changes')
-            .on(
-                'postgres_changes' as any,
-                { event: '*', schema: 'public', table: 'citas' },
-                () => cargarKPIs() // Background update without spinner
-            )
-            .on(
-                'postgres_changes' as any,
-                { event: '*', schema: 'public', table: 'barberos' },
-                () => cargarKPIs()
-            )
-            .on(
-                'postgres_changes' as any,
-                { event: '*', schema: 'public', table: 'bloqueos' },
-                () => cargarKPIs()
-            )
+        fetchDashboardData()
+        const interval = setInterval(() => setCurrentTime(new Date()), 1000)
+        
+        // Real-time subscription
+        const channel = supabase
+            .channel('dashboard-updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'citas' }, () => {
+                fetchDashboardData()
+            })
             .subscribe()
-
-        // Fallback interval just in case realtime drops
-        const interval = setInterval(cargarKPIs, 60000)
 
         return () => {
             clearInterval(interval)
             supabase.removeChannel(channel)
         }
-    }, [cargarKPIs, supabase])
+    }, [fetchDashboardData, supabase])
 
-    useEffect(() => {
-        const interval = setInterval(() => setCurrentTime(new Date()), 1000)
-        return () => clearInterval(interval)
-    }, [])
+    // Derived State: Barber Status Monitor
+    const derivedBarberStatuses = useMemo(() => {
+        const nowMins = getHermosilloMins(currentTime)
+        
+        return allBarberos.map(b => {
+            // Un barbero está "ocupado" si tiene una cita EN CURSO AHORA MISMO
+            const citaActual = todaysCitas.find(c => {
+                if (c.barbero_id !== b.id) return false
+                // Solo consideramos estados que implican ocupación física
+                if (!['confirmada', 'en_proceso', 'por_cobrar'].includes(c.estado)) return false
+                
+                const startMins = getMinsFromHermosilloString(c.timestamp_inicio_local)
+                const endMins = getMinsFromHermosilloString(c.timestamp_fin_local)
+                
+                // Si está en proceso o por cobrar, está ocupado sí o sí
+                if (c.estado === 'en_proceso' || c.estado === 'por_cobrar') return true
+                
+                // Si está confirmada, está ocupado si la hora actual está dentro del rango
+                return nowMins >= startMins && nowMins <= endMins
+            })
+
+            return {
+                id: b.id,
+                nombre: b.nombre,
+                estacion: b.estacion_id || b.id.slice(0, 2),
+                estado: citaActual ? 'ocupado' : 'disponible',
+                cliente: citaActual ? citaActual.cliente_nombre : null
+            }
+        })
+    }, [allBarberos, todaysCitas, currentTime])
 
     return (
-        <div className="relative min-h-full selection:bg-primary selection:text-black">
-            <header className="flex flex-row items-center justify-between gap-2 mb-4 relative z-10 px-1">
-                <div className="animate-slide-in">
-                    <h1 className="font-display font-black text-xl xs:text-2xl md:text-4xl tracking-tight flex flex-row items-baseline gap-2 leading-none drop-shadow-2xl">
-                        <span className="text-white">PANEL</span>
-                        <span className="text-gradient-gold uppercase text-lg xs:text-xl md:text-3xl">Control</span>
-                    </h1>
-                    <p className="text-[7px] md:text-[8px] tracking-[0.3em] text-white/30 font-black uppercase mt-1">Resumen Maestro</p>
-                </div>
-
-                <div className="animate-slide-in delay-100">
-                    <div className="glass-card px-3 py-1.5 md:px-4 md:py-2 border-primary/10 shadow-lg glow-gold relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
-                        <div className="relative z-10 flex flex-col items-end">
-                            <p className="text-sm md:text-xl font-black text-white tabular-nums tracking-tighter text-gradient-gold font-display leading-none">
-                                {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                            <p className="text-primary/60 font-black uppercase text-[6px] md:text-[8px] tracking-[0.1em] mt-0.5">
-                                {currentTime.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }).toUpperCase()}
-                            </p>
+        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
+            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
+                {/* Header (Desktop Only) */}
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
+                    <div className="flex items-center gap-3 text-white">
+                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 transition-all hover:scale-105">
+                            <LayoutDashboard className="text-primary w-4 h-4 shadow-lg shadow-primary/20" />
                         </div>
+                        <h2 className="text-lg font-black tracking-tighter uppercase italic">Panel Control</h2>
                     </div>
-                </div>
-            </header>
-
-            {/* KPIs Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 relative z-10">
-                {loading ? (
-                    Array(4).fill(null).map((_, i) => (
-                        <div key={i} className="glass-card h-32 animate-pulse bg-slate-800/50" />
-                    ))
-                ) : (
-                    <>
-                        <KPICard
-                            titulo="Citas Hoy"
-                            valor={kpis.citasHoy}
-                            color="amber"
-                            icon="calendar"
-                            trend={+15}
-                        />
-                        <KPICard
-                            titulo="Completadas"
-                            valor={kpis.completadas}
-                            color="green"
-                            icon="check"
-                            trend={+8}
-                        />
-                        <KPICard
-                            titulo="Ingresos"
-                            valor={`$${Math.round(kpis.ingresos).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-                            color="amber"
-                            icon="money"
-                            trend={+22}
-                        />
-                        <KPICard
-                            titulo="No-Shows"
-                            valor={kpis.noShows}
-                            color="red"
-                            icon="x"
-                            trend={-5}
-                            trendInverse
-                        />
-                    </>
-                )}
-            </div>
-
-            {/* Admin Daily Calendar */}
-            <div className="relative z-10 mb-6 animate-fade-in delay-200">
-                <AdminDailyCalendar
-                    citas={todaysCitas}
-                    barberos={allBarberos}
-                    currentTime={currentTime}
-                    sucursal={sucursal}
-                    bloqueos={bloqueos}
-                />
-            </div>
-
-            {/* Main Content Sections */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6 relative z-10 animate-fade-in delay-300">
-                {/* Active Appointments Status */}
-                <div className="glass-card p-4 md:p-6 rounded-[2rem] border-white/5 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-brand opacity-30" />
-
-                    <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <div className="flex items-center gap-3 md:gap-4">
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                                <span className="material-icons-round text-lg md:text-xl">schedule</span>
+                    <div className="flex items-center gap-4 text-white">
+                        {/* Time & Date - Premium Compact Style */}
+                        <div className="bg-[#141414]/90 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-1.5 flex items-center gap-4 shadow-2xl hover:border-primary/30 transition-all group">
+                            <div className="flex flex-col items-end">
+                                <p className="text-xs font-black tracking-tighter tabular-nums leading-tight">
+                                    {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Hermosillo' })}
+                                </p>
+                                <p className="text-[9px] text-primary font-black uppercase tracking-[0.1em] leading-tight">
+                                    {(() => {
+                                        const day = currentTime.toLocaleDateString('es-MX', { weekday: 'long', timeZone: 'America/Hermosillo' });
+                                        const dateParts = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', timeZone: 'America/Hermosillo' }).formatToParts(currentTime);
+                                        const dateNum = dateParts.find(p => p.type === 'day')?.value;
+                                        const month = dateParts.find(p => p.type === 'month')?.value;
+                                        return `${day.charAt(0).toUpperCase() + day.slice(1)} ${dateNum} de ${month}`;
+                                    })()}
+                                </p>
                             </div>
-                            <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight font-display">Citas Activas</h2>
-                        </div>
-                        <Link href="/admin/citas" className="group/link flex items-center gap-2">
-                            <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] group-hover/link:mr-2 transition-all">Ver Agenda</span>
-                            <span className="material-icons-round text-primary text-xs group-hover/link:translate-x-1 transition-transform">arrow_forward</span>
-                        </Link>
-                    </div>
-
-                    <div className="min-h-[160px] flex flex-col justify-center">
-                        {loading ? (
-                            <div className="flex flex-col items-center gap-4 py-10">
-                                <div className="spinner w-8 h-8" />
-                                <p className="text-[10px] font-black text-white/30 uppercase tracking-widest animate-pulse">Sincronizando...</p>
-                            </div>
-                        ) : kpis.citasHoy === 0 ? (
-                            <div className="p-10 rounded-[2rem] bg-black/40 border border-white/5 text-center flex flex-col items-center gap-4">
-                                <span className="material-icons-round text-4xl text-white/10">calendar_today</span>
-                                <p className="text-white/30 text-xs font-black uppercase tracking-[0.3em]">Sin actividad programada</p>
-                            </div>
-                        ) : (
-                            <div className="p-4 md:p-8 rounded-[1.5rem] md:rounded-[2rem] bg-black/40 border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
-                                <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left">
-                                    <p className="text-white/60 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] mb-2 leading-none">Total Programado</p>
-                                    <div className="flex items-baseline gap-2 md:gap-3">
-                                        <span className="text-5xl md:text-7xl font-black text-gradient-gold font-display leading-none">{kpis.citasHoy}</span>
-                                        <span className="text-[10px] md:text-sm font-black text-white uppercase tracking-widest opacity-60">CITAS HOY</span>
-                                    </div>
-                                </div>
-                                <Link href="/admin/citas" className="btn-primary px-6 md:px-8 py-4 md:py-5 rounded-xl md:rounded-2xl relative z-10 shadow-[0_10px_25px_rgba(234,179,8,0.2)] active:scale-95 transition-all w-full md:w-auto text-center font-black uppercase tracking-widest text-[10px] md:text-[11px]">
-                                    Ir a la Agenda
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Quick Master Actions */}
-                <div className="glass-card p-4 md:p-6 rounded-[2rem] border-white/5 shadow-2xl group">
-                    <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                            <span className="material-icons-round text-lg md:text-xl">bolt</span>
-                        </div>
-                        <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight font-display">Acciones Maestras</h2>
-                    </div>
-
-                    <div className="grid grid-cols-2 lg:grid-cols-2 gap-3 md:gap-4">
-                        {[
-                            { href: '/admin/citas?action=agenda-manual', icon: 'add_task', label: 'Nueva Cita', sub: 'Agendar' },
-                            { href: '/admin/citas?action=walk-in', icon: 'person_add', label: 'Walk-in', sub: 'Directo' },
-                            { href: '/admin/citas', icon: 'block', label: 'Bloqueo', sub: 'Logística' },
-                            { href: '/admin/reportes', icon: 'analytics', label: 'Reportes', sub: 'Análisis' }
-                        ].map((action, i) => (
-                            <Link key={i} href={action.href} className="p-4 md:p-6 rounded-[1.5rem] md:rounded-[1.8rem] glass-card border-white/5 hover:border-primary/40 hover:bg-black/40 transition-all group/item relative overflow-hidden active:scale-95">
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                                <span className="material-icons-round text-2xl md:text-3xl text-white/40 group-hover/item:text-primary transition-colors mb-4 md:mb-5 block">
-                                    {action.icon}
-                                </span>
-                                <p className="text-[10px] md:text-sm font-black text-white uppercase tracking-[0.1em] md:tracking-[0.2em] mb-1 font-display leading-none">{action.label}</p>
-                                <p className="text-[8px] md:text-[10px] text-white/20 font-black uppercase tracking-widest leading-none">{action.sub}</p>
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Real Time Barber Status Section */}
-            <div className="glass-card p-6 md:p-8 rounded-[2rem] border-white/5 shadow-2xl relative z-10 mb-8 animate-fade-in delay-500">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center border border-amber-500/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                            <span className="material-icons-round text-xl">hail</span>
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-tight font-display">Estado de Estaciones</h2>
-                            <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em] mt-1">Monitor en Tiempo Real</p>
+                            <div className="h-6 w-[1px] bg-white/10 group-hover:bg-primary/20 transition-colors" />
+                            <Clock className="w-4 h-4 text-slate-500 group-hover:text-primary transition-colors" />
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 px-5 py-2.5 bg-black/40 rounded-2xl border border-white/5">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Servidor Activo</span>
-                    </div>
-                </div>
+                </header>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {barberStatuses.length === 0 ? (
-                        <div className="col-span-full p-20 flex flex-col items-center justify-center glass-card rounded-[2rem] border-white/5 border-dashed">
-                            <div className="spinner w-10 h-10 mb-6" />
-                            <p className="text-white/20 uppercase tracking-[0.4em] text-[10px] font-black italic">Escaneando Infraestructura...</p>
-                        </div>
-                    ) : (
-                        barberStatuses.map((barbero) => (
-                            <div key={barbero.id} className="p-4 rounded-[1.8rem] glass-card border-white/5 hover:border-primary/30 transition-all hover:bg-black/60 group/card relative overflow-hidden active:scale-95 duration-500">
-                                <div className="flex items-center gap-4 mb-5">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shadow-2xl font-display transition-all duration-700
-                                        ${barbero.estado === 'ocupado' ? 'bg-gradient-gold text-black shadow-primary/20 scale-110' : 'bg-white/5 text-white/20 border border-white/10 group-hover/card:border-primary/20'}`}>
-                                        {barbero.estacion}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="font-black text-white text-lg leading-none font-display uppercase truncate drop-shadow-md">{barbero.nombre}</p>
-                                        <p className="text-[8px] text-white/30 font-black uppercase tracking-[0.3em] mt-1.5 block">SILLA {barbero.estacion}</p>
-                                    </div>
-                                </div>
-
-                                <div className={`
-                                    flex items-center justify-center gap-3 px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] w-full border transition-all duration-300
-                                    ${barbero.estado === 'ocupado' ? 'bg-red-500/10 text-red-500 border-red-500/20 shadow-[0_5px_15px_rgba(239,68,68,0.1)]' : ''}
-                                    ${barbero.estado === 'disponible' ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20 shadow-[0_5px_15px_rgba(52,211,153,0.1)]' : ''}
-                                    ${barbero.estado === 'descanso' ? 'bg-amber-400/10 text-amber-400 border-amber-400/20 shadow-[0_5px_15px_rgba(251,191,36,0.1)]' : ''}
-                                `}>
-                                    <div className={`w-2 h-2 rounded-full 
-                                        ${barbero.estado === 'ocupado' ? 'bg-red-500 animate-pulse' : ''}
-                                        ${barbero.estado === 'disponible' ? 'bg-emerald-400' : ''}
-                                        ${barbero.estado === 'descanso' ? 'bg-amber-400' : ''}
-                                    `} />
-                                    {barbero.estado === 'ocupado' ? 'Atendiendo' :
-                                        barbero.estado === 'disponible' ? 'Disponible' : 'Descanso'}
-                                </div>
-                            </div>
+                {/* KPIs Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
+                    {loading ? (
+                        Array(4).fill(null).map((_, i) => (
+                            <div key={i} className="bg-card-dark h-32 animate-pulse rounded-2xl border-l-4 border-primary/20" />
                         ))
+                    ) : (
+                        <>
+                            <KPICard
+                                title="Citas Hoy"
+                                value={kpis.citasHoy}
+                                color="amber"
+                                icon={CalendarDays}
+                                trend={{ value: 15, isPositive: true }}
+                            />
+                            <KPICard
+                                title="Completadas"
+                                value={kpis.completadas}
+                                color="green"
+                                icon={CheckCircle2}
+                                trend={{ value: 90, isPositive: true }}
+                            />
+                            <KPICard
+                                title="Ingresos"
+                                value={`$${Math.round(kpis.ingresos / 1000)}k`}
+                                color="amber"
+                                icon={DollarSign}
+                                trend={{ value: 5, isPositive: true }}
+                            />
+                            <KPICard
+                                title="No-Shows"
+                                value={kpis.noShows}
+                                color="red"
+                                icon={UserX}
+                                trend={{ value: 2, isPositive: false }}
+                            />
+                        </>
                     )}
                 </div>
-            </div> {/* Close grid container for stations OR just close the last section container */}
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                    {/* Admin Daily Calendar */}
+                    <div className="order-2 lg:order-1 lg:col-span-9 space-y-4 lg:space-y-6">
+                        <div className="flex items-center justify-between px-2">
+                            <h4 className="text-lg lg:text-xl font-black text-white flex items-center gap-3">
+                                <CalendarDays className="text-primary w-6 h-6" />
+                                <span className="uppercase tracking-tight">Agenda Global</span>
+                            </h4>
+                            <div className="flex bg-card-dark rounded-xl p-1 border border-primary/20 shadow-inner">
+                                <button className="px-4 py-1.5 text-[10px] font-black bg-primary text-black rounded-lg shadow-sm transition-all">HOY</button>
+                                <button className="px-4 py-1.5 text-[10px] font-black text-slate-500 hover:text-white transition-colors uppercase">Semana</button>
+                            </div>
+                        </div>
+                        
+                        <div className="animate-fade-in delay-200">
+                            <AdminDailyCalendar
+                                citas={todaysCitas}
+                                barberos={allBarberos}
+                                currentTime={currentTime}
+                                sucursal={sucursal}
+                                bloqueos={bloqueos}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Sidebar Content Area (Right) */}
+                    <div className="order-1 lg:order-2 lg:col-span-3 space-y-6 lg:space-y-8">
+                        {/* Master Actions */}
+                        <section className="space-y-4">
+                            <div className="flex items-center gap-2 px-1">
+                                <div className="h-4 w-1 bg-primary rounded-full" />
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Acciones Rápidas</h4>
+                            </div>
+                            <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
+                                <Link href="/admin/citas?action=agenda-manual" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-[#D4AF37] rounded-xl text-black hover:scale-[1.02] transition-all shadow-xl shadow-primary/20 border border-white/10">
+                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] mb-2 lg:mb-0">Nueva Cita</span>
+                                    <div className="size-8 lg:size-9 rounded-lg bg-black/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                        <PlusCircle className="w-4 h-4 lg:w-5 lg:h-5 font-black" />
+                                    </div>
+                                </Link>
+                                <Link href="/admin/citas?action=walk-in" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-[#141414]/80 backdrop-blur-xl border border-white/5 rounded-xl text-white hover:border-primary/40 transition-all hover:bg-white/5 shadow-lg">
+                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 group-hover:text-white mb-2 lg:mb-0">Walk-In</span>
+                                    <div className="size-8 lg:size-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:scale-110 transition-transform">
+                                        <UserPlus className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                                    </div>
+                                </Link>
+                                <Link href="/admin/citas" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-[#141414]/80 backdrop-blur-xl border border-white/5 rounded-xl text-white hover:border-red-500/40 transition-all hover:bg-white/5 shadow-lg">
+                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] text-red-900/60 group-hover:text-red-500 mb-2 lg:mb-0">Bloqueo</span>
+                                    <div className="size-8 lg:size-9 rounded-lg bg-red-500/10 flex items-center justify-center border border-red-500/20 group-hover:scale-110 transition-transform">
+                                        <Ban className="w-4 h-4 lg:w-5 lg:h-5 text-red-500/50 group-hover:text-red-500" />
+                                    </div>
+                                </Link>
+                                <Link href="/admin/reportes" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-[#141414]/80 backdrop-blur-xl border border-white/5 rounded-xl text-white hover:border-primary/40 transition-all hover:bg-white/5 shadow-lg">
+                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 group-hover:text-white mb-2 lg:mb-0">Reportes</span>
+                                    <div className="size-8 lg:size-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:scale-110 transition-transform">
+                                        <FileText className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                                    </div>
+                                </Link>
+                            </div>
+                        </section>
+
+                        {/* Barber Status Monitor */}
+                        <section className="space-y-4">
+                            <div className="flex items-center justify-between px-1">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-4 w-1 bg-emerald-500 rounded-full" />
+                                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Estaciones</h4>
+                                </div>
+                                <span className="flex items-center gap-1.5 text-[8px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                    <span className="size-1 rounded-full bg-emerald-500 animate-pulse" />
+                                    LIVE
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
+                                {derivedBarberStatuses.length === 0 ? (
+                                    <div className="p-10 flex flex-col items-center justify-center glass rounded-2xl border-dashed sm:col-span-2 lg:col-span-1">
+                                        <Activity className="w-5 h-5 mb-3 text-primary animate-pulse" />
+                                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest text-center">Sincronizando Estaciones...</p>
+                                    </div>
+                                ) : (
+                                    derivedBarberStatuses.map((barbero) => (
+                                        <div key={barbero.id} className="glass p-2 lg:p-2.5 rounded-xl border border-white/5 flex items-center justify-between transition-all hover:bg-white/5 hover:border-primary/20 group">
+                                            <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                                                <div className="relative shrink-0">
+                                                    <div className={cn(
+                                                        "size-8 lg:size-9 rounded-lg bg-black/40 flex items-center justify-center border-2 transition-all",
+                                                        barbero.estado === 'ocupado' ? 'border-primary ring-2 ring-primary/10' : 'border-slate-800'
+                                                    )}>
+                                                        <span className={cn(
+                                                            "font-black text-[9px] lg:text-[10px]",
+                                                            barbero.estado === 'ocupado' ? 'text-primary' : 'text-slate-600'
+                                                        )}>
+                                                            {barbero.estacion}
+                                                        </span>
+                                                    </div>
+                                                    <div className={cn(
+                                                        "absolute -bottom-0.5 -right-0.5 size-2 lg:size-2.5 rounded-full border border-card-dark shadow-sm",
+                                                        barbero.estado === 'ocupado' ? 'bg-primary' : 'bg-slate-700'
+                                                    )} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[9px] lg:text-[10px] font-black text-white uppercase tracking-tight truncate leading-none mb-1">
+                                                        {barbero.nombre.split(' ')[0]}
+                                                    </p>
+                                                    <p className="text-[7px] lg:text-[8px] font-bold text-slate-500 truncate uppercase tracking-tighter">
+                                                        {barbero.estado === 'ocupado' ? barbero.cliente : 'Disponible'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className={cn(
+                                                "shrink-0 p-1 lg:p-1.5 rounded-lg border transition-colors",
+                                                barbero.estado === 'ocupado' ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-slate-900 border-white/5 text-slate-600'
+                                            )}>
+                                                <Activity className="size-2.5 lg:size-3" />
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
         </div>
     )
 }

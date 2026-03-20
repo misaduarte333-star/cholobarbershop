@@ -1,7 +1,19 @@
 'use client'
 
-import { useMemo, useEffect, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
+import { cn, getHermosilloMins, getMinsFromHermosilloString } from '@/lib/utils'
+import { 
+    Clock, 
+    User, 
+    Scissors, 
+    Ban, 
+    Coffee, 
+    Calendar,
+    ChevronRight,
+    CircleDot
+} from 'lucide-react'
 import type { CitaDesdeVista, Barbero, Sucursal, Bloqueo, DiasSemana } from '@/lib/types'
+import { Badge } from '@/components/ui/badge'
 
 interface AdminDailyCalendarProps {
     citas: CitaDesdeVista[]
@@ -13,8 +25,8 @@ interface AdminDailyCalendarProps {
 
 const HORA_INICIO = 8
 const HORA_FIN = 21 // Till 9 PM
-const MINUTE_HEIGHT = 1.6 // 1.6px per minute = 96px per hour (48px per 30m)
-const HEADER_HEIGHT = 40 // Height of the barber header and axis corner spacer
+const MINUTE_HEIGHT = 1.8 // Slightly taller to allow more padding inside cards
+const HEADER_HEIGHT = 48 
 
 function generarSlots(): { h: number, m: number }[] {
     const slots: { h: number, m: number }[] = []
@@ -29,32 +41,44 @@ function generarSlots(): { h: number, m: number }[] {
 
 export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, bloqueos }: AdminDailyCalendarProps) {
     const slots = useMemo(() => generarSlots(), [])
+    const sortedBarberos = useMemo(() => {
+        return [...barberos].sort((a, b) => {
+            const aEst = a.estacion_id ?? 999
+            const bEst = b.estacion_id ?? 999
+            return aEst - bEst
+        })
+    }, [barberos])
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const [isUserScrolling, setIsUserScrolling] = useState(false)
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-    const currentHour = currentTime.getHours()
-    const currentMinute = currentTime.getMinutes()
-    const currentAbsoluteMinutes = (currentHour * 60) + currentMinute
+    const currentMins = getHermosilloMins(currentTime)
     const dayStartMinutes = HORA_INICIO * 60
 
-    // Coordinate system: All Y values are (minutes_since_8am * MINUTE_HEIGHT) + HEADER_HEIGHT
-    const getTimeY = (hours: number, minutes: number = 0) => {
-        const totalMinutes = (hours * 60) + minutes
+    const getTimeY = (totalMinutes: number) => {
         return ((totalMinutes - dayStartMinutes) * MINUTE_HEIGHT) + HEADER_HEIGHT
     }
 
-    const currentTimeY = getTimeY(currentHour, currentMinute)
+    const currentTimeY = getTimeY(currentMins)
 
-    const dayNames: Record<number, DiasSemana> = {
-        0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado'
-    }
-    const currentDayName = dayNames[currentTime.getDay()]
+    const englishDay = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Hermosillo',
+        weekday: 'long'
+    }).format(currentTime).toLowerCase()
+
+    const currentDayName: DiasSemana = 
+        englishDay === 'monday' ? 'lunes' :
+        englishDay === 'tuesday' ? 'martes' :
+        englishDay === 'wednesday' ? 'miercoles' :
+        englishDay === 'thursday' ? 'jueves' :
+        englishDay === 'friday' ? 'viernes' :
+        englishDay === 'saturday' ? 'sabado' :
+        englishDay === 'sunday' ? 'domingo' : 'lunes' // fallback
+
     const horarioHoy = sucursal?.horario_apertura?.[currentDayName]
 
-    // Auto-scroll logic
     useEffect(() => {
-        if (!isUserScrolling && scrollContainerRef.current && currentHour >= HORA_INICIO && currentHour < HORA_FIN) {
+        if (!isUserScrolling && scrollContainerRef.current && currentMins >= (HORA_INICIO * 60) && currentMins < (HORA_FIN * 60)) {
             const containerHeight = scrollContainerRef.current.clientHeight
             const targetPosition = Math.max(0, currentTimeY - (containerHeight / 2))
 
@@ -63,7 +87,7 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
                 behavior: 'smooth'
             })
         }
-    }, [currentHour, currentMinute, isUserScrolling, currentTimeY])
+    }, [currentMins, isUserScrolling, currentTimeY])
 
     const handleUserScroll = () => {
         setIsUserScrolling(true)
@@ -75,13 +99,14 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
 
     const getStatusColor = (estado: string) => {
         switch (estado) {
-            case 'confirmada': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-            case 'en_espera': return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-            case 'en_proceso': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-            case 'por_cobrar': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-            case 'finalizada': return 'bg-slate-500/20 text-slate-400 border-slate-500/30'
-            case 'cancelada': case 'no_show': return 'bg-red-500/20 text-red-400 border-red-500/30'
-            default: return 'bg-slate-700/50 text-slate-300 border-slate-600'
+            case 'confirmada':
+            case 'en_espera': return 'border-amber-500/60 bg-amber-500/10 text-amber-500 shadow-[0_0_15px_-5px_rgba(245,158,11,0.2)]'
+            case 'en_proceso': return 'border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)]'
+            case 'por_cobrar': return 'border-blue-500 bg-blue-500/20 text-blue-400 shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)]'
+            case 'finalizada': return 'border-slate-400/30 bg-white/5 text-slate-400'
+            case 'cancelada':
+            case 'no_show': return 'border-red-500/60 bg-red-500/10 text-red-400'
+            default: return 'border-slate-600 bg-slate-700/10 text-slate-300'
         }
     }
 
@@ -90,46 +115,68 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
         const end = new Date(cita.timestamp_fin_local)
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return null
 
-        const startY = getTimeY(start.getHours(), start.getMinutes())
-        // Forzar altura de exactamente 30 minutos (independientemente de la duración real)
-        const height = 30 * MINUTE_HEIGHT
+        const startMins = getMinsFromHermosilloString(cita.timestamp_inicio_local)
+        const endMins = getMinsFromHermosilloString(cita.timestamp_fin_local)
+        const startY = getTimeY(startMins) - HEADER_HEIGHT
+        const height = 30 * MINUTE_HEIGHT // Fixed 30min height as requested
 
         const isEnProceso = cita.estado === 'en_proceso'
         const isPorCobrar = cita.estado === 'por_cobrar'
 
-        // Calcular minutos del cronómetro solo para render local sin causar re-renders pesados
         let activeTimer = null
         if (isEnProceso && cita.timestamp_inicio_servicio) {
             const minTrasncurridos = Math.floor((new Date().getTime() - new Date(cita.timestamp_inicio_servicio).getTime()) / 60000)
             const horas = Math.floor(minTrasncurridos / 60)
             const mins = minTrasncurridos % 60
-            activeTimer = horas > 0 ? `${horas}H ${mins}M` : `${mins} MIN`
+            activeTimer = horas > 0 ? `${horas}h ${mins}m` : `${mins}m`
         } else if (isPorCobrar && cita.duracion_real_minutos) {
             const horas = Math.floor(cita.duracion_real_minutos / 60)
             const mins = cita.duracion_real_minutos % 60
-            activeTimer = horas > 0 ? `${horas}H ${mins}M` : `${mins} MIN`
+            activeTimer = horas > 0 ? `${horas}h ${mins}m` : `${mins}m`
         }
-
-        const extraClasses = isEnProceso ? 'shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse-glow border-emerald-500/50' :
-            isPorCobrar ? 'shadow-[0_0_15px_rgba(168,85,247,0.3)] border-purple-500/50' : ''
 
         return (
             <div
                 key={cita.id}
-                className={`absolute left-1 right-1 rounded-lg border px-2 py-1.5 overflow-hidden shadow-sm backdrop-blur-sm transition-all hover:scale-[1.01] hover:z-20 ${getStatusColor(cita.estado)} ${extraClasses}`}
-                style={{ top: `${startY + 3}px`, height: `${height - 6}px` }}
+                className={cn(
+                    "absolute left-0 right-0 mx-1 rounded-xl border-l-[5px] px-3 py-1.5 flex flex-col justify-start overflow-hidden backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:z-30 cursor-pointer",
+                    getStatusColor(cita.estado),
+                    "z-20 pointer-events-auto group ring-1 ring-white/5 active:scale-95"
+                )}
+                style={{
+                    top: `${startY}px`,
+                    height: `${height}px`,
+                }}
             >
-                <div className="flex justify-between items-center gap-1 mb-0.5">
-                    <p className="text-[11px] font-black uppercase tracking-tight leading-none truncate">{cita.cliente_nombre}</p>
-                    {(isEnProceso || isPorCobrar) && activeTimer && (
-                        <div className={`px-1 rounded-[4px] text-[7px] font-black flex-shrink-0 flex items-center gap-0.5 border ${isEnProceso ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                            'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                            }`}>
-                            <span className={isEnProceso ? 'animate-pulse' : ''}>{activeTimer}</span>
+                <div className="flex items-center justify-between gap-1 w-full min-w-0">
+                    <span className="text-[11px] font-black uppercase tracking-tight truncate leading-none text-white drop-shadow-sm">
+                        {cita.cliente_nombre || 'Sin Nombre'}
+                    </span>
+                    {activeTimer && (
+                        <div className="flex items-center gap-1.5 bg-black/60 px-2 py-0.5 rounded-full border border-primary/30 shrink-0 shadow-[0_0_10px_rgba(212,175,55,0.2)]">
+                            <Clock className="size-3 text-primary animate-pulse" />
+                            <span className="text-[9px] font-black tabular-nums text-primary uppercase tracking-tight">{activeTimer}</span>
                         </div>
                     )}
                 </div>
-                <p className="text-[9px] opacity-70 font-bold uppercase truncate leading-none">{cita.servicio_nombre}</p>
+                
+                <div className="flex items-center gap-1 mt-0.5 opacity-80 overflow-hidden">
+                    <Scissors className="size-2.5 shrink-0" />
+                    <span className="text-[9px] font-bold uppercase tracking-tighter truncate leading-none">
+                        {cita.servicio_nombre}
+                    </span>
+                </div>
+
+                {cita.servicio_precio && (
+                    <div className="mt-auto pt-0.5 flex items-center justify-between border-t border-white/5">
+                        <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.1em]">
+                            {cita.timestamp_inicio_local.split(' ')[1]?.substring(0, 5) || ''}
+                        </span>
+                        <span className="text-[9px] font-black text-primary/80 leading-none">
+                            ${cita.servicio_precio}
+                        </span>
+                    </div>
+                )}
             </div>
         )
     }
@@ -137,20 +184,20 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
     const renderBloqueoProp = (bloqueo: Bloqueo) => {
         const start = new Date(bloqueo.fecha_inicio)
         const end = new Date(bloqueo.fecha_fin)
-
-        const startY = getTimeY(start.getHours(), start.getMinutes())
-        const endY = getTimeY(end.getHours(), end.getMinutes())
-        const height = Math.max(20, endY - startY)
+        const startMins = getMinsFromHermosilloString(bloqueo.fecha_inicio)
+        const endMins = getMinsFromHermosilloString(bloqueo.fecha_fin)
+        const startY = getTimeY(startMins) - HEADER_HEIGHT
+        const height = 30 * MINUTE_HEIGHT // Fixed 30min height as requested
 
         return (
             <div
                 key={bloqueo.id}
-                className="absolute left-1 right-1 rounded-xl border border-red-500/30 bg-red-500/10 p-2 flex flex-col items-center justify-center overflow-hidden z-10 striped-bg-red"
+                className="absolute left-0 right-0 mx-1.5 rounded-xl border-l-[5px] border-red-500/50 bg-red-500/10 p-2 flex flex-col items-center justify-center overflow-hidden z-10 ring-1 ring-white/5 backdrop-blur-sm"
                 style={{ top: `${startY}px`, height: `${height}px` }}
             >
-                <span className="material-icons-round text-red-400 text-[10px] mb-0.5">block</span>
-                <span className="text-[7px] font-black uppercase text-red-400 tracking-tighter truncate w-full text-center">
-                    {bloqueo.motivo || 'Bloqueado'}
+                <Ban className="size-4 text-red-500/40 mb-1" />
+                <span className="text-[9px] font-black uppercase text-red-500/60 tracking-tighter truncate w-full text-center">
+                    {bloqueo.motivo || 'OCUPADO'}
                 </span>
             </div>
         )
@@ -158,151 +205,119 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
 
     const renderAlmuerzo = (barbero: Barbero) => {
         if (!barbero.bloqueo_almuerzo) return null
-        const startHours = parseInt(barbero.bloqueo_almuerzo.inicio.substring(0, 2))
-        const startMins = parseInt(barbero.bloqueo_almuerzo.inicio.substring(3, 5))
-        const endHours = parseInt(barbero.bloqueo_almuerzo.fin.substring(0, 2))
-        const endMins = parseInt(barbero.bloqueo_almuerzo.fin.substring(3, 5))
-
-        const startY = getTimeY(startHours, startMins)
-        const endY = getTimeY(endHours, endMins)
-        const height = Math.max(30, endY - startY)
+        const startMins = parseInt(barbero.bloqueo_almuerzo.inicio.substring(0, 2)) * 60 + parseInt(barbero.bloqueo_almuerzo.inicio.substring(3, 5))
+        const endMins = parseInt(barbero.bloqueo_almuerzo.fin.substring(0, 2)) * 60 + parseInt(barbero.bloqueo_almuerzo.fin.substring(3, 5))
+        const sY = getTimeY(startMins) - HEADER_HEIGHT
+        const height = 30 * MINUTE_HEIGHT // Fixed 30min height as requested
 
         return (
             <div
                 key={`almuerzo-${barbero.id}`}
-                className="absolute left-1 right-1 rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-transparent p-2 flex items-center justify-center overflow-hidden z-10 striped-bg-amber"
-                style={{ top: `${startY}px`, height: `${height}px` }}
+                className="absolute left-0 right-0 mx-1.5 rounded-xl border-l-[5px] border-amber-500/30 bg-amber-500/10 p-2 flex items-center justify-center overflow-hidden z-10 ring-1 ring-white/5 backdrop-blur-sm"
+                style={{ top: `${sY}px`, height: `${height}px` }}
             >
-                <div className="rotate-[-10deg] opacity-40 flex items-center gap-1">
-                    <span className="material-icons-round text-amber-500 text-sm">restaurant</span>
-                    <span className="text-[9px] font-black uppercase text-amber-500 tracking-widest hidden sm:inline">Descanso</span>
+                <div className="rotate-[-10deg] opacity-60 flex items-center gap-1.5">
+                    <Coffee className="size-4 text-amber-500/50" />
+                    <span className="text-[10px] font-black uppercase text-amber-500/50 tracking-widest hidden sm:inline">RECESO</span>
                 </div>
             </div>
         )
     }
 
-    const dentroHorario = currentHour >= HORA_INICIO && currentHour < HORA_FIN
+    const dentroHorario = currentMins >= (HORA_INICIO * 60) && currentMins < (HORA_FIN * 60)
 
     return (
-        <div className="glass-card p-1 md:p-6 rounded-[2rem] border-white/5 shadow-2xl w-full relative h-[550px] md:h-[700px] flex flex-col overflow-hidden">
-            {/* Header info */}
-            <div className="flex items-center gap-4 mb-6 p-2">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
-                    <span className="material-icons-round text-2xl">calendar_view_week</span>
+        <div className="relative h-[650px] md:h-[850px] flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0A0A0A] shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-2.5 p-3 md:p-4 border-b border-white/5 bg-gradient-to-r from-black/40 to-transparent">
+                <div className="size-8 md:size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-inner">
+                    <Calendar className="size-4 md:size-5 shadow-sm" />
                 </div>
-                <div>
-                    <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">Agenda General</h2>
-                    <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mt-1">Panorama Completo</p>
+                <div className="flex-1">
+                    <h2 className="text-base md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2 leading-none">
+                        Control <span className="text-primary italic">Global</span>
+                    </h2>
+                    <p className="text-[8px] md:text-[9px] font-black text-white/30 uppercase tracking-[0.3em] mt-1">Monitoreo Live</p>
+                </div>
+                <div className="flex items-center gap-2 bg-white/5 px-2.5 py-1 rounded-xl border border-white/5">
+                    <div className="size-1 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                    <span className="text-[8px] md:text-[9px] font-black text-emerald-400 uppercase tracking-widest leading-none">Live</span>
                 </div>
             </div>
 
-            {/* Scroll Container */}
             <div
                 ref={scrollContainerRef}
                 onScroll={handleUserScroll}
-                className="flex-1 overflow-auto custom-scrollbar border border-white/5 rounded-2xl bg-black/40 relative"
+                className="flex-1 overflow-auto custom-scrollbar relative bg-black/40"
             >
-                {/* Total Height Wrapper */}
                 <div className="relative flex min-w-full" style={{ height: `${(HORA_FIN - HORA_INICIO) * 60 * MINUTE_HEIGHT + HEADER_HEIGHT + 20}px` }}>
 
-                    {/* Time labels axis (Sticky Left) */}
-                    <div className="sticky left-0 z-50 w-8 sm:w-16 bg-black/95 backdrop-blur-md border-r-2 border-white/20 h-full flex-shrink-0">
-                        {/* Corner Spacer */}
-                        <div className="absolute top-0 left-0 right-0 h-10 border-b-2 border-white/20 z-50 bg-black/80" />
-
-                        <div className="relative h-full">
+                    <div className="sticky left-0 z-50 w-12 md:w-16 bg-[#0A0A0A] border-r border-white/5 h-full">
+                        <div className="absolute top-0 left-0 right-0 h-12 border-b border-white/5 z-50 bg-[#0A0A0A]" />
+                        <div className="relative h-full pt-12">
                             {slots.map((slot, i) => (
                                 <div
                                     key={`axis-${i}`}
-                                    className="absolute w-full border-b border-white/[0.08]"
-                                    style={{ top: `${getTimeY(slot.h, slot.m)}px`, height: `${30 * MINUTE_HEIGHT}px` }}
+                                    className="absolute w-full border-b border-white/[0.03]"
+                                    style={{ top: `${getTimeY(slot.h * 60 + slot.m)}px`, height: `${30 * MINUTE_HEIGHT}px` }}
                                 >
-                                    <span className={`absolute -top-[9px] left-0 right-0 text-center font-black uppercase ${slot.m === 30 ? 'text-slate-600 text-[6px] sm:text-[7px]' : 'text-slate-400 text-[7px] sm:text-[8px]'}`}>
+                                    <span className={`absolute -top-2 left-0 right-0 text-center font-black uppercase leading-none tracking-tighter ${slot.m === 30 ? 'text-slate-700 text-[5px] md:text-[6px]' : 'text-slate-500 text-[7px] md:text-[8px]'}`}>
                                         {slot.h >= 12 
-                                            ? `${slot.h === 12 ? 12 : slot.h - 12}${slot.m === 30 ? ':30' : ''}PM` 
-                                            : `${slot.h}${slot.m === 30 ? ':30' : ''}AM`}
+                                            ? `${slot.h === 12 ? 12 : slot.h - 12}${slot.m === 30 ? ':30' : ''} PM` 
+                                            : `${slot.h}${slot.m === 30 ? ':30' : ''} AM`}
                                     </span>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Main Content (Grid + Barbers) */}
-                    <div className="flex-1 relative flex h-full">
-                        {/* Unified Grid Lines Layer (DELETED TO AVOID DUPLICATES) */}
-                        <div className="absolute inset-x-0 top-0 bottom-0 pointer-events-none z-0">
-                            {/* Closing Hours Shadows */}
-                            {horarioHoy && (
-                                <>
-                                    {/* Morning closing */}
-                                    {parseInt(horarioHoy.apertura.substring(0, 2)) > HORA_INICIO && (
-                                        <div
-                                            className="absolute inset-x-0 bg-black/60 z-10"
-                                            style={{
-                                                top: `${getTimeY(HORA_INICIO)}px`,
-                                                height: `${(parseInt(horarioHoy.apertura.substring(0, 2)) - HORA_INICIO) * 60 * MINUTE_HEIGHT}px`
-                                            }}
-                                        />
-                                    )}
-                                    {/* Evening closing */}
-                                    {parseInt(horarioHoy.cierre.substring(0, 2)) < HORA_FIN && (
-                                        <div
-                                            className="absolute inset-x-0 bg-black/60 z-10"
-                                            style={{
-                                                top: `${getTimeY(parseInt(horarioHoy.cierre.substring(0, 2)))}px`,
-                                                height: `${(HORA_FIN - parseInt(horarioHoy.cierre.substring(0, 2))) * 60 * MINUTE_HEIGHT}px`
-                                            }}
-                                        />
-                                    )}
-                                </>
-                            )}
-                        </div>
-
-                        {/* Barber Columns Wrapper */}
-                        <div className="flex flex-1 relative h-full">
-                            {barberos.map((barbero, idx) => (
-                                <div key={`col-${barbero.id}`} className={`flex-1 min-w-[95px] sm:min-w-[140px] relative z-10 ${idx !== barberos.length - 1 ? 'border-r border-white/15' : ''}`}>
-                                    {/* Sticky header for this barber */}
-                                    <div className="sticky top-0 h-10 bg-black/90 backdrop-blur-md border-b-2 border-white/20 flex items-center justify-center z-40 p-2">
-                                        <p className="text-[9px] sm:text-xs font-black text-white uppercase tracking-widest truncate">
-                                            {barbero.nombre.split(' ')[0]}
-                                        </p>
+                    <div className="flex-1 relative flex h-full min-w-[max-content]">
+                        <div className="flex-1 flex min-w-0">
+                            {sortedBarberos.map((barbero, idx) => (
+                                <div key={`col-${barbero.id}`} className="min-w-[140px] md:min-w-[170px] flex-1 border-r border-white/5 relative bg-gradient-to-b from-transparent to-white/[0.01]">
+                                    <div className="sticky top-0 h-12 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-primary/20 flex flex-col items-center justify-center z-40 px-3 group/header">
+                                        <div className="flex items-center gap-1.5 md:gap-2">
+                                            <div className="size-1.5 md:size-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(212,175,55,0.4)]" />
+                                            <p className="text-[10px] md:text-[11px] font-black text-white uppercase tracking-[0.1em] truncate transition-all group-hover/header:text-primary">
+                                                {barbero.nombre.split(' ')[0]}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                            <span className="text-[6px] md:text-[7px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-1 md:px-1.5 rounded-full border border-white/5">
+                                                EST. {barbero.estacion_id || idx + 1}
+                                            </span>
+                                        </div>
                                     </div>
-
-                                    {/* Excel-like cells container */}
-                                    <div className="absolute inset-x-0 top-0 bottom-0">
-                                        <div className="relative h-full">
-                                            {/* Shaded hover cells */}
-                                            {slots.map((_, i) => (
+                                    
+                                    <div className="relative h-full">
+                                        <div className="absolute inset-0 z-0">
+                                            {slots.map((slot, sIdx) => (
                                                 <div 
-                                                    key={`cell-${i}`} 
-                                                    className="w-full hover:bg-white/[0.02] transition-colors border-b border-white/[0.05]" 
+                                                    key={`slot-${barbero.id}-${sIdx}`} 
+                                                    className="w-full hover:bg-white/[0.02] transition-colors border-b border-white/[0.02]" 
                                                     style={{ height: `${30 * MINUTE_HEIGHT}px` }}
                                                 />
                                             ))}
-                                            
-                                            {/* Overlays (Citas, Almuerzos, etc) */}
-                                            <div className="absolute inset-0 pointer-events-none">
-                                                <div className="relative h-full pointer-events-auto">
-                                                    {renderAlmuerzo(barbero)}
-                                                    {bloqueos.filter(b => b.barbero_id === barbero.id).map(renderBloqueoProp)}
-                                                    {citas
-                                                        .filter(c => c.barbero_id === barbero.id && c.estado !== 'cancelada')
-                                                        .map(renderCitaBlock)}
-                                                </div>
+                                        </div>
+                                        
+                                        <div className="relative h-full pointer-events-none z-10">
+                                            <div className="relative h-full pointer-events-auto">
+                                                {renderAlmuerzo(barbero)}
+                                                {bloqueos.filter(b => b.barbero_id === barbero.id).map(renderBloqueoProp)}
+                                                {citas
+                                                    .filter(c => String(c.barbero_id).toLowerCase() === String(barbero.id).toLowerCase() && c.estado !== 'cancelada')
+                                                    .map(renderCitaBlock)}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             ))}
 
-                            {/* Current Time Indicator Line */}
                             {dentroHorario && (
                                 <div
-                                    className="absolute left-0 right-0 h-px bg-red-500 z-50 pointer-events-none shadow-[0_0_10px_rgba(239,68,68,0.8)]"
+                                    className="absolute left-0 right-0 h-[2px] bg-red-500 z-50 pointer-events-none shadow-[0_0_15px_rgba(239,68,68,0.8)]"
                                     style={{ top: `${currentTimeY}px` }}
                                 >
-                                    <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,1)] animate-pulse" />
+                                    <div className="absolute -left-1 -top-1 size-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,1)]" />
                                 </div>
                             )}
                         </div>
@@ -310,13 +325,27 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
                 </div>
             </div>
 
-            {/* Legend */}
-            <div className="p-3 flex flex-wrap items-center justify-center gap-4 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />Confirmada</div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />En Proceso</div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500" />Por Cobrar</div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500/50" />Bloqueo</div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500/50" />Almuerzo</div>
+            <div className="p-3 md:p-5 bg-black border-t border-white/5 flex flex-wrap items-center justify-center gap-4 md:gap-8">
+                <div className="flex items-center gap-2 md:gap-3 group">
+                    <div className="size-1.5 md:size-2 rounded-full bg-amber-500 ring-2 md:ring-4 ring-amber-500/10 group-hover:scale-125 transition-transform" />
+                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-slate-200 transition-colors">Confirmada</span>
+                </div>
+                <div className="flex items-center gap-2 md:gap-3 group">
+                    <div className="size-1.5 md:size-2 rounded-full bg-emerald-500 ring-2 md:ring-4 ring-emerald-500/10 group-hover:scale-125 transition-transform" />
+                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-slate-200 transition-colors">En Proceso</span>
+                </div>
+                <div className="flex items-center gap-2 md:gap-3 group">
+                    <div className="size-1.5 md:size-2 rounded-full bg-blue-500 ring-2 md:ring-4 ring-blue-500/10 group-hover:scale-125 transition-transform" />
+                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-slate-200 transition-colors">Por Cobrar</span>
+                </div>
+                <div className="flex items-center gap-2 md:gap-3 group">
+                    <div className="size-1.5 md:size-2 rounded-full bg-red-500/40 group-hover:scale-125 transition-transform" />
+                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-slate-200 transition-colors">Ocupado</span>
+                </div>
+                <div className="flex items-center gap-2 md:gap-3 group">
+                    <div className="size-1.5 md:size-2 rounded-full bg-amber-600/40 group-hover:scale-125 transition-transform" />
+                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-slate-200 transition-colors">Receso</span>
+                </div>
             </div>
         </div>
     )

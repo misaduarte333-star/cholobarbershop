@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-
 import { ConnectionStatus } from '@/components/ConnectionStatus'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -11,11 +10,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [isCheckingAuth, setIsCheckingAuth] = useState(true)
     const router = useRouter()
     const pathname = usePathname()
-    const active = pathname.split('/').pop() || 'admin'
 
     useEffect(() => {
-        // Skip check if we are on the login page (though login has its own page.tsx in subfolder,
-        // layout applies to all /admin/*)
         if (pathname === '/admin/login') {
             setIsCheckingAuth(false)
             return
@@ -29,7 +25,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
     }, [pathname, router])
 
-    // Helper for active state
     const isLinkActive = (href: string) => {
         if (href === '/admin') return pathname === '/admin'
         return pathname === href || pathname.startsWith(href + '/')
@@ -37,113 +32,139 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     if (isCheckingAuth) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#050608] text-white">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary shadow-[0_0_15px_rgba(234,179,8,0.3)]"></div>
+            <div className="min-h-screen flex items-center justify-center bg-background-dark text-white">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary shadow-glow-gold"></div>
             </div>
         )
     }
 
-    // Exempt login page from the admin layout wrapper
     if (pathname === '/admin/login') {
         return <>{children}</>
     }
 
     return (
-        <div className="min-h-[100dvh] bg-shop-premium bg-fixed flex text-white relative font-sans selection:bg-primary selection:text-black antialiased">
-            {/* Design Overlays */}
-            <div className="fixed inset-0 vignette-overlay pointer-events-none z-0" />
-            <div className="fixed top-0 left-0 w-full h-1 bg-gradient-brand z-[100]" />
+        <div className="dark bg-[#0A0A0A] text-slate-100 min-h-screen flex flex-col lg:flex-row font-display relative selection:bg-primary selection:text-black antialiased">
+            {/* Material Symbols Outlined stylesheet */}
+            <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 
-            {/* Mobile Header (Premium) */}
-            <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-black/40 backdrop-blur-3xl border-b border-white/5 z-[60] px-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-gold p-[1px]">
-                        <div className="w-full h-full rounded-lg bg-black flex items-center justify-center">
-                            <span className="text-sm font-black text-gradient-gold">CB</span>
-                        </div>
+            {/* Mobile Header (Elite Style) */}
+            <header className="lg:hidden h-14 px-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#0A0A0A]/90 backdrop-blur-xl z-30">
+                <div className="flex items-center gap-2.5">
+                    <div className="size-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
+                        <span className="material-symbols-outlined text-black text-base font-black">content_cut</span>
                     </div>
-                    <span className="font-black text-xs tracking-tight text-white font-display uppercase">CHOLO<span className="text-primary font-black">BARBER</span></span>
+                    <h1 className="text-sm font-black tracking-[0.2em] text-white uppercase italic">CHOLO<span className="text-primary">BARBER</span></h1>
                 </div>
-                <button
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-95 transition-transform"
-                >
-                    <span className="material-icons-round text-xl">
-                        {isSidebarOpen ? 'close' : 'menu'}
-                    </span>
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        className="size-9 rounded-xl glass flex items-center justify-center text-slate-300 border border-white/10 active:scale-95 transition-all"
+                    >
+                        <span className="material-symbols-outlined text-lg">
+                            {isSidebarOpen ? 'close' : 'menu'}
+                        </span>
+                    </button>
+                    <div className="size-8 rounded-lg overflow-hidden border border-white/10">
+                        <img 
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAupJ0NN2FAFZ6tI6RCShLVEdmHhuGCITlUKRL6_nXpmUHJwgFD5gdYKHv4rgGoTTyZjfhMPhOizJfi_Wr0I8ScGatKToDD6OoSBPCK216hMjcwbbVW8ECH4_42v7X7UxdAc0iJnJ3ZYaVfVubqC5ggr2alR3AGRmXpmgpnox1TvJ_LjpECls_bxd51pd4_A9JwUKRWndND9sgtx_KrQo6V3Ish93C9evXJpme6TaCkAOstX_qONuWfqoJ4uYZWK8CxXjC5OmTd8Wg" 
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
+                </div>
             </header>
 
             {/* Sidebar Overlay (Mobile) */}
             {isSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] lg:hidden animate-fade-in"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
 
-            {/* Sidebar (Premium Glassmorphism) */}
+            {/* Desktop Sidebar (Elite Style) */}
             <aside className={`
-                w-64 glass-card border-r border-white/5 flex-shrink-0 fixed h-[calc(100dvh-1rem)] m-2 z-[80] shadow-[30px_0_60px_rgba(0,0,0,0.5)]
-                transition-all duration-500 ease-out lg:translate-x-0
-                ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full lg:translate-x-0'}
+                w-72 bg-card-dark border-r border-primary/20 flex-col h-screen sticky top-0 z-50 overflow-hidden
+                flex transition-transform duration-500 lg:translate-x-0
+                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}>
-                <div className="p-5 h-full flex flex-col relative z-10">
-                    {/* Logo Section */}
-                    <Link href="/admin" className="flex items-center gap-3 mb-10 hover:opacity-80 transition-all group">
-                        <div className="relative group-hover:scale-110 transition-transform duration-500">
-                            <div className="absolute inset-0 bg-primary/20 rounded-xl blur-lg group-hover:bg-primary/40 transition-all" />
-                            <div className="relative w-12 h-12 rounded-xl bg-black border border-white/10 flex items-center justify-center shadow-2xl">
-                                <span className="text-xl font-black text-gradient-gold">CB</span>
+                <div className="p-6 flex items-center gap-3.5">
+                    <div className="size-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 transition-transform hover:scale-110">
+                        <span className="material-symbols-outlined text-black font-black text-xl">content_cut</span>
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-black tracking-[0.2em] text-white leading-none">CHOLO<span className="text-primary italic">BARBER</span></h1>
+                        <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mt-1">Panel Elite v2.0</p>
+                    </div>
+                </div>
+
+                <nav className="flex-1 px-4 space-y-1.5 mt-2 overflow-y-auto custom-scrollbar pt-2">
+                    <NavItem href="/admin" icon="dashboard" label="Panel Control" active={isLinkActive('/admin')} onClick={() => setIsSidebarOpen(false)} />
+                    <NavItem href="/admin/citas" icon="calendar_month" label="Agenda Global" active={isLinkActive('/admin/citas')} onClick={() => setIsSidebarOpen(false)} />
+                    <NavItem href="/admin/clientes" icon="badge" label="Clientes" active={isLinkActive('/admin/clientes')} onClick={() => setIsSidebarOpen(false)} />
+                    <NavItem href="/admin/barberos" icon="engineering" label="Gestión Staff" active={isLinkActive('/admin/barberos')} onClick={() => setIsSidebarOpen(false)} />
+                    <NavItem href="/admin/servicios" icon="brush" label="Servicios" active={isLinkActive('/admin/servicios')} onClick={() => setIsSidebarOpen(false)} />
+                    <NavItem href="/admin/reportes" icon="monitoring" label="Reportes" active={isLinkActive('/admin/reportes')} onClick={() => setIsSidebarOpen(false)} />
+                    <NavItem href="/admin/finanzas" icon="account_balance_wallet" label="Finanzas" active={isLinkActive('/admin/finanzas')} onClick={() => setIsSidebarOpen(false)} />
+                    <NavItem href="/admin/configuracion" icon="settings" label="Ajustes" active={isLinkActive('/admin/configuracion')} onClick={() => setIsSidebarOpen(false)} />
+                </nav>
+
+                <div className="p-4 mt-auto border-t border-white/5 bg-black/20">
+                    <div className="bg-[#141414]/50 rounded-2xl p-3 border border-white/5 hover:border-primary/20 transition-all group">
+                        <div className="flex items-center gap-3">
+                            <div className="size-9 rounded-xl overflow-hidden border border-primary/20 group-hover:scale-105 transition-transform">
+                                <img 
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAupJ0NN2FAFZ6tI6RCShLVEdmHhuGCITlUKRL6_nXpmUHJwgFD5gdYKHv4rgGoTTyZjfhMPhOizJfi_Wr0I8ScGatKToDD6OoSBPCK216hMjcwbbVW8ECH4_42v7X7UxdAc0iJnJ3ZYaVfVubqC5ggr2alR3AGRmXpmgpnox1TvJ_LjpECls_bxd51pd4_A9JwUKRWndND9sgtx_KrQo6V3Ish93C9evXJpme6TaCkAOstX_qONuWfqoJ4uYZWK8CxXjC5OmTd8Wg" 
+                                    alt="Admin"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-black text-white leading-none uppercase tracking-wider truncate">Administrador</p>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <p className="text-[9px] text-primary font-bold uppercase tracking-widest">Master Access</p>
+                                </div>
                             </div>
                         </div>
-                        <div className="min-w-0">
-                            <h1 className="font-black text-lg leading-none tracking-tight text-white drop-shadow-md font-display uppercase">CHOLO<span className="text-primary">BARBER</span></h1>
-                            <p className="text-[8px] uppercase tracking-[0.3em] text-white/30 font-black mt-1.5 leading-none">Admin Panel</p>
-                        </div>
-                    </Link>
-
-                    {/* Navigation */}
-                    <nav className="space-y-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                        <NavItem href="/admin" icon="dashboard" label="Dashboard" active={isLinkActive('/admin')} onClick={() => setIsSidebarOpen(false)} />
-                        <NavItem href="/admin/citas" icon="event_note" label="Agenda" active={isLinkActive('/admin/citas')} onClick={() => setIsSidebarOpen(false)} />
-                        <NavItem href="/admin/clientes" icon="person_search" label="Clientes" active={isLinkActive('/admin/clientes')} onClick={() => setIsSidebarOpen(false)} />
-                        <NavItem href="/admin/barberos" icon="groups" label="Barberos" active={isLinkActive('/admin/barberos')} onClick={() => setIsSidebarOpen(false)} />
-                        <NavItem href="/admin/servicios" icon="content_cut" label="Servicios" active={isLinkActive('/admin/servicios')} onClick={() => setIsSidebarOpen(false)} />
-                        <NavItem href="/admin/reportes" icon="analytics" label="Análisis" active={isLinkActive('/admin/reportes')} onClick={() => setIsSidebarOpen(false)} />
-                        <NavItem href="/admin/finanzas" icon="account_balance_wallet" label="Finanzas" active={isLinkActive('/admin/finanzas')} onClick={() => setIsSidebarOpen(false)} />
-                        <NavItem href="/admin/configuracion" icon="tune" label="Ajustes" active={isLinkActive('/admin/configuracion')} onClick={() => setIsSidebarOpen(false)} />
-                    </nav>
-
-                    {/* Footer / Logout */}
-                    <div className="mt-auto pt-6 border-t border-white/5 flex flex-col gap-3">
-                        <div className="p-3 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-xl flex items-center gap-3 group/profile hover:border-primary/20 transition-all">
-                            <div className="w-9 h-9 rounded-lg bg-gradient-gold text-black flex items-center justify-center text-[10px] font-black shadow-lg">
-                                AD
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[10px] font-black text-white truncate uppercase tracking-widest font-display">Administrador</p>
-                                <p className="text-[8px] text-white/20 font-black uppercase tracking-[0.1em] mt-0.5">Master</p>
-                            </div>
-                        </div>
-
                         <button
                             onClick={() => { localStorage.removeItem('admin_session'); router.push('/admin/login'); }}
-                            className="flex items-center gap-3 px-5 py-3 rounded-xl text-red-400/50 hover:text-red-400 hover:bg-red-500/5 transition-all duration-300 font-black text-[9px] uppercase tracking-[0.2em] w-full border border-transparent hover:border-red-500/10 active:scale-95"
+                            className="w-full mt-3 py-2 text-[10px] font-black text-slate-500 hover:text-red-400 hover:bg-red-500/5 rounded-lg transition-all uppercase tracking-widest border border-white/5"
                         >
-                            <span className="material-icons-round text-lg">logout</span>
                             Cerrar Sesión
                         </button>
                     </div>
                 </div>
-                {/* Visual Glass Accents */}
-                <div className="absolute top-0 right-0 w-full h-32 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
             </aside>
 
+            {/* Mobile Bottom Navigation */}
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/90 border-t border-white/5 px-4 py-2 flex items-center justify-between z-40 backdrop-blur-xl">
+                <Link className={`flex flex-col items-center gap-1 min-w-[60px] ${isLinkActive('/admin') ? 'text-primary' : 'text-slate-500'}`} href="/admin">
+                    <span className="material-symbols-outlined text-xl leading-none">dashboard</span>
+                    <span className="text-[9px] font-black tracking-widest uppercase">Inicio</span>
+                </Link>
+                <Link className={`flex flex-col items-center gap-1 min-w-[60px] ${isLinkActive('/admin/citas') ? 'text-primary' : 'text-slate-500'}`} href="/admin/citas">
+                    <span className="material-symbols-outlined text-xl leading-none">calendar_month</span>
+                    <span className="text-[9px] font-black tracking-widest uppercase">Agenda</span>
+                </Link>
+                <div className="relative -top-6 px-2">
+                    <button className="size-14 bg-primary rounded-2xl flex items-center justify-center text-black shadow-2xl shadow-primary/20 border-4 border-[#0A0A0A] active:scale-90 transition-transform">
+                        <span className="material-symbols-outlined text-3xl font-black">add</span>
+                    </button>
+                </div>
+                <Link className={`flex flex-col items-center gap-1 min-w-[60px] ${isLinkActive('/admin/barberos') ? 'text-primary' : 'text-slate-500'}`} href="/admin/barberos">
+                    <span className="material-symbols-outlined text-xl leading-none">engineering</span>
+                    <span className="text-[9px] font-black tracking-widest uppercase">Staff</span>
+                </Link>
+                <Link className={`flex flex-col items-center gap-1 min-w-[60px] ${isLinkActive('/admin/reportes') ? 'text-primary' : 'text-slate-500'}`} href="/admin/reportes">
+                    <span className="material-symbols-outlined text-xl leading-none">monitoring</span>
+                    <span className="text-[9px] font-black tracking-widest uppercase">Más</span>
+                </Link>
+            </nav>
+
             {/* Main Content Area */}
-            <main className="flex-1 lg:ml-64 px-6 sm:px-12 md:px-20 py-6 min-h-[100dvh] overflow-y-auto relative z-10 pt-20 lg:pt-6 flex flex-col">
+            <main className="flex-1 overflow-y-auto pb-24 lg:pb-0 relative z-10">
                 <ConnectionStatus />
-                <div className="max-w-7xl mx-auto w-full animate-fade-in relative flex-1">
+                <div className="max-w-7xl mx-auto w-full animate-fade-in relative flex-1 p-4 lg:p-6">
                     {children}
                 </div>
             </main>
@@ -157,21 +178,27 @@ function NavItem({ href, icon, label, active, onClick }: { href: string; icon: s
             href={href}
             onClick={onClick}
             className={`
-                flex items-center gap-4 px-5 py-3 rounded-[1.2rem] transition-all duration-500 relative group w-full
+                flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 group relative overflow-hidden
                 ${active
-                    ? 'bg-gradient-gold text-black shadow-[0_10px_25px_rgba(234,179,8,0.3)] scale-[1.02] border-primary'
-                    : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 hover:translate-x-1'
+                    ? 'bg-primary text-black font-black shadow-[0_0_20px_-5px_rgba(212,175,55,0.4)]'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5'
                 }
             `}
         >
-            <span className={`material-icons-round text-2xl ${active ? 'text-black' : 'group-hover:text-primary transition-colors'}`}>
+            {active && (
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-black/20" />
+            )}
+            <span className={`material-symbols-outlined text-xl transition-transform duration-300 ${!active && 'group-hover:scale-110 group-hover:rotate-6 opacity-70 group-hover:opacity-100'} ${active ? 'font-black' : ''}`}>
                 {icon}
             </span>
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] font-display">
+            <span className={`text-[11px] uppercase tracking-[0.15em] transition-all ${active ? 'font-black' : 'font-bold'}`}>
                 {label}
             </span>
-            {active && (
-                <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-black shadow-inner" />
+            
+            {!active && (
+                <div className="absolute right-2 translate-x-4 group-hover:translate-x-0 transition-transform duration-300">
+                    <span className="material-symbols-outlined text-[10px] text-primary/40">chevron_right</span>
+                </div>
             )}
         </Link>
     )

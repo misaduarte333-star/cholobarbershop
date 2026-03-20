@@ -1,7 +1,26 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
+import { 
+    TrendingUp,
+    Wallet,
+    Calendar as CalendarIcon,
+    AlertTriangle,
+    CheckCircle2,
+    Clock,
+    Plus,
+    CreditCard,
+    DollarSign,
+    RefreshCw,
+    Trash2,
+    Edit3,
+    ArrowUpRight,
+    ArrowDownRight,
+    Target,
+    BarChart3,
+    Table as TableIcon
+} from 'lucide-react'
 import { 
     Card, 
     CardContent, 
@@ -52,6 +71,7 @@ export default function FinanzasPage() {
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingGasto, setEditingGasto] = useState<Gasto | null>(null)
+    const [currentTime, setCurrentTime] = useState(new Date())
     
     // Form state
     const [descripcion, setDescripcion] = useState('')
@@ -176,7 +196,6 @@ export default function FinanzasPage() {
                     }
                 })
             }
-            
             setBarberoIncome(total)
         } catch (error) {
             console.error('Error fetching barbero income:', error)
@@ -190,7 +209,21 @@ export default function FinanzasPage() {
         fetchGastos()
         fetchSucursal()
         fetchBarberos()
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+        return () => clearInterval(timer)
     }, [])
+
+    const formattedDate = currentTime.toLocaleDateString('es-MX', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long' 
+    }).replace(/^\w/, (c) => c.toUpperCase())
+
+    const formattedTime = currentTime.toLocaleTimeString('es-MX', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        hour12: false 
+    })
 
     useEffect(() => {
         if (selectedBarberoId) {
@@ -422,147 +455,129 @@ export default function FinanzasPage() {
     }, [gastos])
 
     return (
-        <div className="space-y-3 sm:space-y-6 animate-fade-in px-1 sm:px-2 md:px-0">
-            {/* Header */}
-            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-4">
-                <div className="space-y-1">
-                    <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter font-display leading-none">
-                        Gestión <span className="text-gradient-gold">Financiera</span>
-                    </h1>
-                    <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em]">Control de Gastos y Ahorro</p>
-                </div>
-                
-                <Dialog open={isDialogOpen} onOpenChange={(open) => {
-                    setIsDialogOpen(open)
-                    if (!open) clearForm()
-                }}>
-                    <DialogTrigger render={(props) => (
-                        <Button 
-                            {...props} 
-                            onClick={(e) => {
-                                clearForm()
-                                props.onClick?.(e as any)
-                            }}
-                            className="bg-gradient-gold text-black font-black uppercase tracking-widest text-[10px] h-12 sm:h-11 px-8 sm:px-6 rounded-xl hover:scale-105 transition-all shadow-[0_10px_30px_rgba(234,179,8,0.3)] w-full sm:w-auto"
-                        >
-                            <span className="material-icons-round mr-2 text-lg">add_circle</span>
-                            Registrar Gasto
-                        </Button>
-                    )} />
-                    <DialogContent className="glass-card border-white/10 bg-black/95 text-white backdrop-blur-3xl w-[88vw] sm:max-w-xl p-0 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[2.5rem] border border-white/10">
-                        <div className="max-h-[82vh] overflow-y-auto custom-scrollbar p-5 sm:p-10">
+        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
+            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
+                {/* Header (Desktop Only) - Compact Elite Style */}
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
+                    <div className="flex items-center gap-3 text-white">
+                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 transition-all hover:scale-105">
+                            <TrendingUp className="text-primary w-4 h-4 shadow-lg shadow-primary/20" />
+                        </div>
+                        <h2 className="text-lg font-black tracking-tighter uppercase italic">Control Financiero</h2>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        {/* Time & Date - Premium Compact Style */}
+                        <div className="bg-[#141414]/90 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-1.5 flex items-center gap-4 shadow-2xl hover:border-primary/30 transition-all group">
+                            <div className="flex flex-col items-end">
+                                <p className="text-xs font-black tracking-tighter tabular-nums leading-tight text-white">
+                                    {formattedTime}
+                                </p>
+                                <p className="text-[9px] text-primary font-black uppercase tracking-[0.1em] leading-tight">
+                                    {formattedDate}
+                                </p>
+                            </div>
+                            <div className="h-6 w-[1px] bg-white/10 group-hover:bg-primary/20 transition-colors" />
+                            <Clock className="w-4 h-4 text-slate-500 group-hover:text-primary transition-colors" />
+                        </div>
+
+                    <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                        setIsDialogOpen(open)
+                        if (!open) clearForm()
+                    }}>
+                        <DialogTrigger render={
+                            <Button className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-bold uppercase tracking-tighter shadow-lg shadow-gold/20 h-11 px-6 rounded-xl">
+                                <Plus className="w-5 h-5 mr-2" />
+                                Registrar Gasto
+                            </Button>
+                        } />
+                        <DialogContent className="glass-card border-white/10 bg-black/95 text-white max-w-lg rounded-[2.5rem] p-0 overflow-hidden">
+                            {/* Modal Content - same as before but styled */}
+                            <div className="bg-gradient-to-br from-[#D4AF37]/20 to-transparent p-6 border-b border-white/5">
+                                <DialogHeader>
+                                    <DialogTitle className="text-2xl font-black font-display text-gradient-gold tracking-tight uppercase">
+                                        {editingGasto ? 'Editar Gasto' : 'Nuevo Registro'}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
+                                        {editingGasto ? 'Modifica los parámetros del gasto' : 'Añade un nuevo movimiento financiero'}
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </div>
                             
-                            <DialogHeader className="mb-4 sm:mb-8">
-                                <DialogTitle className="font-display font-black text-2xl sm:text-2xl uppercase tracking-tighter text-gradient-gold leading-tight">
-                                    {editingGasto ? 'Editar Gasto' : 'Registrar Gasto'}
-                                </DialogTitle>
-                                <DialogDescription className="text-white/40 font-bold text-[9px] uppercase tracking-[0.2em] mt-0.5">
-                                    {editingGasto ? 'Modifica los detalles' : 'Añade un nuevo registro'}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleSaveGasto} className="space-y-4 sm:space-y-8">
-                            <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="desc" className="text-[9px] font-black uppercase tracking-widest text-white/50 px-1">Descripción</Label>
+                            <form onSubmit={handleSaveGasto} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Descripción</Label>
                                     <Input 
-                                        id="desc" 
-                                        placeholder="Ej: Renta, Luz, Insumos..." 
-                                        className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus:ring-amber-500/20"
                                         value={descripcion}
                                         onChange={(e) => setDescripcion(e.target.value)}
+                                        className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl h-11"
+                                        placeholder="Ej: Renta del local"
                                         required
                                     />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="monto" className="text-[9px] font-black uppercase tracking-widest text-white/50 px-1">Monto ($)</Label>
-                                    <Input 
-                                        id="monto" 
-                                        type="number" 
-                                        placeholder="0.00" 
-                                        className="bg-white/5 border-white/10 text-white h-11 rounded-xl focus:ring-amber-500/20 text-sm"
-                                        value={monto}
-                                        onChange={(e) => setMonto(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-white/50 px-1 block">Fecha de Pago</Label>
-                                <div className="p-1 glass-card border-white/5 rounded-2xl bg-black/40 flex justify-center">
-                                    <Calendar
-                                        mode="single"
-                                        selected={fechaPago}
-                                        onSelect={setFechaPago}
-                                        className="rounded-xl border-none scale-[0.85] origin-top sm:scale-100"
-                                        locale={es}
-                                    />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Monto (MXN)</Label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-bold">$</span>
+                                            <Input 
+                                                type="number"
+                                                value={monto}
+                                                onChange={(e) => setMonto(e.target.value)}
+                                                className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl h-11 pl-8 font-display font-bold"
+                                                placeholder="0.00"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Fecha</Label>
+                                        <div className="relative">
+                                            <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/40" />
+                                            <Input 
+                                                type="date"
+                                                value={fechaPago ? format(fechaPago, 'yyyy-MM-dd') : ''}
+                                                onChange={(e) => setFechaPago(new Date(e.target.value))}
+                                                className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl h-11 pl-10 text-xs"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="grid grid-cols-1 gap-4">
-                                {/* Recurring Toggle & Frequency */}
-                                <div className={cn(
-                                    "p-4 rounded-xl transition-all border space-y-4",
-                                    esRecurrente ? "bg-amber-500/10 border-amber-500/30" : "bg-white/5 border-white/10"
-                                )}>
+                                <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="space-y-0.5">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-white/50">Recurrente</Label>
-                                            <p className="text-[8px] text-white/30 font-bold uppercase tracking-wider line-clamp-1">Gasto automático</p>
+                                            <Label className="text-[10px] font-black text-white/60 uppercase tracking-widest">Gasto Recurrente</Label>
+                                            <p className="text-[9px] text-white/30 uppercase font-bold">Generar automáticamente cada periodo</p>
                                         </div>
-                                        <Switch 
-                                            checked={esRecurrente}
-                                            onCheckedChange={setEsRecurrente}
-                                        />
+                                        <Switch checked={esRecurrente} onCheckedChange={setEsRecurrente} className="data-[state=checked]:bg-primary" />
                                     </div>
 
                                     {esRecurrente && (
-                                        <div className="grid grid-cols-1 gap-3 pt-2 border-t border-amber-500/20 animate-in fade-in slide-in-from-top-1">
-                                            <div className="space-y-1.5">
-                                                <Label className="text-[9px] font-black uppercase tracking-widest text-amber-500/50">Frecuencia</Label>
+                                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5 animate-in fade-in slide-in-from-top-2">
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-white/40 uppercase tracking-widest pl-1">Frecuencia</Label>
                                                 <Select value={frecuencia} onValueChange={(v: any) => setFrecuencia(v)}>
-                                                    <SelectTrigger className="h-9 bg-black/40 border-amber-500/20 text-white rounded-xl text-xs">
-                                                        <SelectValue placeholder="Cada mes" />
+                                                    <SelectTrigger className="bg-black/50 border-white/10 h-10 rounded-xl text-xs">
+                                                        <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                                                        <SelectItem value="mensual">Cada mes</SelectItem>
-                                                        <SelectItem value="semanal">Cada semana</SelectItem>
-                                                        <SelectItem value="diario">Cada día</SelectItem>
+                                                    <SelectContent className="bg-zinc-900 border-white/10 text-white">
+                                                        <SelectItem value="diario">Diario</SelectItem>
+                                                        <SelectItem value="semanal">Semanal</SelectItem>
+                                                        <SelectItem value="mensual">Mensual</SelectItem>
+                                                        <SelectItem value="anual">Anual</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
-
-                                            {frecuencia === 'semanal' && (
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-[9px] font-black uppercase tracking-widest text-amber-500/50">Día de la semana</Label>
-                                                    <Select value={diaSemana} onValueChange={(v) => v && setDiaSemana(v)}>
-                                                        <SelectTrigger className="h-9 bg-black/40 border-amber-500/20 text-white rounded-xl text-xs">
-                                                            <SelectValue placeholder="Sábado" />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                                                            <SelectItem value="lunes">Lunes</SelectItem>
-                                                            <SelectItem value="martes">Martes</SelectItem>
-                                                            <SelectItem value="miercoles">Miércoles</SelectItem>
-                                                            <SelectItem value="jueves">Jueves</SelectItem>
-                                                            <SelectItem value="viernes">Viernes</SelectItem>
-                                                            <SelectItem value="sabado">Sábado</SelectItem>
-                                                            <SelectItem value="domingo">Domingo</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
-
                                             {frecuencia === 'mensual' && (
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-[9px] font-black uppercase tracking-widest text-amber-500/50">Día del mes</Label>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[9px] font-black text-white/40 uppercase tracking-widest pl-1">Día Cobro</Label>
                                                     <Input 
-                                                        type="number" 
-                                                        min="1" 
-                                                        max="31" 
-                                                        value={diaMes}
-                                                        onChange={(e) => setDiaMes(parseInt(e.target.value))}
-                                                        className="h-9 bg-black/40 border-amber-500/20 text-white rounded-xl text-xs"
+                                                        type="number" min="1" max="31" 
+                                                        value={diaMes} onChange={(e) => setDiaMes(parseInt(e.target.value))}
+                                                        className="bg-black/50 border-white/10 h-10 rounded-xl text-xs"
                                                     />
                                                 </div>
                                             )}
@@ -570,33 +585,24 @@ export default function FinanzasPage() {
                                     )}
                                 </div>
 
-                                {/* Paid Status Toggle */}
-                                <div className={cn(
-                                    "flex items-center justify-between p-4 rounded-xl transition-all border",
-                                    pagado ? "bg-emerald-500/10 border-emerald-500/30" : "bg-white/5 border-white/10"
-                                )}>
+                                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
                                     <div className="space-y-0.5">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-white/50">Estado</Label>
-                                        <p className="text-[8px] text-white/30 font-bold uppercase tracking-wider line-clamp-1">
-                                            {pagado ? 'Completado' : 'Pendiente de pago'}
-                                        </p>
+                                        <Label className="text-[10px] font-black text-white/60 uppercase tracking-widest">Estado Actual</Label>
+                                        <p className="text-[9px] text-white/30 uppercase font-bold">{pagado ? 'Pago realizado' : 'Pendiente de pago'}</p>
                                     </div>
-                                    <Switch 
-                                        checked={pagado}
-                                        onCheckedChange={setPagado}
-                                    />
+                                    <Switch checked={pagado} onCheckedChange={setPagado} className="data-[state=checked]:bg-emerald-500" />
                                 </div>
-                            </div>
 
-                            <DialogFooter className="pt-4">
-                                <Button type="submit" className="w-full bg-gradient-gold text-black font-black uppercase tracking-widest h-12 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_10px_20px_rgba(234,179,8,0.2)]">
-                                    {editingGasto ? 'Actualizar Gasto' : 'Guardar Gasto'}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                                <DialogFooter className="pt-4 gap-2">
+                                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-xl text-white/40 hover:text-white uppercase text-[10px] font-black tracking-widest">Cancelar</Button>
+                                    <Button type="submit" className="bg-gradient-gold text-black font-black uppercase tracking-widest text-[10px] px-8 h-11 rounded-xl shadow-lg shadow-gold/20">
+                                        {editingGasto ? 'Guardar Cambios' : 'Registrar Pago'}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </header>
 
             {/* Savings Breakdown Cards */}
@@ -1021,6 +1027,7 @@ export default function FinanzasPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+            </div>
         </div>
     )
 }

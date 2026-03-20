@@ -4,33 +4,76 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { Barbero, BarberoConSucursal, Sucursal } from '@/lib/types'
 import { HorarioGanttModal } from '@/components/HorarioGanttModal'
+import { 
+    Users, 
+    Plus, 
+    Search, 
+    LayoutGrid, 
+    Clock, 
+    Edit, 
+    Trash2, 
+    Calendar,
+    Scissors,
+    ChevronRight,
+    Loader2,
+    Shield,
+    CheckCircle2,
+    XCircle
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { toast } from "sonner"
 
 export default function BarberosPage() {
     const [barberos, setBarberos] = useState<BarberoConSucursal[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [showScheduleModal, setShowScheduleModal] = useState(false)
-    const [showGanttModal, setShowGanttModal] = useState(false) // New state
+    const [showGanttModal, setShowGanttModal] = useState(false)
     const [editingBarbero, setEditingBarbero] = useState<Barbero | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
-    const [sucursalData, setSucursalData] = useState<Sucursal | null>(null) // New state
+    const [sucursalData, setSucursalData] = useState<Sucursal | null>(null)
+
+    const [currentTime, setCurrentTime] = useState(new Date())
 
     const supabase = createClient()
+
+    useEffect(() => {
+        const interval = setInterval(() => setCurrentTime(new Date()), 1000)
+        return () => clearInterval(interval)
+    }, [])
 
     const cargarBarberos = useCallback(async () => {
         try {
             const { data, error } = await (supabase
                 .from('barberos') as any)
-                .select('*, sucursal:sucursales(*)') // Fetch full sucursal object
+                .select('*, sucursal:sucursales(*)')
                 .order('estacion_id', { ascending: true })
 
             if (error) {
                 console.error('Error loading barbers:', error)
-                // Demo data
                 setBarberos(getDemoBarbers())
             } else {
                 setBarberos(data || [])
-                // Extract unique sucursal if available
                 if (data && data.length > 0 && data[0].sucursal) {
                     setSucursalData(data[0].sucursal)
                 }
@@ -57,14 +100,14 @@ export default function BarberosPage() {
                 .eq('id', id)
 
             if (error) {
-                console.error('Error deleting:', error)
-                alert('Error al eliminar')
+                toast.error('Error al eliminar barbero')
             } else {
+                toast.success('Barbero eliminado correctamente')
                 cargarBarberos()
             }
         } catch {
-            // Demo mode - just filter locally
             setBarberos(barberos.filter(b => b.id !== id))
+            toast.success('Barbero eliminado (modo demo)')
         }
     }
 
@@ -84,33 +127,62 @@ export default function BarberosPage() {
     )
 
     return (
+        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
+            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
+                {/* Header (Desktop Only) - Compact Elite Style */}
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] flex items-center justify-center shadow-[0_0_20px_rgba(212,175,55,0.2)]">
+                            <Scissors className="w-7 h-7 text-black" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">
+                                Staff <span className="text-gradient-gold italic">Barberos</span>
+                            </h1>
+                            <p className="text-slate-400 mt-1 text-xs font-bold uppercase tracking-widest opacity-70">
+                                Gestión de equipo y disponibilidad
+                            </p>
+                        </div>
+                    </div>
 
-        <>
-            <div className="mb-6 md:mb-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-white">Barberos</h1>
-                        <p className="text-slate-400 mt-1 text-sm md:text-base">Gestiona el equipo de trabajo</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                            onClick={() => setShowGanttModal(true)}
-                            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white transition-colors flex items-center justify-center gap-2 text-sm font-semibold"
+                    <div className="flex items-center gap-3">
+                        {/* Live Clock & Date */}
+                        <div className="hidden lg:flex flex-col items-end mr-4">
+                            <span className="text-white font-black text-xl tracking-tighter leading-none uppercase">
+                                {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                            </span>
+                            <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-[0.2em]">
+                                {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, (c) => c.toUpperCase())}
+                            </span>
+                        </div>
+
+                        <Button 
+                            onClick={handleNew}
+                            className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-bold uppercase tracking-tighter shadow-lg shadow-gold/20 h-11 px-6 rounded-xl"
                         >
-                            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                            Ver Diagrama
-                        </button>
-                        <button onClick={handleNew} className="w-full sm:w-auto btn-primary flex items-center justify-center gap-2 py-2.5 text-sm">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
+                            <Plus className="w-5 h-5 mr-2" />
                             Nuevo Barbero
-                        </button>
+                        </Button>
                     </div>
+                </header>
+
+                <div className="flex items-center gap-2">
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => setShowGanttModal(true)}
+                        className="flex-1 sm:flex-none bg-white/5 border-white/10 hover:bg-white/10 text-slate-300 font-bold text-[10px] uppercase tracking-widest h-9"
+                    >
+                        <LayoutGrid className="w-3 h-3 mr-2 text-blue-400" />
+                        Diagrama
+                    </Button>
+                    <Button 
+                        onClick={handleNew}
+                        className="flex-1 sm:flex-none bg-gradient-to-r from-[#D4AF37] to-[#B8962E] hover:from-[#B8962E] hover:to-[#A68527] text-black font-black uppercase tracking-widest text-[10px] h-9 shadow-lg shadow-[#D4AF37]/20"
+                    >
+                        <Plus className="w-3 h-3 mr-2" />
+                        Nuevo Barbero
+                    </Button>
                 </div>
-            </div>
 
             <HorarioGanttModal
                 isOpen={showGanttModal}
@@ -120,133 +192,158 @@ export default function BarberosPage() {
             />
 
             {/* Search & Filters */}
-            <div className="glass-card p-4 mb-6">
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className="w-full flex-1 relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            type="text"
-                            placeholder="Buscar por nombre o usuario..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="input-field pl-10 w-full"
-                        />
+            <Card className="bg-white/5 border-white/10 mb-6">
+                <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <div className="w-full flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                                placeholder="Buscar por nombre o usuario..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-[#D4AF37]/50"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+                            <Users className="w-3.5 h-3.5 text-[#D4AF37]" />
+                            <span className="text-slate-400 text-xs font-bold">{filteredBarberos.length} BARBEROS</span>
+                        </div>
                     </div>
-                    <span className="text-slate-400 text-sm whitespace-nowrap">{filteredBarberos.length} barberos</span>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             {/* Table */}
-            <div className="glass-card overflow-hidden">
+            <Card className="bg-[#0A0A0A] border-white/10 overflow-hidden">
                 {loading ? (
-                    <div className="p-12 flex items-center justify-center">
-                        <div className="spinner w-8 h-8" />
+                    <div className="p-20 flex flex-col items-center justify-center gap-4">
+                        <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+                        <p className="text-slate-400 text-sm animate-pulse">Cargando equipo...</p>
                     </div>
                 ) : filteredBarberos.length === 0 ? (
-                    <div className="p-12 text-center">
-                        <svg className="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        <p className="text-slate-500">No se encontraron barberos</p>
+                    <div className="p-20 text-center">
+                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
+                            <Users className="w-8 h-8 text-slate-600" />
+                        </div>
+                        <p className="text-slate-500 font-medium">No se encontraron barberos</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[800px] md:min-w-0">
-                            <thead className="bg-slate-800/50">
-                                <tr>
-                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Estación</th>
-                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Barbero</th>
-                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Usuario</th>
-                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Horario</th>
-                                    <th className="px-4 md:px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Estado</th>
-                                    <th className="px-4 md:px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700/50">
+                        <Table>
+                            <TableHeader className="bg-white/5">
+                                <TableRow className="border-white/5 hover:bg-transparent">
+                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Estación</TableHead>
+                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Barbero</TableHead>
+                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12 hidden sm:table-cell">Identificación</TableHead>
+                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Horario Laboral</TableHead>
+                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Estado</TableHead>
+                                    <TableHead className="text-right text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Acciones</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {filteredBarberos.map((barbero) => (
-                                    <tr key={barbero.id} className="hover:bg-slate-800/30 transition-colors">
-                                        <td className="px-4 md:px-6 py-4 text-center sm:text-left">
-                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center font-bold text-white text-xs md:text-sm">
+                                    <TableRow key={barbero.id} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
+                                        <TableCell>
+                                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#D4AF37]/20 to-transparent border border-[#D4AF37]/30 flex items-center justify-center font-black text-[#D4AF37] text-sm">
                                                 {barbero.estacion_id}
                                             </div>
-                                        </td>
-                                        <td className="px-4 md:px-6 py-4">
-                                            <div className="flex items-center gap-2 md:gap-3">
-                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm md:text-lg font-medium text-white shrink-0">
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-lg font-bold text-white shadow-inner">
                                                     {barbero.nombre.charAt(0)}
                                                 </div>
-                                                <div className="min-w-0">
-                                                    <p className="font-medium text-white text-sm md:text-base truncate max-w-[100px] md:max-w-none">{barbero.nombre}</p>
-                                                    <p className="text-[10px] md:text-xs text-slate-400">Estación {barbero.estacion_id}</p>
+                                                <div className="space-y-0.5">
+                                                    <p className="font-bold text-white text-sm tracking-tight">{barbero.nombre}</p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <LayoutGrid className="w-3 h-3 text-slate-500" />
+                                                        <span className="text-[10px] text-slate-500 font-medium uppercase">Estación {barbero.estacion_id}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </td>
-                                        <td className="px-4 md:px-6 py-4 hidden sm:table-cell">
-                                            <code className="px-2 py-1 rounded bg-slate-700 text-xs md:text-sm text-slate-300">
-                                                {barbero.usuario_tablet}
-                                            </code>
-                                        </td>
-                                        <td className="px-4 md:px-6 py-4">
-                                            <p className="text-[11px] md:text-sm text-slate-300">
-                                                {getHorarioResumen(barbero.horario_laboral)}
-                                            </p>
-                                            {barbero.bloqueo_almuerzo && (
-                                                <p className="text-[10px] md:text-xs text-slate-500 mt-1">
-                                                    🍽️ {barbero.bloqueo_almuerzo.inicio} - {barbero.bloqueo_almuerzo.fin}
-                                                </p>
-                                            )}
-                                        </td>
-                                        <td className="px-4 md:px-6 py-4">
-                                            <span className={`
-                                                status-badge text-[10px] md:text-xs px-2 md:px-3 py-1
-                                                ${barbero.activo ? 'status-in-progress' : 'status-cancelled'}
-                                            `}>
-                                                {barbero.activo ? 'Activo' : 'Inactivo'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 md:px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-1 md:gap-2">
-                                                <button
+                                        </TableCell>
+                                        <TableCell className="hidden sm:table-cell">
+                                            <div className="flex items-center gap-2">
+                                                <Shield className="w-3.5 h-3.5 text-blue-400/50" />
+                                                <code className="text-xs text-slate-400 font-mono">
+                                                    {barbero.usuario_tablet}
+                                                </code>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-1.5 text-slate-300">
+                                                    <Clock className="w-3.5 h-3.5 text-[#D4AF37]/70" />
+                                                    <span className="text-xs font-medium">
+                                                        {getHorarioResumen(barbero.horario_laboral)}
+                                                    </span>
+                                                </div>
+                                                {barbero.bloqueo_almuerzo && (
+                                                    <div className="flex items-center gap-1.5 text-slate-500">
+                                                        <span className="text-[10px]">🍽️</span>
+                                                        <span className="text-[10px] font-medium tracking-tight">
+                                                            ALMUERZO: {barbero.bloqueo_almuerzo.inicio} - {barbero.bloqueo_almuerzo.fin}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge 
+                                                className={cn(
+                                                    "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border-none",
+                                                    barbero.activo 
+                                                        ? "bg-green-500/10 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.1)]" 
+                                                        : "bg-red-500/10 text-red-400"
+                                                )}
+                                            >
+                                                {barbero.activo ? (
+                                                    <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Activo</span>
+                                                ) : (
+                                                    <span className="flex items-center gap-1"><XCircle className="w-3 h-3" /> Inactivo</span>
+                                                )}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-1 px-1">
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
                                                     onClick={() => handleEdit(barbero)}
-                                                    className="p-1.5 md:p-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
+                                                    className="h-8 w-8 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
                                                     title="Editar"
                                                 >
-                                                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                    </svg>
-                                                </button>
-                                                <button
+                                                    <Edit className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
                                                     onClick={() => {
                                                         setEditingBarbero(barbero)
                                                         setShowScheduleModal(true)
                                                     }}
-                                                    className="p-1.5 md:p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
+                                                    className="h-8 w-8 rounded-full bg-[#D4AF37]/10 text-[#D4AF37] hover:bg-[#D4AF37]/20"
                                                     title="Configurar Horario"
                                                 >
-                                                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                </button>
-                                                <button
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
                                                     onClick={() => handleDelete(barbero.id)}
-                                                    className="p-1.5 md:p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 transition-colors"
+                                                    className="h-8 w-8 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20"
                                                     title="Eliminar"
                                                 >
-                                                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </Button>
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))}
-                            </tbody>
-                        </table>
+                            </TableBody>
+                        </Table>
                     </div>
                 )}
-            </div>
+            </Card>
 
             {/* Modals */}
             {showModal && (
@@ -270,7 +367,8 @@ export default function BarberosPage() {
                     }}
                 />
             )}
-        </>
+            </div>
+        </div>
     )
 }
 
@@ -351,7 +449,6 @@ function getDemoBarbers(): BarberoConSucursal[] {
     ]
 }
 
-// Modal Component
 function BarberoModal({
     barbero,
     onClose,
@@ -372,10 +469,8 @@ function BarberoModal({
     })
 
     const supabase = createClient()
-
     const [sucursalId, setSucursalId] = useState<string | null>(null)
 
-    // Fetch sucursal_id on mount
     useEffect(() => {
         const fetchSucursal = async () => {
             const { data } = await (supabase
@@ -384,9 +479,7 @@ function BarberoModal({
                 .limit(1)
                 .single()
 
-            if (data) {
-                setSucursalId(data.id)
-            }
+            if (data) setSucursalId(data.id)
         }
         fetchSucursal()
     }, [])
@@ -396,9 +489,7 @@ function BarberoModal({
         setLoading(true)
 
         try {
-            if (!sucursalId && !barbero) {
-                throw new Error('No se encontró una sucursal activa')
-            }
+            if (!sucursalId && !barbero) throw new Error('No se encontró una sucursal activa')
 
             const data = {
                 nombre: formData.nombre,
@@ -406,7 +497,7 @@ function BarberoModal({
                 usuario_tablet: formData.usuario_tablet,
                 activo: formData.activo,
                 comision_porcentaje: parseInt(formData.comision_porcentaje) || 50,
-                horario_laboral: {
+                horario_laboral: barbero?.horario_laboral || {
                     lunes: { inicio: '09:00', fin: '18:00' },
                     martes: { inicio: '09:00', fin: '18:00' },
                     miercoles: { inicio: '09:00', fin: '18:00' },
@@ -418,151 +509,147 @@ function BarberoModal({
             }
 
             if (barbero) {
-                // Update
-                const { error } = await (supabase
-                    .from('barberos') as any)
-                    .update(data)
-                    .eq('id', barbero.id)
-
+                const { error } = await (supabase.from('barberos') as any).update(data).eq('id', barbero.id)
                 if (error) throw error
+                toast.success('Barbero actualizado correctamente')
             } else {
-                // Insert - use real sucursal_id
-                const { error } = await (supabase
-                    .from('barberos') as any)
-                    .insert([{ ...data, sucursal_id: sucursalId }])
-
+                const { error } = await (supabase.from('barberos') as any).insert([{ ...data, sucursal_id: sucursalId }])
                 if (error) throw error
+                toast.success('Barbero creado correctamente')
             }
 
             onSave()
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error saving:', err)
-            // Demo mode - just close
-            onSave()
+            toast.error(err.message || 'Error al guardar barbero')
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="glass-card w-full max-w-lg animate-slide-in">
-                <div className="flex items-center justify-between p-6 border-b border-slate-700">
-                    <h2 className="text-xl font-bold text-white">
-                        {barbero ? 'Editar Barbero' : 'Nuevo Barbero'}
-                    </h2>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-700 transition-colors">
-                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+        <Dialog open onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-[500px] bg-[#0A0A0A] border-white/10 text-white p-0 overflow-hidden">
+                <div className="bg-gradient-to-b from-[#D4AF37]/10 to-transparent p-6 border-b border-white/5">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black italic tracking-tighter flex items-center gap-2">
+                            <Users className="w-6 h-6 text-[#D4AF37]" />
+                            {barbero ? 'EDITAR BARBERO' : 'NUEVO BARBERO'}
+                        </DialogTitle>
+                        <p className="text-slate-400 text-xs font-medium uppercase tracking-widest mt-1">
+                            {barbero ? 'Modifica los perfiles del equipo' : 'Añade un nuevo experto al equipo'}
+                        </p>
+                    </DialogHeader>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                    {/* Existing form fields... */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Nombre</label>
-                            <input
-                                type="text"
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nombre Completo</Label>
+                            <Input
                                 value={formData.nombre}
                                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                                className="input-field"
-                                placeholder="Juan Pérez"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-[#D4AF37]/50"
+                                placeholder="Ej. Carlos Hernández"
                                 required
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Estación</label>
-                            <input
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Número de Estación</Label>
+                            <Input
                                 type="number"
-                                min="1"
-                                max="20"
                                 value={formData.estacion_id}
                                 onChange={(e) => setFormData({ ...formData, estacion_id: e.target.value })}
-                                className="input-field"
-                                placeholder="1"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-[#D4AF37]/50"
+                                placeholder="1-20"
                                 required
                             />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Usuario Tablet</label>
-                            <input
-                                type="text"
-                                value={formData.usuario_tablet}
-                                onChange={(e) => setFormData({ ...formData, usuario_tablet: e.target.value })}
-                                className="input-field"
-                                placeholder="juan01"
-                                required
-                            />
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Usuario Tablet</Label>
+                            <div className="relative">
+                                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                                <Input
+                                    value={formData.usuario_tablet}
+                                    onChange={(e) => setFormData({ ...formData, usuario_tablet: e.target.value })}
+                                    className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-[#D4AF37]/50"
+                                    placeholder="carlos01"
+                                    required
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
-                                {barbero ? 'Nueva Contraseña (opcional)' : 'Contraseña'}
-                            </label>
-                            <input
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Contraseña Access</Label>
+                            <Input
                                 type="password"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                className="input-field"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-[#D4AF37]/50"
                                 placeholder="••••••••"
                                 required={!barbero}
                             />
                         </div>
                     </div>
 
-
-
-                    <div className="flex items-center gap-3">
-                        <input
-                            type="checkbox"
-                            id="activo"
-                            checked={formData.activo}
-                            onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                            className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-purple-500 focus:ring-purple-500"
-                        />
-                        <label htmlFor="activo" className="text-sm text-slate-300">
-                            Barbero activo
-                        </label>
-                    </div>
-
-                    <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                        <label className="block text-sm font-medium text-blue-400 mb-2">Configuración de Comisión</label>
-                        <div className="flex items-center gap-3">
-                            <div className="flex-1 relative">
-                                <input
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-[#D4AF37]/10 to-transparent border border-[#D4AF37]/20 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-[#D4AF37]">Configuración de Ventas</Label>
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id="activo"
+                                    checked={formData.activo}
+                                    onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                                    className="data-[state=checked]:bg-[#D4AF37]"
+                                />
+                                <Label htmlFor="activo" className="text-[10px] font-bold uppercase text-slate-300">Activo</Label>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="relative flex-1">
+                                <Input
                                     type="number"
-                                    min="0"
-                                    max="100"
                                     value={formData.comision_porcentaje}
                                     onChange={(e) => setFormData({ ...formData, comision_porcentaje: e.target.value })}
-                                    className="input-field pr-8"
-                                    placeholder="50"
+                                    className="bg-black/40 border-white/10 text-white pr-8 focus:border-[#D4AF37]/50"
                                     required
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">%</span>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">%</span>
                             </div>
-                            <p className="text-xs text-slate-400 max-w-[200px]">
-                                Porcentaje que el barbero recibe por cada servicio finalizado.
+                            <p className="text-[10px] text-slate-400 leading-tight">
+                                Porcentaje de comisión asignado por cada servicio realizado.
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
-                        <button type="button" onClick={onClose} className="btn-secondary">
-                            Cancelar
-                        </button>
-                        <button type="submit" disabled={loading} className="btn-primary flex items-center gap-2">
-                            {loading && <div className="spinner w-4 h-4" />}
-                            {barbero ? 'Guardar Cambios' : 'Crear Barbero'}
-                        </button>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={onClose}
+                            className="text-slate-400 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-[10px]"
+                        >
+                            CANCELAR
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={loading}
+                            className="bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-black font-black uppercase tracking-widest text-[10px] px-8 hover:opacity-90 disabled:opacity-50"
+                        >
+                            {loading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : barbero ? (
+                                'GUARDAR CAMBIOS'
+                            ) : (
+                                'CREAR BARBERO'
+                            )}
+                        </Button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     )
 }
 
@@ -588,7 +675,6 @@ function HorarioModal({
         return initial
     })
 
-    // Lunch state
     const [almuerzo, setAlmuerzo] = useState({
         inicio: barbero.bloqueo_almuerzo?.inicio || '14:00',
         fin: barbero.bloqueo_almuerzo?.fin || '15:00',
@@ -614,7 +700,6 @@ function HorarioModal({
     const handleSave = async () => {
         setLoading(true)
         try {
-            // Filter out nulls (days off) to save clean object
             const cleanHorario: any = {}
             Object.entries(horario).forEach(([dia, data]) => {
                 if (data) cleanHorario[dia] = data
@@ -632,127 +717,142 @@ function HorarioModal({
                 .eq('id', barbero.id)
 
             if (error) throw error
+            toast.success('Horario actualizado correctamente')
             onSave()
         } catch (err: any) {
-            alert('Error al guardar horario: ' + err.message)
+            toast.error('Error al guardar horario: ' + err.message)
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="glass-card w-full max-w-2xl animate-slide-in max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-6 border-b border-slate-700">
-                    <div>
-                        <h2 className="text-xl font-bold text-white">Configurar Horario</h2>
-                        <p className="text-sm text-slate-400">Barbero: {barbero.nombre}</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-700 transition-colors">
-                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+        <Dialog open onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-[600px] bg-[#0A0A0A] border-white/10 text-white p-0 overflow-hidden max-h-[90vh] flex flex-col">
+                <div className="bg-gradient-to-b from-[#D4AF37]/10 to-transparent p-6 border-b border-white/5 shrink-0">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black italic tracking-tighter flex items-center gap-2">
+                            <Clock className="w-6 h-6 text-[#D4AF37]" />
+                            HORARIO LABORAL
+                        </DialogTitle>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">
+                            CONFIGURACIÓN PARA: <span className="text-white">{barbero.nombre.toUpperCase()}</span>
+                        </p>
+                    </DialogHeader>
                 </div>
 
-                <div className="p-6 space-y-4">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                     {/* Lunch Break Section */}
-                    <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700/50 mb-6">
-                        <div className="flex items-center justify-between mb-4">
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-4">
+                        <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <span className="text-xl">🍽️</span>
+                                <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center text-xl">
+                                    🍽️
+                                </div>
                                 <div>
-                                    <h3 className="font-medium text-white">Bloqueo de Almuerzo (Diario)</h3>
-                                    <p className="text-xs text-slate-400">Se aplicará a todos los días laborales</p>
+                                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Bloqueo de Almuerzo</h3>
+                                    <p className="text-[10px] text-slate-500 uppercase font-medium">Intervalo diario de descanso</p>
                                 </div>
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={almuerzo.activo}
-                                    onChange={(e) => setAlmuerzo(prev => ({ ...prev, activo: e.target.checked }))}
-                                />
-                                <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
+                            <Switch
+                                checked={almuerzo.activo}
+                                onCheckedChange={(checked) => setAlmuerzo(prev => ({ ...prev, activo: checked }))}
+                                className="data-[state=checked]:bg-[#D4AF37]"
+                            />
                         </div>
 
                         {almuerzo.activo && (
-                            <div className="flex items-center gap-4 bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 transition-all animate-fade-in">
-                                <div className="flex-1">
-                                    <label className="text-xs text-slate-400 mb-1 block">Inicio</label>
-                                    <input
+                            <div className="grid grid-cols-2 gap-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Inicio</Label>
+                                    <Input
                                         type="time"
                                         value={almuerzo.inicio}
                                         onChange={(e) => setAlmuerzo(prev => ({ ...prev, inicio: e.target.value }))}
-                                        className="input-field"
+                                        className="bg-black/40 border-white/10 text-white h-9"
                                     />
                                 </div>
-                                <span className="text-slate-500 pt-5">-</span>
-                                <div className="flex-1">
-                                    <label className="text-xs text-slate-400 mb-1 block">Fin</label>
-                                    <input
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Fin</Label>
+                                    <Input
                                         type="time"
                                         value={almuerzo.fin}
                                         onChange={(e) => setAlmuerzo(prev => ({ ...prev, fin: e.target.value }))}
-                                        className="input-field"
+                                        className="bg-black/40 border-white/10 text-white h-9"
                                     />
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="h-px bg-slate-700 my-4" />
+                    <div className="space-y-3">
+                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Días Laborales</h3>
+                        <div className="space-y-2">
+                            {diasSemana.map(dia => {
+                                const isActive = !!horario[dia]
+                                return (
+                                    <div key={dia} className={cn(
+                                        "flex items-center gap-4 p-3 rounded-xl transition-all duration-200 border",
+                                        isActive ? "bg-white/5 border-white/10" : "bg-transparent border-transparent opacity-40"
+                                    )}>
+                                        <div className="w-24 flex items-center gap-3">
+                                            <Switch
+                                                checked={isActive}
+                                                onCheckedChange={(checked) => handleDayToggle(dia, checked)}
+                                                className="scale-90 data-[state=checked]:bg-[#D4AF37]"
+                                            />
+                                            <span className="capitalize text-xs font-bold text-slate-200">{dia}</span>
+                                        </div>
 
-                    {diasSemana.map(dia => {
-                        const isActive = !!horario[dia]
-                        return (
-                            <div key={dia} className="flex items-center gap-4 p-3 rounded-lg bg-slate-800/50">
-                                <div className="w-32 flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={isActive}
-                                        onChange={(e) => handleDayToggle(dia, e.target.checked)}
-                                        className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-purple-500 focus:ring-purple-500"
-                                    />
-                                    <span className="capitalize text-slate-300 font-medium">{dia}</span>
-                                </div>
-
-                                {isActive ? (
-                                    <div className="flex items-center gap-3 flex-1">
-                                        <input
-                                            type="time"
-                                            value={horario[dia]?.inicio}
-                                            onChange={(e) => handleTimeChange(dia, 'inicio', e.target.value)}
-                                            className="input-field py-1 text-sm w-32"
-                                        />
-                                        <span className="text-slate-500">-</span>
-                                        <input
-                                            type="time"
-                                            value={horario[dia]?.fin}
-                                            onChange={(e) => handleTimeChange(dia, 'fin', e.target.value)}
-                                            className="input-field py-1 text-sm w-32"
-                                        />
+                                        {isActive ? (
+                                            <div className="flex items-center gap-2 flex-1 animate-in fade-in duration-300">
+                                                <Input
+                                                    type="time"
+                                                    value={horario[dia]?.inicio}
+                                                    onChange={(e) => handleTimeChange(dia, 'inicio', e.target.value)}
+                                                    className="bg-black/40 border-white/5 text-white h-8 text-xs py-0"
+                                                />
+                                                <span className="text-slate-600 font-bold">-</span>
+                                                <Input
+                                                    type="time"
+                                                    value={horario[dia]?.fin}
+                                                    onChange={(e) => handleTimeChange(dia, 'fin', e.target.value)}
+                                                    className="bg-black/40 border-white/5 text-white h-8 text-xs py-0"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="flex-1 text-[10px] text-slate-600 font-bold uppercase tracking-widest text-right pr-4">
+                                                No Laboral
+                                            </div>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div className="flex-1 text-slate-600 text-sm italic">
-                                        Día de descanso
-                                    </div>
-                                )}
-                            </div>
-                        )
-                    })}
+                                )
+                            })}
+                        </div>
+                    </div>
                 </div>
 
-                <div className="flex justify-end gap-3 p-6 border-t border-slate-700">
-                    <button onClick={onClose} className="btn-secondary">
-                        Cancelar
-                    </button>
-                    <button onClick={handleSave} disabled={loading} className="btn-primary flex items-center gap-2">
-                        {loading ? 'Guardando...' : 'Guardar Horario'}
-                    </button>
+                <div className="flex justify-end gap-3 p-6 border-t border-white/5 shrink-0 bg-black/20">
+                    <Button
+                        variant="ghost"
+                        onClick={onClose}
+                        className="text-slate-400 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-[10px]"
+                    >
+                        CANCELAR
+                    </Button>
+                    <Button
+                        onClick={handleSave}
+                        disabled={loading}
+                        className="bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-black font-black uppercase tracking-widest text-[10px] px-8 hover:opacity-90 disabled:opacity-50"
+                    >
+                        {loading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            'GUARDAR HORARIO'
+                        )}
+                    </Button>
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     )
 }
