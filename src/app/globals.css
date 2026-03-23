@@ -457,3 +457,32 @@ input[type="checkbox"] {
     @apply font-sans;
   }
 }
+
+/* Efficiency Mode Overrides (Admin & Global) */
+.efficiency-mode * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.efficiency-mode .backdrop-blur-sm,
+.efficiency-mode .backdrop-blur-md,
+.efficiency-mode .backdrop-blur-lg,
+.efficiency-mode .backdrop-blur-xl,
+.efficiency-mode .backdrop-blur-2xl,
+.efficiency-mode .backdrop-blur-3xl {
+  background-color: rgba(10, 10, 10, 0.95) !important;
+}
+
+.efficiency-mode .shadow-2xl,
+.efficiency-mode .shadow-xl,
+.efficiency-mode .shadow-lg,
+.efficiency-mode .shadow-glow-gold,
+.efficiency-mode [class*="shadow-["] {
+  box-shadow: none !important;
+}
+
+.efficiency-mode .animate-pulse,
+.efficiency-mode .animate-ping {
+  animation: none !important;
+  opacity: 1 !important;
+}

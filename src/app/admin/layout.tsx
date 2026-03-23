@@ -7,6 +7,7 @@ import { ConnectionStatus } from '@/components/ConnectionStatus'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+    const [isEfficiencyMode, setIsEfficiencyMode] = useState(false)
     const router = useRouter()
     const pathname = usePathname()
 
@@ -21,6 +22,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             router.push('/admin/login')
         } else {
             setIsCheckingAuth(false)
+        }
+
+        const updateEfficiencyMode = () => {
+            setIsEfficiencyMode(localStorage.getItem('admin_efficiency_mode') === 'true')
+        }
+        updateEfficiencyMode()
+        window.addEventListener('efficiencyModeChanged', updateEfficiencyMode as EventListener)
+
+        return () => {
+            window.removeEventListener('efficiencyModeChanged', updateEfficiencyMode as EventListener)
         }
     }, [pathname, router])
 
@@ -42,7 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-        <div className="dark bg-[#0A0A0A] text-slate-100 min-h-screen flex flex-col lg:flex-row font-display relative selection:bg-primary selection:text-black antialiased">
+        <div className={`dark bg-[#0A0A0A] text-slate-100 min-h-screen flex flex-col lg:flex-row font-display relative selection:bg-primary selection:text-black antialiased ${isEfficiencyMode ? 'efficiency-mode' : ''}`}>
             {/* Material Symbols Outlined stylesheet */}
             <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 

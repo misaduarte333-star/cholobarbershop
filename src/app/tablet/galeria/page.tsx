@@ -14,7 +14,8 @@ import {
     Box,
     Sparkles,
     ShieldCheck,
-    Loader2
+    Loader2,
+    Trash2
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -142,6 +143,46 @@ export default function GalleryPage() {
         }
     }
 
+    const handleDelete = async (servicioId: string) => {
+        if (!barbero) return
+        setUploading(servicioId)
+
+        try {
+            // Delete record from DB
+            const { error: dbError } = await (supabase
+                .from('fotos_cortes') as any)
+                .delete()
+                .eq('barbero_id', barbero.id)
+                .eq('servicio_id', servicioId)
+
+            if (dbError) throw dbError
+
+            // Attempt to clean up storage
+            const { data: files } = await supabase.storage.from('cortes').list(`${barbero.id}`)
+            if (files) {
+                const fileToDelete = files.find(f => f.name.startsWith(`${servicioId}.`))
+                if (fileToDelete) {
+                    await supabase.storage.from('cortes').remove([`${barbero.id}/${fileToDelete.name}`])
+                }
+            }
+
+            setFotosMap(prev => {
+                const newMap = { ...prev }
+                delete newMap[servicioId]
+                return newMap
+            })
+            
+            toast.success('Foto eliminada con éxito', {
+                icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            })
+        } catch (err: any) {
+            console.error('Delete error:', err)
+            toast.error('Error al eliminar imagen')
+        } finally {
+            setUploading(null)
+        }
+    }
+
     return (
         <main className="relative min-h-screen bg-[#0f0c08] text-white overflow-x-hidden selection:bg-primary selection:text-black antialiased">
 
@@ -243,24 +284,41 @@ export default function GalleryPage() {
                                                     <Loader2 className="w-10 h-10 text-primary animate-spin" />
                                                     <div className="absolute inset-0 bg-primary/20 blur-xl animate-pulse" />
                                                 </div>
-                                                <span className="font-black text-[10px] uppercase tracking-[0.4em] text-primary">Subiendo...</span>
+                                                <span className="font-black text-[10px] uppercase tracking-[0.4em] text-primary">Procesando...</span>
                                             </div>
                                         )}
 
-                                        {/* Botón de Acción Sobre Imagen */}
-                                        <label className="absolute bottom-4 right-4 z-10 scale-90 group-hover:scale-100 transition-transform opacity-0 group-hover:opacity-100 duration-300 cursor-pointer">
-                                            <input
-                                                type="file"
-                                                className="hidden"
-                                                accept="image/*"
-                                                onChange={(e) => e.target.files?.[0] && handleUpload(servicio.id, e.target.files[0])}
-                                                disabled={!!uploading}
-                                            />
-                                            <div className="inline-flex items-center justify-center bg-black/80 border border-primary/30 backdrop-blur-md text-primary font-black uppercase tracking-[0.2em] text-[10px] h-11 px-6 rounded-2xl hover:bg-primary hover:text-black transition-all shadow-2xl">
-                                                <Upload className="w-4 h-4 mr-2" />
-                                                {fotosMap[servicio.id] ? 'Actualizar' : 'Subir Foto'}
-                                            </div>
-                                        </label>
+                                        {/* Acciones */}
+                                        <div className="absolute bottom-4 right-4 left-4 z-10 flex items-center justify-between scale-90 group-hover:scale-100 transition-transform opacity-0 group-hover:opacity-100 duration-300">
+                                            {/* Botón de Eliminar */}
+                                            {fotosMap[servicio.id] ? (
+                                                <button
+                                                    onClick={() => handleDelete(servicio.id)}
+                                                    className="inline-flex items-center justify-center bg-red-500/10 border border-red-500/30 backdrop-blur-md text-red-500 font-black uppercase tracking-[0.2em] text-[10px] h-11 px-4 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-2xl"
+                                                    disabled={!!uploading}
+                                                    title="Eliminar Foto"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            ) : (
+                                                <div /> /* Placeholder to push Upload to the right */
+                                            )}
+
+                                            {/* Botón de Actualizar / Subir Foto */}
+                                            <label className="cursor-pointer">
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={(e) => e.target.files?.[0] && handleUpload(servicio.id, e.target.files[0])}
+                                                    disabled={!!uploading}
+                                                />
+                                                <div className="inline-flex items-center justify-center bg-black/80 border border-primary/30 backdrop-blur-md text-primary font-black uppercase tracking-[0.2em] text-[10px] h-11 px-6 rounded-2xl hover:bg-primary hover:text-black transition-all shadow-2xl">
+                                                    <Upload className="w-4 h-4 mr-2" />
+                                                    {fotosMap[servicio.id] ? 'Actualizar' : 'Subir Foto'}
+                                                </div>
+                                            </label>
+                                        </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-6 relative">

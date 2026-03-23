@@ -26,7 +26,8 @@ import {
     Scissors,
     History,
     AlertCircle,
-    DollarSign
+    DollarSign,
+    TrendingUp
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
@@ -70,6 +71,7 @@ export default function TabletDashboard() {
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const [isAudioInitialized, setIsAudioInitialized] = useState(false)
     const [soundEnabled, setSoundEnabled] = useState(true)
+    const [isEfficiencyMode, setIsEfficiencyMode] = useState(false)
     const [showSettings, setShowSettings] = useState(false)
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
     const [seccion, setSeccion] = useState<'agenda' | 'finanzas'>('agenda')
@@ -192,6 +194,10 @@ export default function TabletDashboard() {
     useEffect(() => {
         const saved = localStorage.getItem('sound_enabled')
         if (saved !== null) setSoundEnabled(saved === 'true')
+        
+        const savedEff = localStorage.getItem('tablet_efficiency_mode')
+        if (savedEff !== null) setIsEfficiencyMode(savedEff === 'true')
+
         // Try to init audio silently on mount
         initializeAudio()
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -200,6 +206,11 @@ export default function TabletDashboard() {
     const toggleSound = useCallback((val: boolean) => {
         setSoundEnabled(val)
         localStorage.setItem('sound_enabled', String(val))
+    }, [])
+
+    const toggleEfficiencyMode = useCallback((val: boolean) => {
+        setIsEfficiencyMode(val)
+        localStorage.setItem('tablet_efficiency_mode', String(val))
     }, [])
 
     // Unified Hydration & Auth/SWR Sync
@@ -514,9 +525,9 @@ export default function TabletDashboard() {
     return (
         <div className="h-[100dvh] bg-[#0A0C12] text-white flex flex-col overflow-hidden font-sans relative selection:bg-primary selection:text-black">
             {/* Background Effects */}
-            <div className="absolute inset-0 z-0 bg-radial-at-tl from-primary/5 via-transparent to-transparent opacity-60"></div>
-            <div className="absolute inset-0 z-0 bg-radial-at-br from-blue-500/5 via-transparent to-transparent opacity-40"></div>
-            <div className="absolute inset-0 z-0 vignette-overlay opacity-50"></div>
+            <div className={cn("absolute inset-0 z-0 bg-radial-at-tl from-primary/5 via-transparent to-transparent", isEfficiencyMode ? "opacity-30" : "opacity-60")} />
+            {!isEfficiencyMode && <div className="absolute inset-0 z-0 bg-radial-at-br from-blue-500/5 via-transparent to-transparent opacity-40"></div>}
+            <div className={cn("absolute inset-0 z-0 vignette-overlay", isEfficiencyMode ? "opacity-20" : "opacity-50")} />
 
             {newApptAlert.show && (
                 <motion.div
@@ -542,8 +553,8 @@ export default function TabletDashboard() {
                 </motion.div>
             )}
 
-            <header className="bg-black/60 backdrop-blur-3xl border-b border-white/5 px-4 md:px-8 py-3 md:py-5 shadow-[0_10px_50px_rgba(0,0,0,0.8)] shrink-0 z-50 relative">
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-primary/30 to-amber-600/30 opacity-30" />
+            <header className={cn("bg-black/60 border-b border-white/5 px-4 md:px-8 py-3 md:py-5 shrink-0 z-50 relative", isEfficiencyMode ? "backdrop-blur-md shadow-md" : "backdrop-blur-3xl shadow-[0_10px_50px_rgba(0,0,0,0.8)]")}>
+                {!isEfficiencyMode && <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-primary/30 to-amber-600/30 opacity-30" />}
 
                 <div className="flex items-start justify-between max-w-[1920px] mx-auto gap-3">
 
@@ -757,8 +768,8 @@ export default function TabletDashboard() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 bg-black/40 lg:border border-white/5 lg:shadow-[0_20px_60px_rgba(0,0,0,0.5)] lg:rounded-[1.5rem] overflow-hidden relative backdrop-blur-3xl group transition-all duration-700 hover:border-white/10">
-                                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-gold opacity-10" />
+                            <div className={cn("flex-1 bg-black/40 lg:border border-white/5 overflow-hidden relative group transition-all duration-700", isEfficiencyMode ? "lg:rounded-xl" : "lg:shadow-[0_20px_60px_rgba(0,0,0,0.5)] lg:rounded-[1.5rem] hover:border-white/10 backdrop-blur-3xl")}>
+                                {!isEfficiencyMode && <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-gold opacity-10" />}
                                 {loadingAgenda ? (
                                     <div className="flex flex-col w-full h-full p-6 space-y-4 animate-pulse">
                                         <div className="h-8 w-1/3 bg-white/5 rounded-xl ml-auto" />
@@ -768,7 +779,7 @@ export default function TabletDashboard() {
                                 ) : (
                                     <div className="w-full h-full animate-fade-in relative z-10 flex flex-col">
                                         {(vistaAgenda === 'hoy' || vistaAgenda === 'dia') ? (
-                                            <AgendaTimeline
+                                                <AgendaTimeline
                                                 citas={citasAgenda}
                                                 bloqueos={bloqueosAgenda}
                                                 almuerzoBarbero={almuerzoBarbero}
@@ -777,6 +788,7 @@ export default function TabletDashboard() {
                                                 fechaBase={fechaAgenda}
                                                 barbero={barbero}
                                                 onUpdate={() => cargarAgenda()}
+                                                isEfficiencyMode={isEfficiencyMode}
                                             />
                                         ) : (
                                             <div className="p-4 pt-6 h-full overflow-y-auto custom-scrollbar">
@@ -813,7 +825,7 @@ export default function TabletDashboard() {
                         </div>
 
                         <div className={`lg:col-span-4 flex flex-col h-full min-h-0 relative transition-all duration-500 ${showMobileAppointments ? 'translate-y-0 opacity-100 z-50' : 'hidden lg:flex'}`}>
-                            <div className="lg:hidden flex items-center justify-between p-6 bg-black/90 backdrop-blur-xl border-b border-white/5 sticky top-0 z-[60]">
+                            <div className={cn("lg:hidden flex items-center justify-between p-6 bg-black/90 border-b border-white/5 sticky top-0 z-[60]", !isEfficiencyMode && "backdrop-blur-xl")}>
                                 <div className="flex items-center gap-4">
                                     <div className="h-1 w-6 bg-primary rounded-full" />
                                     <h2 className="text-xs font-black text-white uppercase tracking-[0.3em] font-display">Agenda del Día</h2>
@@ -936,6 +948,26 @@ export default function TabletDashboard() {
                                         <Switch
                                             checked={soundEnabled}
                                             onCheckedChange={toggleSound}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-4">Rendimiento</p>
+                                <div className="bg-white/5 rounded-2xl border border-white/5 p-5">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 text-amber-500">
+                                                <TrendingUp className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-white leading-tight">Modo Eficiencia</p>
+                                                <p className="text-[10px] text-white/40">Optimiza batería y rendimiento visual</p>
+                                            </div>
+                                        </div>
+                                        <Switch
+                                            checked={isEfficiencyMode}
+                                            onCheckedChange={toggleEfficiencyMode}
                                         />
                                     </div>
                                 </div>

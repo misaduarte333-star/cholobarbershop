@@ -54,6 +54,7 @@ interface AgendaTimelineProps {
     currentTime: Date
     barbero?: any
     onUpdate?: () => void
+    isEfficiencyMode?: boolean
 }
 
 
@@ -70,7 +71,7 @@ function generarSlots(inicio: number, fin: number): string[] {
     return slots
 }
 
-const TimelineAppointmentCard = ({
+const TimelineAppointmentCard = memo(({
     item,
     cardResetKey,
     longPressActive,
@@ -90,7 +91,8 @@ const TimelineAppointmentCard = ({
     handleMoveClick,
     handleCancelClick,
     handleCheckoutClick,
-    actualizarEstadoDirecto
+    actualizarEstadoDirecto,
+    isEfficiencyMode
 }: any) => {
     const controls = useDragControls()
     const isThisLongPress = longPressActive === (item.tipo === 'cita' ? item.data.id : null)
@@ -113,16 +115,16 @@ const TimelineAppointmentCard = ({
             onPointerCancel={handlePointerUp}
             animate={{
                 y: isThisLongPress ? undefined : 0,
-                scale: isThisLongPress ? 1.03 : isThisHighlighted ? [1, 1.05, 1] : 1,
-                boxShadow: isThisLongPress
+                scale: isThisLongPress ? (isEfficiencyMode ? 1.01 : 1.03) : isThisHighlighted ? [1, 1.05, 1] : 1,
+                boxShadow: isEfficiencyMode ? 'none' : (isThisLongPress
                     ? '0 10px 20px rgba(0,0,0,0.4), 0 0 15px rgba(234,179,8,0.2)'
                     : isThisHighlighted
                         ? '0 0 25px rgba(16,185,129,0.5)'
-                        : '0 2px 6px rgba(0,0,0,0.1)',
+                        : '0 2px 6px rgba(0,0,0,0.1)'),
                 zIndex: isThisLongPress || isThisHighlighted ? 100 : 20,
                 borderColor: isThisHighlighted ? '#10b981' : undefined
             }}
-            transition={{
+            transition={isEfficiencyMode ? { type: 'tween', duration: 0.1 } : {
                 type: 'spring',
                 damping: 20,
                 stiffness: 400,
@@ -130,8 +132,9 @@ const TimelineAppointmentCard = ({
                 scale: isThisHighlighted ? { repeat: 3, duration: 1 } : undefined
             }}
             className={cn(
-                "absolute inset-x-0 h-[calc(100%-4px)] flex items-center justify-between gap-1 animate-fade-in backdrop-blur-sm px-2.5 py-1 rounded-xl border transition-colors group/card overflow-hidden cursor-pointer select-none",
-                isThisHighlighted ? 'bg-emerald-500/20' : cardBorder
+                "absolute inset-x-0 h-[calc(100%-4px)] flex items-center justify-between gap-1 px-2.5 py-1 rounded-xl border transition-colors group/card overflow-hidden cursor-pointer select-none",
+                !isEfficiencyMode && "animate-fade-in backdrop-blur-sm",
+                isThisHighlighted ? (isEfficiencyMode ? 'bg-emerald-500/30' : 'bg-emerald-500/20') : cardBorder
             )}
             style={{
                 backgroundColor: isThisLongPress ? 'rgba(30,34,45,0.98)' : undefined,
@@ -233,9 +236,9 @@ const TimelineAppointmentCard = ({
             )}
         </motion.div>
     )
-}
+})
 
-export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, barbero, onUpdate }: AgendaTimelineProps) {
+export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, barbero, onUpdate, isEfficiencyMode }: AgendaTimelineProps) {
     // Determinar día de la semana para el horario de sucursal
     const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
     const todayLocalStr = new Intl.DateTimeFormat('en-CA', {
@@ -961,6 +964,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                             handleCancelClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('cancel'); }}
                                                             handleCheckoutClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('checkout'); }}
                                                             actualizarEstadoDirecto={actualizarEstadoDirecto}
+                                                            isEfficiencyMode={isEfficiencyMode}
                                                         />
                                                     ) : (
                                                         <div className="h-px w-4 bg-white/5 ml-1" />
