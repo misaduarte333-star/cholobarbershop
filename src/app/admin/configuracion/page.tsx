@@ -34,8 +34,7 @@ export default function ConfiguracionPage() {
         nombre: '',
         direccion: '',
         telefono_whatsapp: '',
-        activa: true,
-        efficiencyMode: false
+        activa: true
     })
     const [horario, setHorario] = useState<HorarioApertura>({
         lunes: { apertura: '09:00', cierre: '20:00' },
@@ -69,8 +68,7 @@ export default function ConfiguracionPage() {
                     nombre: 'Cholo Barbershop',
                     direccion: 'Av. Principal #123, Hermosillo, Sonora',
                     telefono_whatsapp: '5216621234567',
-                    activa: true,
-                    efficiencyMode: localStorage.getItem('admin_efficiency_mode') === 'true'
+                    activa: true
                 })
             } else if (data) {
                 setSucursal(data)
@@ -78,8 +76,7 @@ export default function ConfiguracionPage() {
                     nombre: data.nombre,
                     direccion: data.direccion || '',
                     telefono_whatsapp: data.telefono_whatsapp,
-                    activa: data.activa,
-                    efficiencyMode: localStorage.getItem('admin_efficiency_mode') === 'true'
+                    activa: data.activa
                 })
                 if (data.horario_apertura) {
                     setHorario(data.horario_apertura)
@@ -113,11 +110,6 @@ export default function ConfiguracionPage() {
 
                 if (error) throw error
             }
-
-            // Save efficiency mode to localStorage
-            localStorage.setItem('admin_efficiency_mode', formData.efficiencyMode.toString())
-            // Dispatch a custom event so other components (like layout) can update immediately
-            window.dispatchEvent(new Event('efficiencyModeChanged'))
 
             toast.success('Configuración guardada', {
                 description: 'Los cambios se han aplicado correctamente.'
@@ -285,23 +277,6 @@ export default function ConfiguracionPage() {
                                     />
                                 </div>
 
-                                {/* Efficiency Mode Toggle */}
-                                <div className="flex items-center justify-between p-4 bg-slate-500/5 rounded-2xl border border-white/5 group/switch transition-all hover:bg-slate-500/10">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-8 rounded-lg bg-slate-500/20 flex items-center justify-center border border-white/10">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><path d="m9 15 2 2 4-4"/></svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-black uppercase tracking-tight text-white leading-none">Modo Eficiencia (Admin)</p>
-                                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter mt-1">Desactiva efectos visuales pesados</p>
-                                        </div>
-                                    </div>
-                                    <Switch
-                                        checked={formData.efficiencyMode}
-                                        onCheckedChange={(checked) => setFormData({ ...formData, efficiencyMode: checked })}
-                                        className="data-[state=checked]:bg-primary"
-                                    />
-                                </div>
                             </div>
                         </Card>
 

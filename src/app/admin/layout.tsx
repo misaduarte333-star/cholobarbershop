@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { ConnectionStatus } from '@/components/ConnectionStatus'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [isCheckingAuth, setIsCheckingAuth] = useState(true)
-    const [isEfficiencyMode, setIsEfficiencyMode] = useState(false)
     const router = useRouter()
     const pathname = usePathname()
 
@@ -22,16 +22,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             router.push('/admin/login')
         } else {
             setIsCheckingAuth(false)
-        }
-
-        const updateEfficiencyMode = () => {
-            setIsEfficiencyMode(localStorage.getItem('admin_efficiency_mode') === 'true')
-        }
-        updateEfficiencyMode()
-        window.addEventListener('efficiencyModeChanged', updateEfficiencyMode as EventListener)
-
-        return () => {
-            window.removeEventListener('efficiencyModeChanged', updateEfficiencyMode as EventListener)
         }
     }, [pathname, router])
 
@@ -53,7 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-        <div className={`dark bg-[#0A0A0A] text-slate-100 min-h-screen flex flex-col lg:flex-row font-display relative selection:bg-primary selection:text-black antialiased ${isEfficiencyMode ? 'efficiency-mode' : ''}`}>
+        <div className="dark bg-[#0A0A0A] text-slate-100 min-h-screen flex flex-col lg:flex-row font-display relative selection:bg-primary selection:text-black antialiased efficiency-mode">
             {/* Material Symbols Outlined stylesheet */}
             <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 
@@ -67,8 +57,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="size-8 rounded-lg overflow-hidden border border-white/10">
-                        <img 
+                        <Image 
                             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAupJ0NN2FAFZ6tI6RCShLVEdmHhuGCITlUKRL6_nXpmUHJwgFD5gdYKHv4rgGoTTyZjfhMPhOizJfi_Wr0I8ScGatKToDD6OoSBPCK216hMjcwbbVW8ECH4_42v7X7UxdAc0iJnJ3ZYaVfVubqC5ggr2alR3AGRmXpmgpnox1TvJ_LjpECls_bxd51pd4_A9JwUKRWndND9sgtx_KrQo6V3Ish93C9evXJpme6TaCkAOstX_qONuWfqoJ4uYZWK8CxXjC5OmTd8Wg" 
+                            alt="Avatar"
+                            width={32}
+                            height={32}
                             className="w-full h-full object-cover"
                         />
                     </div>

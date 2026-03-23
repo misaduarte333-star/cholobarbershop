@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Home() {
     return (
@@ -124,7 +125,14 @@ export default function Home() {
                         <div className="absolute inset-1 rounded-full border border-primary/20" />
                         {/* Inner glow */}
                         <div className="absolute inset-2 rounded-full bg-gradient-to-b from-primary/10 to-transparent" />
-                        <img src="/logo-cholo.jpg" alt="Logo" className="relative z-10 w-full h-full rounded-full object-cover transform scale-110" />
+                        <Image 
+                            src="/logo-cholo.jpg" 
+                            alt="Logo" 
+                            width={80} 
+                            height={80} 
+                            priority={true} 
+                            className="relative z-10 w-full h-full rounded-full object-cover transform scale-110" 
+                        />
                     </div>
 
                     {/* Main Title */}

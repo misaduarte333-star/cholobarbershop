@@ -36,7 +36,9 @@ export default function RootLayout({
     return (
         <html lang="es" className={cn(inter.variable, montserrat.variable, "font-sans", geist.variable, "dark")}>
             <head>
-                <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+                <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap" rel="stylesheet" />
             </head>
             <body className="bg-background-dark text-slate-100 dark:bg-background-dark dark:text-slate-100 min-h-screen font-display antialiased">
                 <AuthProvider>

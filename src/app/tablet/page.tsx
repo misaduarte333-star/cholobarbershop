@@ -71,7 +71,7 @@ export default function TabletDashboard() {
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const [isAudioInitialized, setIsAudioInitialized] = useState(false)
     const [soundEnabled, setSoundEnabled] = useState(true)
-    const [isEfficiencyMode, setIsEfficiencyMode] = useState(false)
+    const isEfficiencyMode = true // Hardcoded for performance
     const [showSettings, setShowSettings] = useState(false)
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
     const [seccion, setSeccion] = useState<'agenda' | 'finanzas'>('agenda')
@@ -194,9 +194,6 @@ export default function TabletDashboard() {
     useEffect(() => {
         const saved = localStorage.getItem('sound_enabled')
         if (saved !== null) setSoundEnabled(saved === 'true')
-        
-        const savedEff = localStorage.getItem('tablet_efficiency_mode')
-        if (savedEff !== null) setIsEfficiencyMode(savedEff === 'true')
 
         // Try to init audio silently on mount
         initializeAudio()
@@ -206,11 +203,6 @@ export default function TabletDashboard() {
     const toggleSound = useCallback((val: boolean) => {
         setSoundEnabled(val)
         localStorage.setItem('sound_enabled', String(val))
-    }, [])
-
-    const toggleEfficiencyMode = useCallback((val: boolean) => {
-        setIsEfficiencyMode(val)
-        localStorage.setItem('tablet_efficiency_mode', String(val))
     }, [])
 
     // Unified Hydration & Auth/SWR Sync
@@ -948,26 +940,6 @@ export default function TabletDashboard() {
                                         <Switch
                                             checked={soundEnabled}
                                             onCheckedChange={toggleSound}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-4">Rendimiento</p>
-                                <div className="bg-white/5 rounded-2xl border border-white/5 p-5">
-                                    <div className="flex items-center justify-between gap-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 text-amber-500">
-                                                <TrendingUp className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-black text-white leading-tight">Modo Eficiencia</p>
-                                                <p className="text-[10px] text-white/40">Optimiza batería y rendimiento visual</p>
-                                            </div>
-                                        </div>
-                                        <Switch
-                                            checked={isEfficiencyMode}
-                                            onCheckedChange={toggleEfficiencyMode}
                                         />
                                     </div>
                                 </div>
