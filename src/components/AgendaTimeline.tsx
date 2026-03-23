@@ -98,39 +98,43 @@ const TimelineAppointmentCard = memo(({
     const isThisLongPress = longPressActive === (item.tipo === 'cita' ? item.data.id : null)
     const isThisHighlighted = highlightedCitaId === item.data.id
 
+    const CardContainer = isEfficiencyMode ? 'div' : motion.div as any
+    const motionProps = isEfficiencyMode ? {} : {
+        drag: item.tipo === 'cita' && (item.data.estado === 'confirmada' || item.data.estado === 'en_espera' || item.data.estado === 'finalizada') ? "y" : false,
+        dragElastic: 0,
+        dragMomentum: false,
+        dragControls: controls,
+        dragListener: false,
+        onDragStart: () => handleDragStart(item.data.id),
+        onDragEnd: (e: any, info: any) => handleDragEnd(e, info, item.data),
+        animate: {
+            y: isThisLongPress ? undefined : 0,
+            scale: isThisLongPress ? (isEfficiencyMode ? 1.01 : 1.03) : isThisHighlighted ? [1, 1.05, 1] : 1,
+            boxShadow: isEfficiencyMode ? 'none' : (isThisLongPress
+                ? '0 10px 20px rgba(0,0,0,0.4), 0 0 15px rgba(234,179,8,0.2)'
+                : isThisHighlighted
+                    ? '0 0 25px rgba(16,185,129,0.5)'
+                    : '0 2px 6px rgba(0,0,0,0.1)'),
+            zIndex: isThisLongPress || isThisHighlighted ? 100 : 20,
+            borderColor: isThisHighlighted ? '#10b981' : undefined
+        },
+        transition: isEfficiencyMode ? { type: 'tween', duration: 0.1 } : {
+            type: 'spring',
+            damping: 20,
+            stiffness: 400,
+            mass: 0.3,
+            scale: isThisHighlighted ? { repeat: 3, duration: 1 } : undefined
+        }
+    }
+
     return (
-        <motion.div
+        <CardContainer
             key={`${item.data.id}-${cardResetKey}`}
             data-drag-id={item.tipo === 'cita' ? item.data.id : undefined}
-            drag={item.tipo === 'cita' && (item.data.estado === 'confirmada' || item.data.estado === 'en_espera' || item.data.estado === 'finalizada') ? "y" : false}
-            dragElastic={0}
-            dragMomentum={false}
-            dragControls={controls}
-            dragListener={false}
-            onDragStart={() => handleDragStart(item.data.id)}
-            onDragEnd={(e, info) => handleDragEnd(e, info, item.data)}
-            onPointerDown={(e) => item.tipo === 'cita' && handlePointerDown(e, item.data, controls)}
+            onPointerDown={(e: any) => item.tipo === 'cita' && handlePointerDown(e, item.data, controls)}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            animate={{
-                y: isThisLongPress ? undefined : 0,
-                scale: isThisLongPress ? (isEfficiencyMode ? 1.01 : 1.03) : isThisHighlighted ? [1, 1.05, 1] : 1,
-                boxShadow: isEfficiencyMode ? 'none' : (isThisLongPress
-                    ? '0 10px 20px rgba(0,0,0,0.4), 0 0 15px rgba(234,179,8,0.2)'
-                    : isThisHighlighted
-                        ? '0 0 25px rgba(16,185,129,0.5)'
-                        : '0 2px 6px rgba(0,0,0,0.1)'),
-                zIndex: isThisLongPress || isThisHighlighted ? 100 : 20,
-                borderColor: isThisHighlighted ? '#10b981' : undefined
-            }}
-            transition={isEfficiencyMode ? { type: 'tween', duration: 0.1 } : {
-                type: 'spring',
-                damping: 20,
-                stiffness: 400,
-                mass: 0.3,
-                scale: isThisHighlighted ? { repeat: 3, duration: 1 } : undefined
-            }}
+            {...(motionProps as any)}
             className={cn(
                 "absolute inset-x-0 h-[calc(100%-4px)] flex items-center justify-between gap-1 px-2.5 py-1 rounded-xl border transition-colors group/card overflow-hidden cursor-pointer select-none",
                 !isEfficiencyMode && "animate-fade-in backdrop-blur-sm",
@@ -234,7 +238,7 @@ const TimelineAppointmentCard = memo(({
                     </div>
                 </div>
             )}
-        </motion.div>
+        </CardContainer>
     )
 })
 

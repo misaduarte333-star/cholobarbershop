@@ -1,8 +1,9 @@
-import type { Metadata } from 'next'
+import { Metadata, Viewport } from 'next'
 import { Inter, Montserrat, Geist } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import { cn } from "@/lib/utils";
+import { MotionConfig } from 'framer-motion';
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -41,10 +42,12 @@ export default function RootLayout({
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap" rel="stylesheet" />
             </head>
             <body className="bg-background-dark text-slate-100 dark:bg-background-dark dark:text-slate-100 min-h-screen font-display antialiased">
-                <AuthProvider>
-                    {children}
-                </AuthProvider>
-                <Toaster position="top-center" expand={false} richColors closeButton />
+                <MotionConfig reducedMotion="user">
+                    <AuthProvider>
+                        {children}
+                        <Toaster position="top-right" richColors closeButton />
+                    </AuthProvider>
+                </MotionConfig>
             </body>
         </html>
     )

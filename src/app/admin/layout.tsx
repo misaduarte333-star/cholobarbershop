@@ -5,6 +5,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { ConnectionStatus } from '@/components/ConnectionStatus'
+import { cn } from '@/lib/utils'
+import { isLowEndDevice } from '@/lib/performance'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [isCheckingAuth, setIsCheckingAuth] = useState(true)
@@ -30,6 +32,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return pathname === href || pathname.startsWith(href + '/')
     }
 
+    const [isLowPerformance, setIsLowPerformance] = useState(false)
+    
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsLowPerformance(isLowEndDevice())
+        }
+    }, [])
+
     if (isCheckingAuth) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background-dark text-white">
@@ -43,7 +53,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-        <div className="dark bg-[#0A0A0A] text-slate-100 min-h-screen flex flex-col lg:flex-row font-display relative selection:bg-primary selection:text-black antialiased efficiency-mode">
+        <div className={cn(
+            "dark bg-[#0A0A0A] text-slate-100 min-h-screen flex flex-col lg:flex-row font-display relative selection:bg-primary selection:text-black antialiased",
+            isLowPerformance && "efficiency-mode"
+        )}>
             {/* Material Symbols Outlined stylesheet */}
             <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 

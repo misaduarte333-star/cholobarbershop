@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, MotionConfig } from 'framer-motion'
+import { isLowEndDevice } from '@/lib/performance'
 import {
     Plus,
     BarChart3,
@@ -71,7 +72,13 @@ export default function TabletDashboard() {
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const [isAudioInitialized, setIsAudioInitialized] = useState(false)
     const [soundEnabled, setSoundEnabled] = useState(true)
-    const isEfficiencyMode = true // Hardcoded for performance
+    const [isEfficiencyMode, setIsEfficiencyMode] = useState(false)
+    
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsEfficiencyMode(isLowEndDevice())
+        }
+    }, [])
     const [showSettings, setShowSettings] = useState(false)
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
     const [seccion, setSeccion] = useState<'agenda' | 'finanzas'>('agenda')
