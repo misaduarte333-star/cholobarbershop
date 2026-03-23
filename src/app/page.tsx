@@ -124,7 +124,7 @@ export default function Home() {
                         <div className="absolute inset-1 rounded-full border border-primary/20" />
                         {/* Inner glow */}
                         <div className="absolute inset-2 rounded-full bg-gradient-to-b from-primary/10 to-transparent" />
-                        <span className="relative z-10 font-display font-black text-3xl gradient-text-gold select-none tracking-tight">CB</span>
+                        <img src="/logo-cholo.jpg" alt="Logo" className="relative z-10 w-full h-full rounded-full object-cover transform scale-110" />
                     </div>
 
                     {/* Main Title */}

@@ -331,7 +331,7 @@ function getDemoServices(): Servicio[] {
 
 function getDemoBarbers(): Barbero[] {
     return [
-        { id: '1', sucursal_id: '1', nombre: 'Carlos H.', estacion_id: 1, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, comision_porcentaje: 50, created_at: '' },
-        { id: '2', sucursal_id: '1', nombre: 'Miguel L.', estacion_id: 2, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, comision_porcentaje: 45, created_at: '' },
+        { id: '1', sucursal_id: '1', nombre: 'Carlos H.', estacion_id: 1, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, comision_porcentaje: 50, meta_cortes_mensual: 100, created_at: '' },
+        { id: '2', sucursal_id: '1', nombre: 'Miguel L.', estacion_id: 2, usuario_tablet: '', password_hash: '', horario_laboral: {}, bloqueo_almuerzo: null, activo: true, hora_entrada: null, comision_porcentaje: 45, meta_cortes_mensual: 100, created_at: '' },
     ]
 }

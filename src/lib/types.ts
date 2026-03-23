@@ -55,6 +55,7 @@ export interface Barbero {
     activo: boolean
     estacion_id: number | null
     comision_porcentaje: number | null
+    meta_cortes_mensual: number | null
     created_at: string
 }
 
@@ -127,6 +128,7 @@ export interface Gasto {
     dia_mes?: number | null
     metodo_pago?: 'efectivo' | 'tarjeta' | 'transferencia' | null
     detalles_pago?: string | null
+    barbero_id?: string | null
     created_at: string
     updated_at: string
 }
@@ -284,7 +286,11 @@ export interface Database {
                 Relationships: []
             }
         }
-        Views: Record<string, never>
+        Views: {
+            vista_citas_app: {
+                Row: CitaDesdeVista
+            }
+        }
         Functions: Record<string, never>
         Enums: Record<string, never>
         CompositeTypes: Record<string, never>

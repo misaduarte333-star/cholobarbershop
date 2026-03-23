@@ -93,113 +93,99 @@ export default function FinanzasPage() {
     const [showRecurrenceAlert, setShowRecurrenceAlert] = useState(false)
     const [updateFutureRecurrence, setUpdateFutureRecurrence] = useState(false)
 
-    // Break-even states
-    const [barberos, setBarberos] = useState<Barbero[]>([])
-    const [selectedBarberoId, setSelectedBarberoId] = useState<string>('')
-    const [barberoIncome, setBarberoIncome] = useState(0)
+    // Business states
     const [loadingIncome, setLoadingIncome] = useState(false)
+    const [businessStats, setBusinessStats] = useState({
+        totalBruto: 0,
+        totalRevenueNegocio: 0,
+        totalExpensesNegocio: 0,
+        netProfit: 0,
+        barberContributions: [] as { id: string, nombre: string, generado: number }[]
+    })
 
     const supabase = createClient()
 
     const fetchGastos = async () => {
         setLoading(true)
         try {
+            // Fetch ALL business expenses (where barbero_id is null)
             const { data, error } = await supabase
                 .from('gastos')
                 .select('*')
+                .is('barbero_id', null)
                 .order('fecha_pago', { ascending: true })
             
-            if (error) {
-                console.error('Fetch error:', error)
-                throw error
-            }
+            if (error) throw error
 
             setGastos((data as any[] as Gasto[]) || [])
         } catch (error: any) {
-            console.error('Error fetching gastos:', error?.message || error)
-            toast.error('Error al conectar con la base de datos de gastos')
+            console.error('Error fetching gastos:', error)
+            toast.error('Error al cargar gastos del negocio')
             setGastos([])
         } finally {
             setLoading(false)
         }
     }
 
-    const fetchSucursal = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('sucursales')
-                .select('id')
-                .limit(1)
-                .maybeSingle()
-
-            if (error) throw error
-            if (data) setSucursalId((data as {id: string}).id)
-        } catch (error: any) {
-            console.error('Error fetching sucursal:', error?.message || error)
-        }
-    }
-
-    const fetchBarberos = async () => {
-        try {
-            const { data, error } = await supabase.from('barberos').select('*').eq('activo', true)
-            if (error) throw error
-            const casted = data as Barbero[]
-            setBarberos(casted)
-            
-            // Try to find Gabriel by default
-            const gabriel = casted.find(b => b.nombre.toLowerCase().includes('gabriel'))
-            if (gabriel) {
-                setSelectedBarberoId(gabriel.id)
-            } else if (casted.length > 0) {
-                setSelectedBarberoId(casted[0].id)
-            }
-        } catch (error) {
-            console.error('Error fetching barberos:', error)
-        }
-    }
-
-    const fetchBarberoIncome = async (barberoId: string) => {
-        if (!barberoId) return
+    const fetchBusinessMetrics = async () => {
         setLoadingIncome(true)
         try {
-            const start = startOfMonth(new Date()).toISOString()
-            const end = endOfMonthDate(new Date()).toISOString()
+            const startStr = format(startOfMonth(new Date()), 'yyyy-MM-dd')
+            const endStr = format(endOfMonthDate(new Date()), 'yyyy-MM-dd')
 
-            const [citasRes, cortesRes] = await Promise.all([
-                supabase
-                    .from('vista_citas_app')
-                    .select('servicio_precio, fecha_cita_local, timestamp_inicio_local, estado')
-                    .eq('barbero_id', barberoId)
-                    .gte('timestamp_inicio_local', start)
-                    .lte('timestamp_inicio_local', end)
-                    .in('estado', ['finalizada', 'confirmada', 'en_proceso']),
-                supabase
-                    .from('cortes_turno')
-                    .select('fecha_corte')
-                    .gte('fecha_corte', start)
-                    .lte('fecha_corte', end)
-                    .eq('tipo', 'diario')
-            ])
+            // 1. Fetch appointments for all barbers for the month
+            const { data: citas, error: citasError } = await supabase
+                .from('vista_citas_app')
+                .select('*')
+                .eq('estado', 'finalizada')
+                .gte('fecha_cita_local', startStr)
+                .lte('fecha_cita_local', endStr)
 
-            if (citasRes.error) throw citasRes.error
-            if (cortesRes.error) throw cortesRes.error
-            
-            const cortesFechas = new Set((cortesRes.data || []).map((c: any) => c.fecha_corte))
+            if (citasError) throw citasError
 
-            let total = 0
-            if (citasRes.data) {
-                citasRes.data.forEach((cita: any) => {
-                    if (cita.estado !== 'finalizada') return
-                    const dKey = cita.fecha_cita_local || (cita.timestamp_inicio_local ? cita.timestamp_inicio_local.split('T')[0] : '')
-                    if (cortesFechas.has(dKey)) {
-                        total += (cita.servicio_precio || 0)
+            // 2. Fetch business expenses (already in gastos state, but let's calculate here for accuracy)
+            const { data: businessGastos, error: gastosError } = await supabase
+                .from('gastos')
+                .select('monto')
+                .is('barbero_id', null)
+                .gte('fecha_pago', startStr)
+                .lte('fecha_pago', endStr)
+
+            if (gastosError) throw gastosError
+
+            // Calculations
+            let totalBruto = 0
+            let totalRevenueNegocio = 0
+            const contributions: Record<string, { id: string, nombre: string, generado: number }> = {}
+
+            citas?.forEach((cita: any) => {
+                const monto = cita.monto_pagado || cita.servicio_precio || 0
+                totalBruto += monto
+                
+                // If comision_barbero is not present, assume 50/50
+                const comisionBarbero = cita.comision_barbero || (monto * 0.5)
+                const comisionNegocio = monto - comisionBarbero
+                totalRevenueNegocio += comisionNegocio
+
+                if (cita.barbero_id) {
+                    if (!contributions[cita.barbero_id]) {
+                        contributions[cita.barbero_id] = { id: cita.barbero_id, nombre: cita.barbero_nombre, generado: 0 }
                     }
-                })
-            }
-            setBarberoIncome(total)
+                    contributions[cita.barbero_id].generado += comisionNegocio
+                }
+            })
+
+            const totalExpensesNegocio = (businessGastos as any[])?.reduce((sum, g) => sum + (g.monto || 0), 0) || 0
+
+            setBusinessStats({
+                totalBruto,
+                totalRevenueNegocio,
+                totalExpensesNegocio,
+                netProfit: totalRevenueNegocio - totalExpensesNegocio,
+                barberContributions: Object.values(contributions).sort((a,b) => b.generado - a.generado)
+            })
         } catch (error) {
-            console.error('Error fetching barbero income:', error)
-            setBarberoIncome(0)
+            console.error('Error fetching business metrics:', error)
         } finally {
             setLoadingIncome(false)
         }
@@ -207,8 +193,7 @@ export default function FinanzasPage() {
 
     useEffect(() => {
         fetchGastos()
-        fetchSucursal()
-        fetchBarberos()
+        fetchBusinessMetrics()
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
         return () => clearInterval(timer)
     }, [])
@@ -225,11 +210,8 @@ export default function FinanzasPage() {
         hour12: false 
     })
 
-    useEffect(() => {
-        if (selectedBarberoId) {
-            fetchBarberoIncome(selectedBarberoId)
-        }
-    }, [selectedBarberoId])
+    // fetchSucursal was moved interior or handled implicitly
+    // fetchBarberos is now handled inside fetchBusinessMetrics indirectly or not needed if we iterate commissions
 
     const clearForm = () => {
         setDescripcion('')
@@ -605,30 +587,47 @@ export default function FinanzasPage() {
                 </div>
             </header>
 
-            {/* Savings Breakdown Cards */}
+            {/* Business Metrics Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                 <SavingsCard 
-                    label="Meta Diaria" 
-                    value={savingsMetrics.diario} 
-                    icon="savings" 
-                    desc="Lo que debes juntar hoy"
+                    label="Venta Bruta" 
+                    value={businessStats.totalBruto} 
+                    icon="payments" 
+                    desc="Total recaudado (Cortes)"
                     color="blue"
                 />
                 <SavingsCard 
-                    label="Meta Semanal" 
-                    value={savingsMetrics.semanal} 
-                    icon="event_repeat" 
-                    desc="Proyección de ahorro semanal"
+                    label="Ingreso Negocio" 
+                    value={businessStats.totalRevenueNegocio} 
+                    icon="account_balance" 
+                    desc="Comisiones para el negocio"
+                    color="indigo"
+                />
+                <SavingsCard 
+                    label="Gastos Negocio" 
+                    value={businessStats.totalExpensesNegocio} 
+                    icon="receipt_long" 
+                    desc="Egresos operativos"
                     color="amber"
                 />
                 <SavingsCard 
-                    label="Meta Mensual" 
-                    value={savingsMetrics.mensual} 
-                    icon="account_balance" 
-                    desc="Total de gastos de este mes"
+                    label="Utilidad Neta" 
+                    value={businessStats.netProfit} 
+                    icon="trending_up" 
+                    desc="Ganancia real del mes"
                     color="indigo"
                 />
-                {/* Pagos Vencidos */}
+                <SavingsCard 
+                    label="Pendiente Pago" 
+                    value={gastos.filter(g => !g.pagado).reduce((sum, g) => sum + g.monto, 0)} 
+                    icon="pending_actions" 
+                    desc="Gastos por liquidar"
+                    color="blue"
+                />
+            </div>
+
+            {/* Pagos Vencidos */}
+            <div className="mt-4">
                 <Card className={cn(
                     "glass-card border-white/5 bg-black/40 overflow-hidden rounded-2xl relative group hover:scale-[1.02] transition-all duration-300",
                     savingsMetrics.vencidos > 0 && "border-red-500/30 bg-red-500/5"
@@ -766,7 +765,7 @@ export default function FinanzasPage() {
                 </CardContent>
             </Card>
 
-            {/* Break-Even Analysis Section */}
+            {/* Business Rentability Analysis Section */}
             <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2.5rem] relative group border-indigo-500/10">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-amber-500/5 opacity-50" />
                 <CardHeader className="p-4 sm:p-8 pb-3 sm:pb-4 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -775,91 +774,81 @@ export default function FinanzasPage() {
                             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
                                 <span className="material-icons-round text-lg sm:text-2xl">insights</span>
                             </div>
-                            Análisis de <span className="text-gradient-gold">P.E.</span><span className="hidden sm:inline"> · Punto de Equilibrio</span>
+                            Rentabilidad <span className="text-gradient-gold">Global</span><span className="hidden sm:inline"> · Operación del Negocio</span>
                         </CardTitle>
-                        <CardDescription className="text-[9px] sm:text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">Rentabilidad basada en ingresos de barberos</CardDescription>
+                        <CardDescription className="text-[9px] sm:text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">Visión consolidada de ingresos y gastos operativos</CardDescription>
                     </div>
-                    {barberos.find(b => b.id === selectedBarberoId) && (
-                        <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl">
-                            <span className="material-icons-round text-sm text-indigo-400">person</span>
-                            <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{barberos.find(b => b.id === selectedBarberoId)?.nombre}</span>
-                            {loadingIncome && <span className="material-icons-round text-xs text-white/30 animate-spin">refresh</span>}
-                        </div>
-                    )}
                 </CardHeader>
                 <CardContent className="p-4 sm:p-8 pt-2 sm:pt-4 relative z-10">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-10">
                         {/* Summary Stats */}
                         <div className="space-y-8">
                             <div className="space-y-2">
-                                <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Ingreso Actual ({barberos.find(b => b.id === selectedBarberoId)?.nombre || '...' })</p>
+                                <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Utilidad del Negocio (Comisiones)</p>
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-2xl sm:text-4xl font-black tracking-tighter text-white">${barberoIncome.toLocaleString()}</span>
+                                    <span className={cn("text-2xl sm:text-4xl font-black tracking-tighter", businessStats.netProfit >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                                        ${businessStats.netProfit.toLocaleString()}
+                                    </span>
                                     <span className="text-[9px] sm:text-[10px] font-bold text-white/20 uppercase tracking-widest">Este mes</span>
                                 </div>
                             </div>
                             
                             <div className="space-y-4">
                                 <div className="flex justify-between items-end">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Meta de Cobertura (Gastos)</p>
-                                    <p className="text-xs font-black text-amber-500 tracking-tight">${savingsMetrics.mensual.toLocaleString()}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Ratio de Ganancia Bruta</p>
+                                    <p className="text-xs font-black text-amber-500 tracking-tight">${businessStats.totalRevenueNegocio.toLocaleString()}</p>
                                 </div>
                                 <div className="relative pt-2">
                                     <Progress 
-                                        value={Math.min((barberoIncome / (savingsMetrics.mensual || 1)) * 100, 100)} 
+                                        value={Math.min((businessStats.totalRevenueNegocio / (businessStats.totalExpensesNegocio || 1)) * 100, 100)} 
                                         className="h-3 bg-white/5 border border-white/5"
                                     />
                                     <div className="absolute -top-1 right-0 w-2 h-5 bg-amber-500/50 blur-[2px] rounded-full" style={{ left: '100%' }} />
                                 </div>
                                 <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.15em] text-center italic">
-                                    {barberoIncome >= savingsMetrics.mensual 
-                                        ? "✨ ¡HAS OPERADO SUPERANDO EL PUNTO DE EQUILIBRIO!" 
-                                        : `Faltan $${Math.max(0, savingsMetrics.mensual - barberoIncome).toLocaleString()} para cubrir gastos`}
+                                    {businessStats.netProfit >= 0 
+                                        ? "✨ LA OPERACIÓN ES RENTABLE ESTE MES" 
+                                        : `Se requieren $${Math.abs(businessStats.netProfit).toLocaleString()} adicionales para cubrir gastos`}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Threshold Analysis */}
-                        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
-                            <div className="bg-white/[0.02] border border-white/5 rounded-2xl sm:rounded-3xl p-3 sm:p-6 flex flex-col justify-between group hover:bg-white/[0.04] transition-all">
-                                <div className="space-y-2 sm:space-y-4">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                                        <span className="material-icons-round text-base sm:text-xl">trending_up</span>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Umbral de Ganancia</h4>
-                                        <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-relaxed hidden sm:block">Punto donde cada peso extra es utilidad neta</p>
-                                    </div>
+                        {/* Barber Contributions */}
+                        <div className="lg:col-span-2">
+                            <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 h-full">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-white/40">Contribución por Barbero (Negocio)</h4>
+                                    <span className="text-[8px] font-bold text-white/20 uppercase tracking-[0.2em]">Sorteado por producción</span>
                                 </div>
-                                <div className="mt-3 sm:mt-8">
-                                    <div className="text-xl sm:text-2xl font-black text-emerald-400 tracking-tight">
-                                        {barberoIncome > savingsMetrics.mensual ? (
-                                            `+$${(barberoIncome - savingsMetrics.mensual).toLocaleString()}`
-                                        ) : (
-                                            `$${savingsMetrics.mensual.toLocaleString()}`
-                                        )}
-                                    </div>
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mt-1">
-                                        {barberoIncome > savingsMetrics.mensual ? "Utilidad Generada" : "Break-Even"}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="bg-white/[0.02] border border-white/5 rounded-2xl sm:rounded-3xl p-3 sm:p-6 flex flex-col justify-between group hover:bg-white/[0.04] transition-all">
-                                <div className="space-y-2 sm:space-y-4">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-base sm:text-xl">
-                                        ⚖️
-                                    </div>
-                                    <div>
-                                        <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Ratio de Cobertura</h4>
-                                        <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-relaxed hidden sm:block">Porcentaje de gastos cubiertos actualmente</p>
-                                    </div>
-                                </div>
-                                <div className="mt-3 sm:mt-8">
-                                    <div className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                                        {Math.round((barberoIncome / (savingsMetrics.mensual || 1)) * 100)}%
-                                    </div>
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mt-1">Eficiencia Op.</p>
+                                
+                                <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {businessStats.barberContributions.map((barber, idx) => (
+                                        <div key={barber.id} className="flex items-center justify-between group p-2 rounded-xl hover:bg-white/[0.03] transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-[10px] font-black text-indigo-400">
+                                                    {idx + 1}
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-white group-hover:text-indigo-400 transition-colors uppercase tracking-tight">{barber.nombre}</p>
+                                                    <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest">Generado para el negocio</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-black text-white tracking-tight">${barber.generado.toLocaleString()}</p>
+                                                <div className="w-24 h-1 bg-white/5 rounded-full mt-1 overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-indigo-500/40" 
+                                                        style={{ width: `${Math.min((barber.generado / (businessStats.totalRevenueNegocio || 1)) * 100, 100)}%` }} 
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {businessStats.barberContributions.length === 0 && (
+                                        <div className="text-center py-10">
+                                            <p className="text-[9px] font-black text-white/10 uppercase tracking-widest">No hay datos de producción este mes</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

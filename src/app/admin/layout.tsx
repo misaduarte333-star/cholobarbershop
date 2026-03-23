@@ -6,7 +6,6 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ConnectionStatus } from '@/components/ConnectionStatus'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isCheckingAuth, setIsCheckingAuth] = useState(true)
     const router = useRouter()
     const pathname = usePathname()
@@ -50,20 +49,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Mobile Header (Elite Style) */}
             <header className="lg:hidden h-14 px-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#0A0A0A]/90 backdrop-blur-xl z-30">
                 <div className="flex items-center gap-2.5">
-                    <div className="size-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-                        <span className="material-symbols-outlined text-black text-base font-black">content_cut</span>
+                    <div className="size-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 border border-primary/20 bg-black">
+                        <img src="/logo-cholo.jpg" alt="Logo" className="w-full h-full object-cover transform scale-110" />
                     </div>
                     <h1 className="text-sm font-black tracking-[0.2em] text-white uppercase italic">CHOLO<span className="text-primary">BARBER</span></h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className="size-9 rounded-xl glass flex items-center justify-center text-slate-300 border border-white/10 active:scale-95 transition-all"
-                    >
-                        <span className="material-symbols-outlined text-lg">
-                            {isSidebarOpen ? 'close' : 'menu'}
-                        </span>
-                    </button>
                     <div className="size-8 rounded-lg overflow-hidden border border-white/10">
                         <img 
                             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAupJ0NN2FAFZ6tI6RCShLVEdmHhuGCITlUKRL6_nXpmUHJwgFD5gdYKHv4rgGoTTyZjfhMPhOizJfi_Wr0I8ScGatKToDD6OoSBPCK216hMjcwbbVW8ECH4_42v7X7UxdAc0iJnJ3ZYaVfVubqC5ggr2alR3AGRmXpmgpnox1TvJ_LjpECls_bxd51pd4_A9JwUKRWndND9sgtx_KrQo6V3Ish93C9evXJpme6TaCkAOstX_qONuWfqoJ4uYZWK8CxXjC5OmTd8Wg" 
@@ -73,23 +64,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
             </header>
 
-            {/* Sidebar Overlay (Mobile) */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-
-            {/* Desktop Sidebar (Elite Style) */}
             <aside className={`
                 w-72 bg-card-dark border-r border-primary/20 flex-col h-screen sticky top-0 z-50 overflow-hidden
-                flex transition-transform duration-500 lg:translate-x-0
-                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                hidden lg:flex transition-transform duration-500
             `}>
                 <div className="p-6 flex items-center gap-3.5">
-                    <div className="size-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 transition-transform hover:scale-110">
-                        <span className="material-symbols-outlined text-black font-black text-xl">content_cut</span>
+                    <div className="size-12 rounded-xl overflow-hidden shadow-lg shadow-primary/20 border border-primary/20 bg-black transition-transform hover:scale-110">
+                        <img src="/logo-cholo.jpg" alt="Logo" className="w-full h-full object-cover transform scale-110" />
                     </div>
                     <div>
                         <h1 className="text-lg font-black tracking-[0.2em] text-white leading-none">CHOLO<span className="text-primary italic">BARBER</span></h1>
@@ -98,14 +79,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
 
                 <nav className="flex-1 px-4 space-y-1.5 mt-2 overflow-y-auto custom-scrollbar pt-2">
-                    <NavItem href="/admin" icon="dashboard" label="Panel Control" active={isLinkActive('/admin')} onClick={() => setIsSidebarOpen(false)} />
-                    <NavItem href="/admin/citas" icon="calendar_month" label="Agenda Global" active={isLinkActive('/admin/citas')} onClick={() => setIsSidebarOpen(false)} />
-                    <NavItem href="/admin/clientes" icon="badge" label="Clientes" active={isLinkActive('/admin/clientes')} onClick={() => setIsSidebarOpen(false)} />
-                    <NavItem href="/admin/barberos" icon="engineering" label="Gestión Staff" active={isLinkActive('/admin/barberos')} onClick={() => setIsSidebarOpen(false)} />
-                    <NavItem href="/admin/servicios" icon="brush" label="Servicios" active={isLinkActive('/admin/servicios')} onClick={() => setIsSidebarOpen(false)} />
-                    <NavItem href="/admin/reportes" icon="monitoring" label="Reportes" active={isLinkActive('/admin/reportes')} onClick={() => setIsSidebarOpen(false)} />
-                    <NavItem href="/admin/finanzas" icon="account_balance_wallet" label="Finanzas" active={isLinkActive('/admin/finanzas')} onClick={() => setIsSidebarOpen(false)} />
-                    <NavItem href="/admin/configuracion" icon="settings" label="Ajustes" active={isLinkActive('/admin/configuracion')} onClick={() => setIsSidebarOpen(false)} />
+                    <NavItem href="/admin" icon="dashboard" label="Panel Control" active={isLinkActive('/admin')} />
+                    <NavItem href="/admin/citas" icon="calendar_month" label="Agenda Global" active={isLinkActive('/admin/citas')} />
+                    <NavItem href="/admin/clientes" icon="badge" label="Clientes" active={isLinkActive('/admin/clientes')} />
+                    <NavItem href="/admin/barberos" icon="engineering" label="Gestión Staff" active={isLinkActive('/admin/barberos')} />
+                    <NavItem href="/admin/servicios" icon="brush" label="Servicios" active={isLinkActive('/admin/servicios')} />
+                    <NavItem href="/admin/reportes" icon="monitoring" label="Reportes" active={isLinkActive('/admin/reportes')} />
+                    <NavItem href="/admin/finanzas" icon="account_balance_wallet" label="Finanzas" active={isLinkActive('/admin/finanzas')} />
+                    <NavItem href="/admin/configuracion" icon="settings" label="Ajustes" active={isLinkActive('/admin/configuracion')} />
                 </nav>
 
                 <div className="p-4 mt-auto border-t border-white/5 bg-black/20">
@@ -137,28 +118,60 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/90 border-t border-white/5 px-4 py-2 flex items-center justify-between z-40 backdrop-blur-xl">
-                <Link className={`flex flex-col items-center gap-1 min-w-[60px] ${isLinkActive('/admin') ? 'text-primary' : 'text-slate-500'}`} href="/admin">
-                    <span className="material-symbols-outlined text-xl leading-none">dashboard</span>
-                    <span className="text-[9px] font-black tracking-widest uppercase">Inicio</span>
-                </Link>
-                <Link className={`flex flex-col items-center gap-1 min-w-[60px] ${isLinkActive('/admin/citas') ? 'text-primary' : 'text-slate-500'}`} href="/admin/citas">
-                    <span className="material-symbols-outlined text-xl leading-none">calendar_month</span>
-                    <span className="text-[9px] font-black tracking-widest uppercase">Agenda</span>
-                </Link>
-                <div className="relative -top-6 px-2">
-                    <button className="size-14 bg-primary rounded-2xl flex items-center justify-center text-black shadow-2xl shadow-primary/20 border-4 border-[#0A0A0A] active:scale-90 transition-transform">
-                        <span className="material-symbols-outlined text-3xl font-black">add</span>
-                    </button>
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/90 border-t border-white/5 py-2 z-40 backdrop-blur-xl">
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-6 relative">
+                    {/* Shadow indicators for scrolling */}
+                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#0A0A0A] to-transparent z-10 pointer-events-none" />
+                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#0A0A0A] to-transparent z-10 pointer-events-none" />
+                    
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin') ? 'text-primary' : 'text-slate-500'}`} href="/admin">
+                        <span className="material-symbols-outlined text-xl leading-none">dashboard</span>
+                        <span className="text-[9px] font-black tracking-widest uppercase">Inicio</span>
+                        {isLinkActive('/admin') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
+                    </Link>
+                    
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/citas') ? 'text-primary' : 'text-slate-500'}`} href="/admin/citas">
+                        <span className="material-symbols-outlined text-xl leading-none">calendar_month</span>
+                        <span className="text-[9px] font-black tracking-widest uppercase">Agenda</span>
+                        {isLinkActive('/admin/citas') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
+                    </Link>
+
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/clientes') ? 'text-primary' : 'text-slate-500'}`} href="/admin/clientes">
+                        <span className="material-symbols-outlined text-xl leading-none">badge</span>
+                        <span className="text-[9px] font-black tracking-widest uppercase">Clientes</span>
+                        {isLinkActive('/admin/clientes') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
+                    </Link>
+
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/barberos') ? 'text-primary' : 'text-slate-500'}`} href="/admin/barberos">
+                        <span className="material-symbols-outlined text-xl leading-none">engineering</span>
+                        <span className="text-[9px] font-black tracking-widest uppercase">Staff</span>
+                        {isLinkActive('/admin/barberos') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
+                    </Link>
+
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/servicios') ? 'text-primary' : 'text-slate-500'}`} href="/admin/servicios">
+                        <span className="material-symbols-outlined text-xl leading-none">brush</span>
+                        <span className="text-[9px] font-black tracking-widest uppercase">Servicios</span>
+                        {isLinkActive('/admin/servicios') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
+                    </Link>
+
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/reportes') ? 'text-primary' : 'text-slate-500'}`} href="/admin/reportes">
+                        <span className="material-symbols-outlined text-xl leading-none">monitoring</span>
+                        <span className="text-[9px] font-black tracking-widest uppercase">Reportes</span>
+                        {isLinkActive('/admin/reportes') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
+                    </Link>
+
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/finanzas') ? 'text-primary' : 'text-slate-500'}`} href="/admin/finanzas">
+                        <span className="material-symbols-outlined text-xl leading-none">account_balance_wallet</span>
+                        <span className="text-[9px] font-black tracking-widest uppercase">Finanzas</span>
+                        {isLinkActive('/admin/finanzas') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
+                    </Link>
+
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/configuracion') ? 'text-primary' : 'text-slate-500'}`} href="/admin/configuracion">
+                        <span className="material-symbols-outlined text-xl leading-none">settings</span>
+                        <span className="text-[9px] font-black tracking-widest uppercase">Ajustes</span>
+                        {isLinkActive('/admin/configuracion') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
+                    </Link>
                 </div>
-                <Link className={`flex flex-col items-center gap-1 min-w-[60px] ${isLinkActive('/admin/barberos') ? 'text-primary' : 'text-slate-500'}`} href="/admin/barberos">
-                    <span className="material-symbols-outlined text-xl leading-none">engineering</span>
-                    <span className="text-[9px] font-black tracking-widest uppercase">Staff</span>
-                </Link>
-                <Link className={`flex flex-col items-center gap-1 min-w-[60px] ${isLinkActive('/admin/reportes') ? 'text-primary' : 'text-slate-500'}`} href="/admin/reportes">
-                    <span className="material-symbols-outlined text-xl leading-none">monitoring</span>
-                    <span className="text-[9px] font-black tracking-widest uppercase">Más</span>
-                </Link>
             </nav>
 
             {/* Main Content Area */}
@@ -172,11 +185,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
 }
 
-function NavItem({ href, icon, label, active, onClick }: { href: string; icon: string; label: string; active: boolean; onClick: () => void }) {
+function NavItem({ href, icon, label, active }: { href: string; icon: string; label: string; active: boolean }) {
     return (
         <Link
             href={href}
-            onClick={onClick}
             className={`
                 flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 group relative overflow-hidden
                 ${active

@@ -25,11 +25,13 @@ import {
     LayoutDashboard,
     Scissors,
     History,
-    AlertCircle
+    AlertCircle,
+    DollarSign
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
+import { FinanzasBarbero } from '@/components/FinanzasBarbero'
 import type { CitaDesdeVista } from '@/lib/types'
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -70,6 +72,7 @@ export default function TabletDashboard() {
     const [soundEnabled, setSoundEnabled] = useState(true)
     const [showSettings, setShowSettings] = useState(false)
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+    const [seccion, setSeccion] = useState<'agenda' | 'finanzas'>('agenda')
 
     // Agenda states
     const [vistaAgenda, setVistaAgenda] = useState<'hoy' | 'semana' | 'mes' | 'dia'>('hoy')
@@ -243,7 +246,7 @@ export default function TabletDashboard() {
                 console.log('📡 Validating session with Supabase...', currentBarbero.id)
                 const { data, error } = await supabase
                     .from('barberos')
-                    .select('id, activo, nombre, estacion_id')
+                    .select('*')
                     .eq('id', currentBarbero.id)
                     .single() as { data: any, error: any }
 
@@ -477,9 +480,9 @@ export default function TabletDashboard() {
             <div className="min-h-screen bg-[#0A0C12] flex flex-col items-center justify-center p-6 text-center space-y-12 overflow-hidden relative">
                 <div className="absolute inset-0 z-0 bg-radial-at-t from-primary/10 via-transparent to-transparent opacity-50"></div>
                 <div className="relative z-10 animate-scale-in flex flex-col items-center">
-                    <div className="w-28 h-28 md:w-36 md:h-36 rounded-[2.5rem] bg-black border border-white/10 flex items-center justify-center mb-10 mx-auto shadow-[0_0_60px_rgba(245,200,66,0.05)] relative group">
+                    <div className="w-28 h-28 md:w-36 md:h-36 rounded-[2.5rem] bg-black border border-white/10 flex items-center justify-center mb-10 mx-auto shadow-[0_0_60px_rgba(245,200,66,0.05)] relative group overflow-hidden">
                         <div className="absolute inset-0 rounded-[2.5rem] border border-primary animate-ping opacity-20" />
-                        <span className="text-4xl md:text-5xl font-black text-primary font-display relative z-10">CB</span>
+                        <img src="/logo-cholo.jpg" alt="Logo" className="relative z-10 w-full h-full object-cover transform scale-110" />
                     </div>
                     <div className="space-y-6 max-w-xs transition-all duration-1000">
                         <div className="space-y-2">
@@ -538,24 +541,21 @@ export default function TabletDashboard() {
                     </div>
                 </motion.div>
             )}
-            {/* Audio Init Banner REMOVED — auto-initializes on mount */}
 
             <header className="bg-black/60 backdrop-blur-3xl border-b border-white/5 px-4 md:px-8 py-3 md:py-5 shadow-[0_10px_50px_rgba(0,0,0,0.8)] shrink-0 z-50 relative">
                 <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-primary/30 to-amber-600/30 opacity-30" />
 
                 <div className="flex items-start justify-between max-w-[1920px] mx-auto gap-3">
 
-                    {/* LEFT: Logo + Name/Icons + Badges */}
                     <div className="flex items-start gap-2 md:gap-4 group">
                         <div className="relative scale-75 md:scale-90 mt-1 hidden sm:block">
                             <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-lg group-hover:bg-primary/10 transition-all duration-700" />
                             <div className="relative inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-black border border-white/10 shadow-2xl backdrop-blur-sm overflow-hidden group-hover:border-white/20 transition-colors duration-500">
-                                <span className="text-xl md:text-2xl font-black text-primary font-display relative z-10 transition-transform group-hover:scale-105">CB</span>
+                                <img src="/logo-cholo.jpg" alt="Logo" className="w-full h-full object-cover transform scale-125 transition-transform group-hover:scale-150" />
                             </div>
                         </div>
 
                         <div className="flex flex-col gap-2 md:gap-3 animate-slide-in">
-                            {/* Row 1: Name */}
                             <div className="flex items-center gap-3">
                                 <h1 className="text-lg md:text-2xl font-black text-white tracking-tight uppercase font-display truncate max-w-[150px] md:max-w-none leading-none">
                                     {barbero?.nombre.split(' ')[0] || 'Barbero'}
@@ -563,7 +563,6 @@ export default function TabletDashboard() {
                                 <div className="h-1 w-8 bg-primary/20 rounded-full hidden md:block" />
                             </div>
 
-                            {/* Row 2: Badges */}
                             <div className="flex flex-wrap items-center gap-2">
                                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 px-3 py-1 gap-2 rounded-lg">
                                     <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(245,200,66,0.6)]" />
@@ -586,9 +585,7 @@ export default function TabletDashboard() {
                         </div>
                     </div>
 
-                    {/* RIGHT: Desktop summary + clock */}
                     <div className="flex items-center gap-3 md:gap-6 shrink-0 mt-2">
-                        {/* Summary */}
                         <div className="hidden lg:flex items-center gap-8 px-6 py-3 bg-white/5 rounded-2xl border border-white/5 shadow-inner backdrop-blur-xl">
                             <div className="flex gap-4 md:gap-8 mr-auto">
                                 <div className="text-center">
@@ -605,7 +602,6 @@ export default function TabletDashboard() {
                             </div>
                         </div>
 
-                        {/* Clock */}
                         <div className="text-right hidden sm:block">
                             <p className="text-sm md:text-base font-black text-white tabular-nums tracking-tighter font-display leading-none">
                                 {currentTime ? currentTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase() : '--:--'}
@@ -613,7 +609,6 @@ export default function TabletDashboard() {
                             <p className="text-[6px] md:text-[7px] text-white/20 font-black uppercase tracking-[0.3em] mt-1">Estación #{barbero?.estacion_id || '0'}</p>
                         </div>
 
-                        {/* Action Icons — FAR RIGHT */}
                         <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-white/10">
                             <Button
                                 size="icon"
@@ -633,6 +628,19 @@ export default function TabletDashboard() {
                             >
                                 <BarChart3 className="w-4 h-4" />
                             </Link>
+                            <Button
+                                size="icon"
+                                onClick={() => setSeccion(seccion === 'agenda' ? 'finanzas' : 'agenda')}
+                                className={cn(
+                                    "w-8 h-8 transition-all shadow-none shrink-0",
+                                    seccion === 'finanzas' 
+                                        ? "bg-primary text-black scale-110" 
+                                        : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
+                                )}
+                                title="Mis Finanzas"
+                            >
+                                <DollarSign className="w-4 h-4" />
+                            </Button>
                             <Button
                                 size="icon"
                                 onClick={() => setShowSettings(true)}
@@ -664,240 +672,230 @@ export default function TabletDashboard() {
                 </div>
             </header>
 
-            {/* Main Content */}
             <main className="flex-1 overflow-hidden p-0 lg:p-3 xl:p-4 relative z-10 flex flex-col">
-                <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-3 xl:gap-4 max-w-[2000px] mx-auto w-full">
+                {seccion === 'agenda' ? (
+                    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-3 xl:gap-4 max-w-[2000px] mx-auto w-full">
+                        <div className={`lg:col-span-8 h-full flex flex-col min-h-0 relative ${showMobileAppointments ? 'hidden lg:flex' : 'flex'}`}>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0 px-2 lg:px-0">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-1 w-6 bg-primary/20 rounded-full" />
+                                    <h2 className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] font-display">Cronograma General</h2>
+                                </div>
 
-                    {/* Column 1: Timeline (Left on Desktop, Main on Mobile) */}
-                    <div className={`lg:col-span-8 h-full flex flex-col min-h-0 relative ${showMobileAppointments ? 'hidden lg:flex' : 'flex'}`}>
-                        {/* Desktop Header for Timeline and Mobile View Switcher */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0 px-2 lg:px-0">
-                            <div className="flex items-center gap-3">
-                                <div className="h-1 w-6 bg-primary/20 rounded-full" />
-                                <h2 className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] font-display">Cronograma General</h2>
-                            </div>
-
-                            {/* View Switcher Controls - Optimized for no-scroll */}
-                            <div className="flex items-center gap-1 w-full sm:w-auto">
-                                <div
-                                    onClick={handleDoubleTapAgenda}
-                                    className={cn(
-                                        "flex items-center bg-white/5 rounded-xl border transition-all h-[34px] overflow-hidden group/nav shrink-0",
-                                        vistaAgenda === 'hoy' || vistaAgenda === 'dia' ? 'border-primary/30 bg-primary/5' : 'border-white/5'
-                                    )}
-                                >
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={(e) => { e.stopPropagation(); shiftFechaAgenda(-1); }}
-                                        className="w-7 h-full text-white/20 hover:text-primary hover:bg-white/5 transition-colors shrink-0 rounded-none shadow-none"
+                                <div className="flex items-center gap-1 w-full sm:w-auto">
+                                    <div
+                                        onClick={handleDoubleTapAgenda}
+                                        className={cn(
+                                            "flex items-center bg-white/5 rounded-xl border transition-all h-[34px] overflow-hidden group/nav shrink-0",
+                                            vistaAgenda === 'hoy' || vistaAgenda === 'dia' ? 'border-primary/30 bg-primary/5' : 'border-white/5'
+                                        )}
                                     >
-                                        <ChevronLeft className="w-3 h-3" />
-                                    </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={(e) => { e.stopPropagation(); shiftFechaAgenda(-1); }}
+                                            className="w-7 h-full text-white/20 hover:text-primary hover:bg-white/5 transition-colors shrink-0 rounded-none shadow-none"
+                                        >
+                                            <ChevronLeft className="w-3 h-3" />
+                                        </Button>
 
-                                    <div className="px-2 flex flex-col items-center justify-center min-w-[55px] sm:min-w-[70px] select-none shrink-0 cursor-pointer">
-                                        <span className={cn(
-                                            "text-[8px] font-black uppercase tracking-widest leading-none",
-                                            (vistaAgenda === 'hoy' || vistaAgenda === 'dia') ? 'text-primary' : 'text-white/40'
-                                        )}>
-                                            {getRelativeDateLabel(fechaAgenda)}
-                                        </span>
-                                    </div>
-
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={(e) => { e.stopPropagation(); shiftFechaAgenda(1); }}
-                                        className="w-7 h-full text-white/20 hover:text-primary hover:bg-white/5 transition-colors shrink-0 rounded-none shadow-none"
-                                    >
-                                        <ChevronRight className="w-3 h-3" />
-                                    </Button>
-                                </div>
-
-                                <Button
-                                    onClick={() => setVistaAgenda('semana')}
-                                    onDoubleClick={() => setFechaAgenda(new Intl.DateTimeFormat('en-CA', {
-                                        timeZone: 'America/Hermosillo',
-                                        year: 'numeric', month: '2-digit', day: '2-digit'
-                                    }).format(new Date()))}
-                                    className={cn(
-                                        "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-colors h-[34px] flex items-center shrink-0 shadow-none border",
-                                        vistaAgenda === 'semana' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
-                                    )}
-                                >
-                                    Semana
-                                </Button>
-                                <Button
-                                    onClick={() => setVistaAgenda('mes')}
-                                    className={cn(
-                                        "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-colors h-[34px] flex items-center shrink-0 shadow-none border",
-                                        vistaAgenda === 'mes' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
-                                    )}
-                                >
-                                    Mes
-                                </Button>
-
-                                <div
-                                    onClick={() => datePickerRef.current?.showPicker()}
-                                    className="relative flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors rounded-lg border border-white/5 w-[34px] h-[34px] cursor-pointer group/cal shrink-0"
-                                >
-                                    <CalendarIcon className="w-3 h-3 text-white/30 group-hover/cal:text-primary transition-colors" />
-                                    <input
-                                        ref={datePickerRef}
-                                        type="date"
-                                        value={fechaAgenda}
-                                        onChange={(e) => { 
-                                            setFechaAgenda(e.target.value); 
-                                            setVistaAgenda('dia') 
-                                        }}
-                                        className="absolute inset-0 opacity-0 pointer-events-none"
-                                        style={{ colorScheme: 'dark' }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* The Calendar View */}
-                        <div className="flex-1 bg-black/40 lg:border border-white/5 lg:shadow-[0_20px_60px_rgba(0,0,0,0.5)] lg:rounded-[1.5rem] overflow-hidden relative backdrop-blur-3xl group transition-all duration-700 hover:border-white/10">
-                            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-gold opacity-10" />
-                            {loadingAgenda ? (
-                                <div className="flex flex-col w-full h-full p-6 space-y-4 animate-pulse">
-                                    <div className="h-8 w-1/3 bg-white/5 rounded-xl ml-auto" />
-                                    <div className="flex-1 border border-white/5 rounded-2xl bg-white/[0.02]" />
-                                    <div className="h-10 w-full bg-white/5 rounded-xl" />
-                                </div>
-                            ) : (
-                                <div className="w-full h-full animate-fade-in relative z-10 flex flex-col">
-                                    {(vistaAgenda === 'hoy' || vistaAgenda === 'dia') ? (
-                                        <AgendaTimeline
-                                            citas={citasAgenda}
-                                            bloqueos={bloqueosAgenda}
-                                            almuerzoBarbero={almuerzoBarbero}
-                                            horarioSucursal={sucursal?.horario_apertura}
-                                            currentTime={currentTime!}
-                                            fechaBase={fechaAgenda}
-                                            barbero={barbero}
-                                            onUpdate={() => cargarAgenda()}
-                                        />
-                                    ) : (
-                                        <div className="p-4 pt-6 h-full overflow-y-auto custom-scrollbar">
-                                            <AgendaSemanalMensual citas={citasAgenda} bloqueos={bloqueosAgenda} almuerzoBarbero={almuerzoBarbero} fecha={fechaAgenda} vista={vistaAgenda} onUpdate={() => cargarAgenda()} />
+                                        <div className="px-2 flex flex-col items-center justify-center min-w-[55px] sm:min-w-[70px] select-none shrink-0 cursor-pointer">
+                                            <span className={cn(
+                                                "text-[8px] font-black uppercase tracking-widest leading-none",
+                                                (vistaAgenda === 'hoy' || vistaAgenda === 'dia') ? 'text-primary' : 'text-white/40'
+                                            )}>
+                                                {getRelativeDateLabel(fechaAgenda)}
+                                            </span>
                                         </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
 
-                        {/* Mobile Floating Action Buttons (FAB) */}
-                        <div className="lg:hidden fixed bottom-24 right-5 z-[100] flex flex-col gap-4">
-                            {/* Añadir cita Walk-in */}
-                            <Button
-                                size="icon"
-                                onClick={() => setIsNewCitaModalOpen(true)}
-                                className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-xl border border-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-primary hover:bg-black/80 hover:border-primary/40"
-                            >
-                                <UserPlus className="w-6 h-6" />
-                            </Button>
-                            {/* Ver agenda listado */}
-                            <div className="relative">
-                                <Button
-                                    size="icon"
-                                    onClick={() => setShowMobileAppointments(true)}
-                                    className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-primary hover:bg-black/60 hover:border-primary/30"
-                                >
-                                    <List className="w-6 h-6" />
-                                </Button>
-                                {citasSiguientes.length > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-black rounded-full flex items-center justify-center text-[9px] font-black border-2 border-black pointer-events-none">
-                                        {citasSiguientes.length}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Column 2: Dashboard/Sidebar (Right on Desktop, Secondary on Mobile) */}
-                    <div className={`lg:col-span-4 flex flex-col h-full min-h-0 relative transition-all duration-500 ${showMobileAppointments ? 'translate-y-0 opacity-100 z-50' : 'hidden lg:flex'}`}>
-                        {/* Mobile Overlay Header */}
-                        <div className="lg:hidden flex items-center justify-between p-6 bg-black/90 backdrop-blur-xl border-b border-white/5 sticky top-0 z-[60]">
-                            <div className="flex items-center gap-4">
-                                <div className="h-1 w-6 bg-primary rounded-full" />
-                                <h2 className="text-xs font-black text-white uppercase tracking-[0.3em] font-display">Agenda del Día</h2>
-                            </div>
-                            <button onClick={() => setShowMobileAppointments(false)} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-3 lg:p-0 custom-scrollbar space-y-4 lg:space-y-6 pb-24 lg:pb-4 bg-black/40 lg:bg-transparent min-h-0 relative overflow-x-hidden">
-                            {/* Current Appointment - Condensed for Sidebar */}
-                            {citaEnProceso && (
-                                <div className="animate-slide-in relative group">
-                                    <div className="flex items-center gap-4 mb-4 lg:mb-5">
-                                        <div className="h-1 w-6 lg:w-8 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                                        <h2 className="text-[9px] lg:text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] font-display">Atendiendo Ahora</h2>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={(e) => { e.stopPropagation(); shiftFechaAgenda(1); }}
+                                            className="w-7 h-full text-white/20 hover:text-primary hover:bg-white/5 transition-colors shrink-0 rounded-none shadow-none"
+                                        >
+                                            <ChevronRight className="w-3 h-3" />
+                                        </Button>
                                     </div>
-                                    <div className="relative">
-                                        <div className="absolute -inset-4 bg-emerald-500/5 rounded-[2.5rem] lg:rounded-[3rem] blur-2xl opacity-40 pointer-events-none" />
-                                        <CitaCard
-                                            cita={citaEnProceso}
-                                            onUpdate={cargarCitas}
-                                            isHighlighted
-                                            currentTime={currentTime!}
-                                            allCitas={citasAgenda}
-                                            bloqueos={bloqueosAgenda}
-                                            almuerzoBarbero={almuerzoBarbero}
-                                            horarioSucursal={sucursal}
+
+                                    <Button
+                                        onClick={() => setVistaAgenda('semana')}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-colors h-[34px] flex items-center shrink-0 shadow-none border",
+                                            vistaAgenda === 'semana' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
+                                        )}
+                                    >
+                                        Semana
+                                    </Button>
+                                    <Button
+                                        onClick={() => setVistaAgenda('mes')}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-colors h-[34px] flex items-center shrink-0 shadow-none border",
+                                            vistaAgenda === 'mes' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
+                                        )}
+                                    >
+                                        Mes
+                                    </Button>
+
+                                    <div
+                                        onClick={() => datePickerRef.current?.showPicker()}
+                                        className="relative flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors rounded-lg border border-white/5 w-[34px] h-[34px] cursor-pointer group/cal shrink-0"
+                                    >
+                                        <CalendarIcon className="w-3 h-3 text-white/30 group-hover/cal:text-primary transition-colors" />
+                                        <input
+                                            ref={datePickerRef}
+                                            type="date"
+                                            value={fechaAgenda}
+                                            onChange={(e) => { 
+                                                setFechaAgenda(e.target.value); 
+                                                setVistaAgenda('dia') 
+                                            }}
+                                            className="absolute inset-0 opacity-0 pointer-events-none"
+                                            style={{ colorScheme: 'dark' }}
                                         />
                                     </div>
                                 </div>
-                            )}
+                            </div>
 
-                            {/* Upcoming Appointments List */}
-                            <div className="flex flex-col flex-1">
-                                <div className="flex items-center justify-between mb-4 lg:mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-1 w-6 lg:w-8 bg-white/10 rounded-full" />
-                                        <h2 className="text-[9px] lg:text-[10px] font-black text-white/40 uppercase tracking-[0.3em] font-display">Próximas Citas ({citasSiguientes.length})</h2>
-                                    </div>
-                                </div>
-
-                                {loading ? (
-                                    <div className="bg-white/5 p-8 flex flex-col items-center justify-center border border-white/5 rounded-[2rem] shadow-2xl backdrop-blur-sm">
-                                        <div className="w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
-                                        <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse">Actualizando...</p>
-                                    </div>
-                                ) : citasSiguientes.length === 0 ? (
-                                    <div className="bg-white/2 p-10 text-center border border-white/5 shadow-2xl rounded-[2rem] group transition-all duration-700">
-                                        <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/5 text-white/10 shadow-inner">
-                                            <CheckCircle2 className="w-8 h-8" />
-                                        </div>
-                                        <p className="text-white/20 font-black uppercase tracking-[0.2em] text-[10px]">Sin más citas</p>
+                            <div className="flex-1 bg-black/40 lg:border border-white/5 lg:shadow-[0_20px_60px_rgba(0,0,0,0.5)] lg:rounded-[1.5rem] overflow-hidden relative backdrop-blur-3xl group transition-all duration-700 hover:border-white/10">
+                                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-gold opacity-10" />
+                                {loadingAgenda ? (
+                                    <div className="flex flex-col w-full h-full p-6 space-y-4 animate-pulse">
+                                        <div className="h-8 w-1/3 bg-white/5 rounded-xl ml-auto" />
+                                        <div className="flex-1 border border-white/5 rounded-2xl bg-white/[0.02]" />
+                                        <div className="h-10 w-full bg-white/5 rounded-xl" />
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-1 gap-3 lg:gap-4">
-                                        {citasSiguientes.map((cita: CitaDesdeVista, index: number) => (
-                                            <div key={`cita-next-${cita.id || index}`} className="animate-slide-in" style={{ animationDelay: `${index * 50}ms` }}>
-                                                <CitaCard
-                                                    cita={cita}
-                                                    onUpdate={cargarCitas}
-                                                    currentTime={currentTime!}
-                                                    allCitas={citasAgenda}
-                                                    bloqueos={bloqueosAgenda}
-                                                    almuerzoBarbero={almuerzoBarbero}
-                                                    horarioSucursal={sucursal}
-                                                />
+                                    <div className="w-full h-full animate-fade-in relative z-10 flex flex-col">
+                                        {(vistaAgenda === 'hoy' || vistaAgenda === 'dia') ? (
+                                            <AgendaTimeline
+                                                citas={citasAgenda}
+                                                bloqueos={bloqueosAgenda}
+                                                almuerzoBarbero={almuerzoBarbero}
+                                                horarioSucursal={sucursal?.horario_apertura}
+                                                currentTime={currentTime!}
+                                                fechaBase={fechaAgenda}
+                                                barbero={barbero}
+                                                onUpdate={() => cargarAgenda()}
+                                            />
+                                        ) : (
+                                            <div className="p-4 pt-6 h-full overflow-y-auto custom-scrollbar">
+                                                <AgendaSemanalMensual citas={citasAgenda} bloqueos={bloqueosAgenda} almuerzoBarbero={almuerzoBarbero} fecha={fechaAgenda} vista={vistaAgenda} onUpdate={() => cargarAgenda()} />
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 )}
                             </div>
+
+                            <div className="lg:hidden fixed bottom-24 right-5 z-[100] flex flex-col gap-4">
+                                <Button
+                                    size="icon"
+                                    onClick={() => setIsNewCitaModalOpen(true)}
+                                    className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-xl border border-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-primary hover:bg-black/80 hover:border-primary/40"
+                                >
+                                    <UserPlus className="w-6 h-6" />
+                                </Button>
+                                <div className="relative">
+                                    <Button
+                                        size="icon"
+                                        onClick={() => setShowMobileAppointments(true)}
+                                        className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-primary hover:bg-black/60 hover:border-primary/30"
+                                    >
+                                        <List className="w-6 h-6" />
+                                    </Button>
+                                    {citasSiguientes.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-black rounded-full flex items-center justify-center text-[9px] font-black border-2 border-black pointer-events-none">
+                                            {citasSiguientes.length}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={`lg:col-span-4 flex flex-col h-full min-h-0 relative transition-all duration-500 ${showMobileAppointments ? 'translate-y-0 opacity-100 z-50' : 'hidden lg:flex'}`}>
+                            <div className="lg:hidden flex items-center justify-between p-6 bg-black/90 backdrop-blur-xl border-b border-white/5 sticky top-0 z-[60]">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-1 w-6 bg-primary rounded-full" />
+                                    <h2 className="text-xs font-black text-white uppercase tracking-[0.3em] font-display">Agenda del Día</h2>
+                                </div>
+                                <button onClick={() => setShowMobileAppointments(false)} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-3 lg:p-0 custom-scrollbar space-y-4 lg:space-y-6 pb-24 lg:pb-4 bg-black/40 lg:bg-transparent min-h-0 relative overflow-x-hidden">
+                                {citaEnProceso && (
+                                    <div className="animate-slide-in relative group">
+                                        <div className="flex items-center gap-4 mb-4 lg:mb-5">
+                                            <div className="h-1 w-6 lg:w-8 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                            <h2 className="text-[9px] lg:text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] font-display">Atendiendo Ahora</h2>
+                                        </div>
+                                        <div className="relative">
+                                            <div className="absolute -inset-4 bg-emerald-500/5 rounded-[2.5rem] lg:rounded-[3rem] blur-2xl opacity-40 pointer-events-none" />
+                                            <CitaCard
+                                                cita={citaEnProceso}
+                                                onUpdate={cargarCitas}
+                                                isHighlighted
+                                                currentTime={currentTime!}
+                                                allCitas={citasAgenda}
+                                                bloqueos={bloqueosAgenda}
+                                                almuerzoBarbero={almuerzoBarbero}
+                                                horarioSucursal={sucursal}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex flex-col flex-1">
+                                    <div className="flex items-center justify-between mb-4 lg:mb-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-1 w-6 lg:w-8 bg-white/10 rounded-full" />
+                                            <h2 className="text-[9px] lg:text-[10px] font-black text-white/40 uppercase tracking-[0.3em] font-display">Próximas Citas ({citasSiguientes.length})</h2>
+                                        </div>
+                                    </div>
+
+                                    {loading ? (
+                                        <div className="bg-white/5 p-8 flex flex-col items-center justify-center border border-white/5 rounded-[2rem] shadow-2xl backdrop-blur-sm">
+                                            <div className="w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+                                            <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse">Actualizando...</p>
+                                        </div>
+                                    ) : citasSiguientes.length === 0 ? (
+                                        <div className="bg-white/2 p-10 text-center border border-white/5 shadow-2xl rounded-[2rem] group transition-all duration-700">
+                                            <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/5 text-white/10 shadow-inner">
+                                                <CheckCircle2 className="w-8 h-8" />
+                                            </div>
+                                            <p className="text-white/20 font-black uppercase tracking-[0.2em] text-[10px]">Sin más citas</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-3 lg:gap-4">
+                                            {citasSiguientes.map((cita: CitaDesdeVista, index: number) => (
+                                                <div key={`cita-next-${cita.id || index}`} className="animate-slide-in" style={{ animationDelay: `${index * 50}ms` }}>
+                                                    <CitaCard
+                                                        cita={cita}
+                                                        onUpdate={cargarCitas}
+                                                        currentTime={currentTime!}
+                                                        allCitas={citasAgenda}
+                                                        bloqueos={bloqueosAgenda}
+                                                        almuerzoBarbero={almuerzoBarbero}
+                                                        horarioSucursal={sucursal}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="flex-1 overflow-y-auto custom-scrollbar px-4 lg:px-0 mt-4">
+                        <div className="max-w-6xl mx-auto">
+                            <FinanzasBarbero barbero={barbero} />
+                        </div>
+                    </div>
+                )}
             </main>
 
-            {/* Modal de Nueva Cita */}
             <TabletNuevaCitaModal
                 isOpen={isNewCitaModalOpen}
                 onClose={() => setIsNewCitaModalOpen(false)}
@@ -908,11 +906,9 @@ export default function TabletDashboard() {
                 onCitaCreada={() => cargarAgenda()}
             />
 
-            {/* Settings Dialog */}
             <Dialog open={showSettings} onOpenChange={setShowSettings}>
                 <DialogContent className="bg-[#111216] border-white/10 p-0 overflow-hidden shadow-2xl max-w-sm rounded-t-[2rem] sm:rounded-[2rem]">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-amber-600" />
-
                     <div className="p-6">
                         <DialogHeader className="flex flex-row items-center gap-4 mb-8">
                             <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 text-white/40">
@@ -923,7 +919,6 @@ export default function TabletDashboard() {
                                 <DialogDescription className="text-xs font-medium text-white/30">Preferencias del sistema</DialogDescription>
                             </div>
                         </DialogHeader>
-
                         <div className="space-y-6">
                             <div>
                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-4">Notificaciones</p>
@@ -946,7 +941,6 @@ export default function TabletDashboard() {
                                 </div>
                             </div>
                         </div>
-
                         <DialogFooter className="mt-8">
                             <Button
                                 onClick={() => setShowSettings(false)}
@@ -959,23 +953,19 @@ export default function TabletDashboard() {
                 </DialogContent>
             </Dialog>
 
-            {/* Logout Confirm Dialog */}
             <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
                 <DialogContent className="bg-[#111216] border-red-500/20 p-0 overflow-hidden shadow-2xl max-w-sm rounded-[2rem]">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-rose-600" />
-
                     <div className="p-8">
                         <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-400 mx-auto mb-6">
                             <LogOut className="w-8 h-8" />
                         </div>
-
                         <DialogHeader className="text-center mb-6">
                             <DialogTitle className="text-lg font-black text-white uppercase tracking-tight text-center">¿Cerrar Sesión?</DialogTitle>
                             <DialogDescription className="text-xs text-white/40 text-center leading-relaxed mt-2">
                                 Se eliminará la sesión local. Necesitarás ingresar tu acceso nuevamente.
                             </DialogDescription>
                         </DialogHeader>
-
                         <DialogFooter className="flex flex-row gap-3">
                             <Button
                                 variant="ghost"

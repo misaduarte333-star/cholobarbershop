@@ -85,7 +85,10 @@ function VistaSemanal({ citas, bloqueos, almuerzoBarbero, days }: { citas: CitaD
                     {/* Header: Days (Sticky to top) */}
                     <div className="flex border-b border-white/5 bg-[#16181d]/95 sticky top-0 z-30 backdrop-blur-xl">
                         {/* Time label corner (Sticky to left & top) */}
-                        <div className="w-14 shrink-0 border-r border-white/5 bg-[#16181d] sticky left-0 z-40" />
+                        {/* Time label corner (Sticky to left & top) */}
+                        {/* Time label corner (Sticky to left & top) */}
+                        {/* Time label corner (Sticky to left & top) */}
+                        <div className="w-20 md:w-24 shrink-0 border-r border-white/5 bg-[#16181d] sticky left-0 z-40" />
 
                         {/* Day Headers */}
                         <div className="flex-1 grid grid-cols-7">
@@ -102,10 +105,10 @@ function VistaSemanal({ citas, bloqueos, almuerzoBarbero, days }: { citas: CitaD
                     <div className="flex flex-1 relative" style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}>
 
                         {/* Time labels column (Sticky to left) */}
-                        <div className="w-14 shrink-0 border-r border-white/5 bg-[#16181d] sticky left-0 z-20 flex flex-col">
+                        <div className="w-20 md:w-24 shrink-0 border-r border-white/5 bg-[#16181d] sticky left-0 z-20 flex flex-col">
                             {hours.map(h => (
-                                <div key={h} className="relative text-right pr-2 border-b border-white/5 last:border-b-0 flex items-start justify-end" style={{ height: `${HOUR_HEIGHT}px` }}>
-                                    <span className="text-[9px] font-black text-white/30 uppercase mt-1 leading-none">{h > 12 ? h - 12 : h} {h >= 12 ? 'PM' : 'AM'}</span>
+                                <div key={h} className="relative text-right pr-4 border-b border-white/5 last:border-b-0 flex items-start justify-end" style={{ height: `${HOUR_HEIGHT}px` }}>
+                                    <span className="text-[11px] md:text-sm font-black text-white/40 uppercase mt-1 leading-none">{h > 12 ? h - 12 : h} {h >= 12 ? 'PM' : 'AM'}</span>
                                 </div>
                             ))}
                         </div>

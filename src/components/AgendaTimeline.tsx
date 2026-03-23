@@ -891,9 +891,9 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                         return (
                             <div key={hour24} className="flex border-b border-slate-700/20 last:border-0 min-h-[120px]"> {/* 60 * 2 */}
                                 {/* Hour Label Column */}
-                                <div className="w-10 flex flex-col items-center justify-start pt-2 border-r border-slate-700/10 bg-slate-800/10 shrink-0">
-                                    <span className="text-[9px] font-black text-white leading-none">{hour12}</span>
-                                    <span className="text-[6px] font-black text-slate-500 uppercase tracking-tighter mt-0.5">{ampm}</span>
+                                <div className="w-14 md:w-20 flex flex-col items-end justify-start pt-2 pr-4 border-r border-slate-700/10 bg-slate-800/10 shrink-0 mr-1">
+                                    <span className="text-[11px] md:text-sm font-black text-white leading-none">{hour12}</span>
+                                    <span className="text-[7px] md:text-[9px] font-black text-slate-500 uppercase tracking-tighter mt-0.5">{ampm}</span>
                                 </div>
 
                                 {/* Slots Column */}
@@ -935,8 +935,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                 className={`relative flex-1 flex items-center gap-2 transition-colors duration-200 ${item ? 'bg-transparent' : 'hover:bg-white/5'} ${index === 0 ? 'border-b border-slate-700/5' : ''}`}
                                                 style={{ height: SLOT_HEIGHT }}
                                             >
-                                                <div className="w-5 flex items-center justify-center shrink-0 opacity-20">
-                                                    <span className="text-[5px] font-black text-slate-500">{index === 0 ? '00' : '30'}</span>
+                                                <div className="w-6 md:w-8 flex items-center justify-center shrink-0 opacity-30">
+                                                    <span className="text-[7px] md:text-[9px] font-black text-slate-400">{index === 0 ? '00' : '30'}</span>
                                                 </div>
                                                 <div className="relative flex-1 h-full py-1 pr-1.5">
                                                     {item ? (

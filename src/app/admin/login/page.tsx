@@ -150,7 +150,7 @@ export default function AdminLoginPage() {
                         <div className="absolute inset-0 rounded-full bg-white/10 blur-xl" />
                         <div className="absolute inset-0 rounded-full border-2 border-white/30" />
                         <div className="absolute inset-1 rounded-full border border-white/10" />
-                        <span className="material-icons-round relative z-10 text-white text-3xl">shield</span>
+                        <img src="/logo-cholo.jpg" alt="Logo" className="relative z-10 w-full h-full rounded-full object-cover transform scale-110" />
                     </div>
 
                     <h1 className="text-center font-display font-black text-3xl mb-2 leading-tight">

@@ -143,10 +143,14 @@ export default function TabletLoginPage() {
                 
                 {/* Logo Section - Compacto */}
                 <header className="flex flex-col items-center mb-6">
-                    <div className="relative w-14 h-14 flex items-center justify-center mb-4 glow-logo rounded-full">
+                    <div className="relative w-20 h-20 flex items-center justify-center mb-4 glow-logo rounded-full overflow-hidden">
                         <div className="absolute inset-0 rounded-full bg-gradient-gold opacity-20 blur-xl" />
                         <div className="absolute inset-0 rounded-full border-2 border-primary/40" />
-                        <span className="relative z-10 font-display font-black text-xl gradient-text-gold select-none">CB</span>
+                        <img 
+                            src="/logo-cholo.jpg" 
+                            alt="Cholo Barbers Shop" 
+                            className="relative z-10 w-full h-full object-cover transform scale-110"
+                        />
                     </div>
 
                     <h1 className="text-center font-display font-black text-3xl mb-2 leading-tight">

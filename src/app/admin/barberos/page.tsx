@@ -401,6 +401,7 @@ function getDemoBarbers(): BarberoConSucursal[] {
             },
             bloqueo_almuerzo: { inicio: '14:00', fin: '15:00' },
             comision_porcentaje: 50,
+            meta_cortes_mensual: 100,
             activo: true,
             hora_entrada: null,
             created_at: new Date().toISOString()
@@ -422,6 +423,7 @@ function getDemoBarbers(): BarberoConSucursal[] {
             },
             bloqueo_almuerzo: { inicio: '14:30', fin: '15:30' },
             comision_porcentaje: 50,
+            meta_cortes_mensual: 100,
             activo: true,
             hora_entrada: null,
             created_at: new Date().toISOString()
@@ -444,6 +446,7 @@ function getDemoBarbers(): BarberoConSucursal[] {
             activo: false,
             hora_entrada: null,
             comision_porcentaje: 50,
+            meta_cortes_mensual: 100,
             created_at: new Date().toISOString()
         }
     ]

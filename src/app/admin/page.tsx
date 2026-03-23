@@ -154,8 +154,8 @@ export default function AdminDashboard() {
                 {/* Header (Desktop Only) */}
                 <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
                     <div className="flex items-center gap-3 text-white">
-                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 transition-all hover:scale-105">
-                            <LayoutDashboard className="text-primary w-4 h-4 shadow-lg shadow-primary/20" />
+                        <div className="size-10 rounded-lg overflow-hidden border border-primary/20 transition-all hover:scale-105 bg-black">
+                            <img src="/logo-cholo.jpg" alt="Logo" className="w-full h-full object-cover transform scale-110" />
                         </div>
                         <h2 className="text-lg font-black tracking-tighter uppercase italic">Panel Control</h2>
                     </div>

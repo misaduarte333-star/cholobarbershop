@@ -251,8 +251,9 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
             >
                 <div className="relative flex min-w-full" style={{ height: `${(HORA_FIN - HORA_INICIO) * 60 * MINUTE_HEIGHT + HEADER_HEIGHT + 20}px` }}>
 
-                    <div className="sticky left-0 z-50 w-12 md:w-16 bg-[#0A0A0A] border-r border-white/5 h-full">
-                        <div className="absolute top-0 left-0 right-0 h-12 border-b border-white/5 z-50 bg-[#0A0A0A]" />
+                    {/* Columna de Horas (Integral) */}
+                    <div className="sticky left-0 z-[60] w-20 bg-[#0A0A0A] border-r border-white/5 h-full">
+                        <div className="absolute top-0 left-0 right-0 h-12 border-b border-white/5 z-[60] bg-[#0A0A0A]" />
                         <div className="relative h-full pt-12">
                             {slots.map((slot, i) => (
                                 <div
@@ -260,7 +261,7 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
                                     className="absolute w-full border-b border-white/[0.03]"
                                     style={{ top: `${getTimeY(slot.h * 60 + slot.m)}px`, height: `${30 * MINUTE_HEIGHT}px` }}
                                 >
-                                    <span className={`absolute -top-2 left-0 right-0 text-center font-black uppercase leading-none tracking-tighter ${slot.m === 30 ? 'text-slate-700 text-[5px] md:text-[6px]' : 'text-slate-500 text-[7px] md:text-[8px]'}`}>
+                                    <span className={`absolute -top-2 left-0 right-0 text-right pr-4 font-black uppercase leading-none tracking-tighter ${slot.m === 30 ? 'text-slate-700 text-[9px]' : 'text-slate-500 text-[11px] md:text-xs'}`}>
                                         {slot.h >= 12 
                                             ? `${slot.h === 12 ? 12 : slot.h - 12}${slot.m === 30 ? ':30' : ''} PM` 
                                             : `${slot.h}${slot.m === 30 ? ':30' : ''} AM`}

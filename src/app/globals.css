@@ -99,7 +99,7 @@ body {
 }
 
 .min-h-dvh {
-  min-h: 100dvh;
+  min-height: 100dvh;
 }
 
 /* Advanced Glassmorphism Card Style */
@@ -359,6 +359,15 @@ body {
 /* Custom Checkbox / Switches (if needed) */
 input[type="checkbox"] {
   accent-color: var(--primary);
+}
+
+/* Hide Scrollbar Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Scrollbar */
