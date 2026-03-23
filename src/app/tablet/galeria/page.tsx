@@ -289,7 +289,7 @@ export default function GalleryPage() {
                                         )}
 
                                         {/* Acciones */}
-                                        <div className="absolute bottom-4 right-4 left-4 z-10 flex items-center justify-between scale-90 group-hover:scale-100 transition-transform opacity-0 group-hover:opacity-100 duration-300">
+                                        <div className="absolute bottom-4 right-4 left-4 z-10 flex items-center justify-between scale-100 lg:scale-90 lg:group-hover:scale-100 transition-transform opacity-100 lg:opacity-0 lg:group-hover:opacity-100 duration-300">
                                             {/* Botón de Eliminar */}
                                             {fotosMap[servicio.id] ? (
                                                 <button
