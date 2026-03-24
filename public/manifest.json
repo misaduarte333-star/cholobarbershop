@@ -3,7 +3,7 @@
   "short_name": "Cholo Barber",
   "description": "Panel de trabajo para barberos de Cholo Barbershop",
   "start_url": "/tablet",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#0A0C12",
   "theme_color": "#B17814",

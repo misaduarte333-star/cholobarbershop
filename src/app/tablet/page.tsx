@@ -94,19 +94,39 @@ export default function TabletDashboard() {
     }, [])
 
     // Auto-enter fullscreen on first tap (required by browser policy)
+    // Also tries immediately on load and on every pageshow (reload)
     useEffect(() => {
-        const autoFs = () => {
+        const requestFs = () => {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(() => {})
             }
-            window.removeEventListener('touchstart', autoFs, { capture: true })
-            window.removeEventListener('click', autoFs, { capture: true })
         }
-        window.addEventListener('touchstart', autoFs, { once: true, capture: true })
-        window.addEventListener('click', autoFs, { once: true, capture: true })
+
+        // Try immediately — works if user previously granted fullscreen this session
+        requestFs()
+
+        // Re-enter on every page show (handles F5 / reload)
+        const onPageShow = () => requestFs()
+        window.addEventListener('pageshow', onPageShow)
+
+        // Re-enter when tab gets focus (back from another tab)
+        const onFocus = () => requestFs()
+        window.addEventListener('focus', onFocus)
+
+        // Fallback: enter on first user interaction (fresh session)
+        const onFirstInteraction = () => {
+            requestFs()
+            window.removeEventListener('touchstart', onFirstInteraction, { capture: true })
+            window.removeEventListener('click', onFirstInteraction, { capture: true })
+        }
+        window.addEventListener('touchstart', onFirstInteraction, { once: true, capture: true })
+        window.addEventListener('click', onFirstInteraction, { once: true, capture: true })
+
         return () => {
-            window.removeEventListener('touchstart', autoFs, { capture: true })
-            window.removeEventListener('click', autoFs, { capture: true })
+            window.removeEventListener('pageshow', onPageShow)
+            window.removeEventListener('focus', onFocus)
+            window.removeEventListener('touchstart', onFirstInteraction, { capture: true })
+            window.removeEventListener('click', onFirstInteraction, { capture: true })
         }
     }, [])
     useEffect(() => {
