@@ -25,6 +25,7 @@ export const metadata: Metadata = {
     description: 'Sistema inteligente de gestión de citas para barberías',
     keywords: ['barbería', 'citas', 'gestión', 'IA', 'WhatsApp'],
     authors: [{ name: 'BarberCloud' }],
+    manifest: '/manifest.json',
 }
 
 import { Toaster } from "@/components/ui/sonner"

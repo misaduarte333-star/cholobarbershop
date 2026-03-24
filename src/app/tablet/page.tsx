@@ -28,7 +28,9 @@ import {
     History,
     AlertCircle,
     DollarSign,
-    TrendingUp
+    TrendingUp,
+    Maximize,
+    Minimize
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
@@ -73,7 +75,40 @@ export default function TabletDashboard() {
     const [isAudioInitialized, setIsAudioInitialized] = useState(false)
     const [soundEnabled, setSoundEnabled] = useState(true)
     const [isEfficiencyMode, setIsEfficiencyMode] = useState(false)
-    
+    const [isFullscreen, setIsFullscreen] = useState(false)
+
+    // Fullscreen logic
+    const toggleFullscreen = useCallback(() => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {})
+        } else {
+            document.exitFullscreen().catch(() => {})
+        }
+    }, [])
+
+    // Track fullscreen state changes  
+    useEffect(() => {
+        const onFsChange = () => setIsFullscreen(!!document.fullscreenElement)
+        document.addEventListener('fullscreenchange', onFsChange)
+        return () => document.removeEventListener('fullscreenchange', onFsChange)
+    }, [])
+
+    // Auto-enter fullscreen on first tap (required by browser policy)
+    useEffect(() => {
+        const autoFs = () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {})
+            }
+            window.removeEventListener('touchstart', autoFs, { capture: true })
+            window.removeEventListener('click', autoFs, { capture: true })
+        }
+        window.addEventListener('touchstart', autoFs, { once: true, capture: true })
+        window.addEventListener('click', autoFs, { once: true, capture: true })
+        return () => {
+            window.removeEventListener('touchstart', autoFs, { capture: true })
+            window.removeEventListener('click', autoFs, { capture: true })
+        }
+    }, [])
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setIsEfficiencyMode(isLowEndDevice())
@@ -620,6 +655,14 @@ export default function TabletDashboard() {
                         </div>
 
                         <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-white/10">
+                            <Button
+                                size="icon"
+                                onClick={toggleFullscreen}
+                                className="w-8 h-8 bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white/80 shadow-none"
+                                title={isFullscreen ? "Salir de Pantalla Completa" : "Pantalla Completa"}
+                            >
+                                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                            </Button>
                             <Button
                                 size="icon"
                                 onClick={() => setIsNewCitaModalOpen(true)}

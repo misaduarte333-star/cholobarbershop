@@ -37,3 +37,6 @@ next-env.d.ts
 .agent/
 .agents/
 skills-lock.json
+
+# Android native app (managed separately)
+android-app/
