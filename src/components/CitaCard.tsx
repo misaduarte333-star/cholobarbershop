@@ -1,13 +1,15 @@
-import { useState, useEffect, memo, useMemo } from 'react'
+import { useState, useEffect, memo, useMemo, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
-import { CheckOutModal } from './CheckOutModal'
-import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO } from '@/lib/utils'
+import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO, parse12hToMins, formato12h } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import dynamic from 'next/dynamic'
+
+const CheckOutModal = dynamic(() => import('./CheckOutModal').then(m => m.CheckOutModal), { ssr: false })
 import {
     Play,
     RotateCcw,
@@ -62,27 +64,10 @@ interface CitaCardProps {
     bloqueos?: any[]
     almuerzoBarbero?: any
     horarioSucursal?: any
-}
-
-const parse12hToMins = (hora12: string) => {
-    if (!hora12) return 0
-    const matches = hora12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
-    if (!matches) return 0
-    let [_, h, m, ampm] = matches
-    let hours = parseInt(h, 10)
-    const minutes = parseInt(m, 10)
-    if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12
-    if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0
-    return hours * 60 + minutes
-}
-
-const formato12h = (hora24: string) => {
-    if (!hora24) return 'Ninguna'
-    const [h, m] = hora24.split(':')
-    const hNum = parseInt(h, 10)
-    const ampm = hNum >= 12 ? 'PM' : 'AM'
-    const h12 = hNum % 12 || 12
-    return `${h12.toString().padStart(2, '0')}:${m} ${ampm}`
+    /** Pre-loaded from parent to avoid per-card fetches */
+    servicios?: Servicio[]
+    /** Pre-loaded from parent to avoid per-card fetches */
+    barberos?: Barbero[]
 }
 
 export const CitaCard = memo(function CitaCard({
@@ -96,7 +81,9 @@ export const CitaCard = memo(function CitaCard({
     autoOpen,
     bloqueos = [],
     almuerzoBarbero = null,
-    horarioSucursal
+    horarioSucursal,
+    servicios: serviciosProp = [],
+    barberos: barberosProp = [],
 }: CitaCardProps) {
     const [mounted, setMounted] = useState(false)
     useEffect(() => {
@@ -133,8 +120,9 @@ export const CitaCard = memo(function CitaCard({
     const [barberoEdit, setBarberoEdit] = useState(cita.barbero_id)
     const [notasEdit, setNotasEdit] = useState(cita.notas || '')
 
-    const [allServicios, setAllServicios] = useState<Servicio[]>([])
-    const [allBarberos, setAllBarberos] = useState<Barbero[]>([])
+    // Use pre-loaded data from parent (avoids N+1 fetches); fall back to local fetch only if not provided
+    const [allServicios, setAllServicios] = useState<Servicio[]>(serviciosProp)
+    const [allBarberos, setAllBarberos] = useState<Barbero[]>(barberosProp)
 
     const supabase = createClient()
 
@@ -150,21 +138,28 @@ export const CitaCard = memo(function CitaCard({
         }
     }, [cita.id, isEditing])
 
+    // Keep local copies in sync when parent updates the pre-loaded arrays
+    useEffect(() => { if (serviciosProp.length > 0) setAllServicios(serviciosProp) }, [serviciosProp])
+    useEffect(() => { if (barberosProp.length > 0) setAllBarberos(barberosProp) }, [barberosProp])
+
+    // Fallback: only fetch if parent did not provide data (e.g. standalone usage)
     useEffect(() => {
+        if (serviciosProp.length > 0 && barberosProp.length > 0) return
         const loadDeps = async () => {
             try {
                 const [servs, barbs] = await Promise.all([
-                    supabase.from('servicios').select('*').eq('activo', true),
-                    supabase.from('barberos').select('*').eq('activo', true)
+                    serviciosProp.length === 0 ? supabase.from('servicios').select('*').eq('activo', true) : Promise.resolve({ data: null }),
+                    barberosProp.length === 0 ? supabase.from('barberos').select('*').eq('activo', true) : Promise.resolve({ data: null }),
                 ])
                 if (servs.data) setAllServicios(servs.data)
                 if (barbs.data) setAllBarberos(barbs.data)
             } catch (err) {
-                console.error('Error loading deps in CitaCard:', err)
+                console.error('Error loading deps in CitaCard (fallback):', err)
             }
         }
         loadDeps()
-    }, [supabase])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const actualizarEstado = async (nuevoEstado: EstadoCita) => {
         if (loading) return
@@ -751,7 +746,7 @@ export const CitaCard = memo(function CitaCard({
             {/* MODALS using shadcn/ui Dialog */}
 
             {/* Early Warning Dialog */}
-            <Dialog open={showEarlyWarning} onOpenChange={setShowEarlyWarning}>
+            <Dialog open={showEarlyWarning} onOpenChange={(open) => { setShowEarlyWarning(open); if (!open) onClose?.(); }}>
                 <DialogContent className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] sm:max-w-sm w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold opacity-50" />
                     <DialogHeader className="flex flex-col items-center pt-6">
@@ -775,7 +770,7 @@ export const CitaCard = memo(function CitaCard({
             </Dialog>
 
             {/* Active Appointment Warning Dialog */}
-            <Dialog open={showActiveWarning} onOpenChange={setShowActiveWarning}>
+            <Dialog open={showActiveWarning} onOpenChange={(open) => { setShowActiveWarning(open); if (!open) onClose?.(); }}>
                 <DialogContent className="bg-[#050608] border-red-500/20 text-white rounded-[2rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border shadow-[0_0_50px_rgba(239,68,68,0.15)]">
                     <div className="absolute top-0 left-0 w-full h-1 bg-red-600 opacity-50" />
                     <DialogHeader className="flex flex-col items-center pt-10 px-6">
@@ -1164,7 +1159,7 @@ export const CitaCard = memo(function CitaCard({
                 key="checkout-modal"
                 cita={cita}
                 isOpen={showCheckout}
-                onClose={() => setShowCheckout(false)}
+                onClose={() => { setShowCheckout(false); onClose?.(); }}
                 onUpdate={onUpdate}
             />
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion'
-import { isLowEndDevice } from '@/lib/performance'
+
 import {
     Plus,
     BarChart3,
@@ -28,9 +28,10 @@ import {
     History,
     AlertCircle,
     DollarSign,
-    TrendingUp,
     Maximize,
-    Minimize
+    Minimize,
+    Wallet,
+    TrendingDown
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
@@ -74,7 +75,6 @@ export default function TabletDashboard() {
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const [isAudioInitialized, setIsAudioInitialized] = useState(false)
     const [soundEnabled, setSoundEnabled] = useState(true)
-    const [isEfficiencyMode, setIsEfficiencyMode] = useState(false)
     const [isFullscreen, setIsFullscreen] = useState(false)
 
     // Fullscreen logic
@@ -136,7 +136,7 @@ export default function TabletDashboard() {
     }, [])
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            setIsEfficiencyMode(isLowEndDevice())
+            // Check performance but apply optimizations globally
         }
     }, [])
     const [showSettings, setShowSettings] = useState(false)
@@ -154,6 +154,9 @@ export default function TabletDashboard() {
     const lastTapAgenda = useRef<number>(0)
     const datePickerRef = useRef<HTMLInputElement>(null)
     const [citasPasadasPendientes, setCitasPasadasPendientes] = useState<number>(0)
+    // Shared data lifted to page level to avoid per-CitaCard fetches
+    const [allServicios, setAllServicios] = useState<any[]>([])
+    const [allBarberos, setAllBarberos] = useState<any[]>([])
 
     // Keep citasRef in sync for stale-closure-safe comparisons (Vercel: advanced-event-handler-refs)
     useEffect(() => { citasRef.current = citas }, [citas])
@@ -358,14 +361,22 @@ export default function TabletDashboard() {
 
                 // Fetch sucursal data if available
                 if (currentBarbero.sucursal_id) {
-                    const { data: sucursalData } = await supabase
-                        .from('sucursales')
-                        .select('*')
-                        .eq('id', currentBarbero.sucursal_id)
-                        .single()
-                    if (sucursalData) {
-                        setSucursal(sucursalData)
-                    }
+                    const [sucursalRes, serviciosRes, barberosRes] = await Promise.all([
+                        supabase.from('sucursales').select('*').eq('id', currentBarbero.sucursal_id).single(),
+                        supabase.from('servicios').select('*').eq('activo', true),
+                        supabase.from('barberos').select('*').eq('activo', true),
+                    ])
+                    if ((sucursalRes as any).data) setSucursal((sucursalRes as any).data)
+                    if (serviciosRes.data) setAllServicios(serviciosRes.data)
+                    if (barberosRes.data) setAllBarberos(barberosRes.data)
+                } else {
+                    // Still fetch servicios/barberos even without sucursal
+                    const [serviciosRes, barberosRes] = await Promise.all([
+                        supabase.from('servicios').select('*').eq('activo', true),
+                        supabase.from('barberos').select('*').eq('activo', true),
+                    ])
+                    if (serviciosRes.data) setAllServicios(serviciosRes.data)
+                    if (barberosRes.data) setAllBarberos(barberosRes.data)
                 }
 
                 setIsCheckingAuth(false)
@@ -402,21 +413,29 @@ export default function TabletDashboard() {
     useEffect(() => {
         if (barbero?.id) {
             checkPastPending(barbero.id)
+            
+            // Sync lunch break separately once per barber change
+            const fetchStatic = async () => {
+                const { data } = await supabase
+                    .from('barberos')
+                    .select('bloqueo_almuerzo')
+                    .eq('id', barbero.id)
+                    .single()
+                if (data) setAlmuerzoBarbero((data as any).bloqueo_almuerzo)
+            }
+            fetchStatic()
         }
-    }, [barbero?.id, checkPastPending])
+    }, [barbero?.id, checkPastPending, supabase])
 
     const cargarAgenda = useCallback(async (isInitialLoad = false) => {
         if (!barbero?.id) return
 
         if (isInitialLoad) setLoading(true)
-        // Vercel client-swr-dedup: only show skeleton on initial load,
-        // background refreshes (from onUpdate) should be transparent to the user
         if (isInitialLoad) setLoadingAgenda(true)
 
         const syncTimelineDate = fechaAgenda
         const syncVista = vistaAgenda
 
-        // Calculate date range
         let startStr = syncTimelineDate
         let endStr = syncTimelineDate
 
@@ -437,8 +456,8 @@ export default function TabletDashboard() {
         }
 
         try {
-            console.log(`📡 Fetching data for [${syncVista}] range: ${startStr} to ${endStr}`)
-            const [citasRes, bloqueosRes, barberoRes] = await Promise.all([
+            console.log(`📡 Fetching agenda: [${syncVista}] range: ${startStr} to ${endStr}`)
+            const [citasRes, bloqueosRes] = await Promise.all([
                 supabase
                     .from('vista_citas_app')
                     .select('*')
@@ -452,12 +471,7 @@ export default function TabletDashboard() {
                     .select('*')
                     .eq('barbero_id', barbero.id)
                     .gte('fecha_inicio', `${startStr}T00:00:00-07:00`)
-                    .lte('fecha_inicio', `${endStr}T23:59:59-07:00`),
-                supabase
-                    .from('barberos')
-                    .select('bloqueo_almuerzo')
-                    .eq('id', barbero.id)
-                    .single()
+                    .lte('fecha_inicio', `${endStr}T23:59:59-07:00`)
             ])
 
             if (citasRes.error) throw citasRes.error
@@ -466,7 +480,6 @@ export default function TabletDashboard() {
             const citasData = (citasRes.data as CitaDesdeVista[]) || []
             setCitasAgenda(citasData)
             setBloqueosAgenda(bloqueosRes.data || [])
-            setAlmuerzoBarbero((barberoRes.data as any)?.bloqueo_almuerzo || null)
 
             // UNIFICATION: Update the summary "citas" (Today) if relevant
             const hoy = new Intl.DateTimeFormat('en-CA', {
@@ -584,9 +597,8 @@ export default function TabletDashboard() {
     return (
         <div className="h-[100dvh] bg-[#0A0C12] text-white flex flex-col overflow-hidden font-sans relative selection:bg-primary selection:text-black">
             {/* Background Effects */}
-            <div className={cn("absolute inset-0 z-0 bg-radial-at-tl from-primary/5 via-transparent to-transparent", isEfficiencyMode ? "opacity-30" : "opacity-60")} />
-            {!isEfficiencyMode && <div className="absolute inset-0 z-0 bg-radial-at-br from-blue-500/5 via-transparent to-transparent opacity-40"></div>}
-            <div className={cn("absolute inset-0 z-0 vignette-overlay", isEfficiencyMode ? "opacity-20" : "opacity-50")} />
+            <div className="absolute inset-0 z-0 bg-radial-at-tl from-primary/5 via-transparent to-transparent opacity-40" />
+            <div className="absolute inset-0 z-0 vignette-overlay opacity-30" />
 
             {newApptAlert.show && (
                 <motion.div
@@ -612,15 +624,15 @@ export default function TabletDashboard() {
                 </motion.div>
             )}
 
-            <header className={cn("bg-black/60 border-b border-white/5 px-4 md:px-8 py-3 md:py-5 shrink-0 z-50 relative", isEfficiencyMode ? "backdrop-blur-md shadow-md" : "backdrop-blur-3xl shadow-[0_10px_50px_rgba(0,0,0,0.8)]")}>
-                {!isEfficiencyMode && <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-primary/30 to-amber-600/30 opacity-30" />}
+            {seccion === 'agenda' && (
+            <header className="bg-[#050505] border-b border-white/5 px-4 md:px-8 py-3 md:py-5 shrink-0 z-50 relative shadow-xl">
 
                 <div className="flex items-start justify-between max-w-[1920px] mx-auto gap-3">
 
                     <div className="flex items-start gap-2 md:gap-4 group">
                         <div className="relative scale-75 md:scale-90 mt-1 hidden sm:block">
                             <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-lg group-hover:bg-primary/10 transition-all duration-700" />
-                            <div className="relative inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-black border border-white/10 shadow-2xl backdrop-blur-sm overflow-hidden group-hover:border-white/20 transition-colors duration-500">
+                            <div className="relative inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-black border border-white/10 shadow-2xl overflow-hidden group-hover:border-white/20 transition-colors duration-500">
                                 <img src="/logo-cholo.jpg" alt="Logo" className="w-full h-full object-cover transform scale-125 transition-transform group-hover:scale-150" />
                             </div>
                         </div>
@@ -656,7 +668,7 @@ export default function TabletDashboard() {
                     </div>
 
                     <div className="flex items-center gap-3 md:gap-6 shrink-0 mt-2">
-                        <div className="hidden lg:flex items-center gap-8 px-6 py-3 bg-white/5 rounded-2xl border border-white/5 shadow-inner backdrop-blur-xl">
+                        <div className="hidden lg:flex items-center gap-8 px-6 py-3 bg-white/5 rounded-2xl border border-white/5 shadow-inner">
                             <div className="flex gap-4 md:gap-8 mr-auto">
                                 <div className="text-center">
                                     <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5">Servicios</p>
@@ -711,9 +723,7 @@ export default function TabletDashboard() {
                                 onClick={() => setSeccion(seccion === 'agenda' ? 'finanzas' : 'agenda')}
                                 className={cn(
                                     "w-8 h-8 transition-all shadow-none shrink-0",
-                                    seccion === 'finanzas' 
-                                        ? "bg-primary text-black scale-110" 
-                                        : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
+                                    seccion === 'agenda' ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20" : "bg-primary text-black scale-110"
                                 )}
                                 title="Mis Finanzas"
                             >
@@ -749,9 +759,10 @@ export default function TabletDashboard() {
                     </div>
                 </div>
             </header>
+            )}
 
             <main className="flex-1 overflow-hidden p-0 lg:p-3 xl:p-4 relative z-10 flex flex-col">
-                {seccion === 'agenda' ? (
+                {seccion === 'agenda' && (
                     <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-3 xl:gap-4 max-w-[2000px] mx-auto w-full">
                         <div className={`lg:col-span-8 h-full flex flex-col min-h-0 relative ${showMobileAppointments ? 'hidden lg:flex' : 'flex'}`}>
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0 px-2 lg:px-0">
@@ -824,9 +835,9 @@ export default function TabletDashboard() {
                                             ref={datePickerRef}
                                             type="date"
                                             value={fechaAgenda}
-                                            onChange={(e) => { 
-                                                setFechaAgenda(e.target.value); 
-                                                setVistaAgenda('dia') 
+                                            onChange={(e) => {
+                                                setFechaAgenda(e.target.value);
+                                                setVistaAgenda('dia')
                                             }}
                                             className="absolute inset-0 opacity-0 pointer-events-none"
                                             style={{ colorScheme: 'dark' }}
@@ -835,8 +846,7 @@ export default function TabletDashboard() {
                                 </div>
                             </div>
 
-                            <div className={cn("flex-1 bg-black/40 lg:border border-white/5 overflow-hidden relative group transition-all duration-700", isEfficiencyMode ? "lg:rounded-xl" : "lg:shadow-[0_20px_60px_rgba(0,0,0,0.5)] lg:rounded-[1.5rem] hover:border-white/10 backdrop-blur-3xl")}>
-                                {!isEfficiencyMode && <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-gold opacity-10" />}
+                            <div className="flex-1 bg-black/40 lg:border border-white/5 overflow-hidden relative group transition-all duration-700 lg:shadow-xl lg:rounded-xl hover:border-white/10">
                                 {loadingAgenda ? (
                                     <div className="flex flex-col w-full h-full p-6 space-y-4 animate-pulse">
                                         <div className="h-8 w-1/3 bg-white/5 rounded-xl ml-auto" />
@@ -855,7 +865,7 @@ export default function TabletDashboard() {
                                                 fechaBase={fechaAgenda}
                                                 barbero={barbero}
                                                 onUpdate={() => cargarAgenda()}
-                                                isEfficiencyMode={isEfficiencyMode}
+                                                // Standard performance props
                                             />
                                         ) : (
                                             <div className="p-4 pt-6 h-full overflow-y-auto custom-scrollbar">
@@ -892,7 +902,7 @@ export default function TabletDashboard() {
                         </div>
 
                         <div className={`lg:col-span-4 flex flex-col h-full min-h-0 relative transition-all duration-500 ${showMobileAppointments ? 'translate-y-0 opacity-100 z-50' : 'hidden lg:flex'}`}>
-                            <div className={cn("lg:hidden flex items-center justify-between p-6 bg-black/90 border-b border-white/5 sticky top-0 z-[60]", !isEfficiencyMode && "backdrop-blur-xl")}>
+                            <div className="lg:hidden flex items-center justify-between p-6 bg-black/90 border-b border-white/5 sticky top-0 z-[60]">
                                 <div className="flex items-center gap-4">
                                     <div className="h-1 w-6 bg-primary rounded-full" />
                                     <h2 className="text-xs font-black text-white uppercase tracking-[0.3em] font-display">Agenda del Día</h2>
@@ -920,6 +930,8 @@ export default function TabletDashboard() {
                                                 bloqueos={bloqueosAgenda}
                                                 almuerzoBarbero={almuerzoBarbero}
                                                 horarioSucursal={sucursal}
+                                                servicios={allServicios}
+                                                barberos={allBarberos}
                                             />
                                         </div>
                                     </div>
@@ -957,6 +969,8 @@ export default function TabletDashboard() {
                                                         bloqueos={bloqueosAgenda}
                                                         almuerzoBarbero={almuerzoBarbero}
                                                         horarioSucursal={sucursal}
+                                                        servicios={allServicios}
+                                                        barberos={allBarberos}
                                                     />
                                                 </div>
                                             ))}
@@ -966,10 +980,15 @@ export default function TabletDashboard() {
                             </div>
                         </div>
                     </div>
-                ) : (
-                    <div className="flex-1 overflow-y-auto custom-scrollbar px-4 lg:px-0 mt-4">
-                        <div className="max-w-6xl mx-auto">
-                            <FinanzasBarbero barbero={barbero} />
+                )}
+                
+                {seccion === 'finanzas' && barbero && (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 scroll-smooth bg-[#020202]">
+                        <div className="max-w-7xl mx-auto">
+                            <FinanzasBarbero 
+                                barbero={barbero} 
+                                onBack={() => setSeccion('agenda')}
+                            />
                         </div>
                     </div>
                 )}
@@ -983,6 +1002,8 @@ export default function TabletDashboard() {
                 horarioSucursalProps={sucursal?.horario_apertura}
                 citasDelDia={citas}
                 onCitaCreada={() => cargarAgenda()}
+                bloqueosDelDia={bloqueosAgenda}
+                almuerzoBarberoProps={almuerzoBarbero}
             />
 
             <Dialog open={showSettings} onOpenChange={setShowSettings}>

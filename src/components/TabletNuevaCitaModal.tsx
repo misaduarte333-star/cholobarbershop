@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { Badge } from '@/components/ui/badge'
-import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO } from '@/lib/utils'
+import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO, parse12hToMins, formato12h } from '@/lib/utils'
+
 import { ClientAutocomplete } from './ClientAutocomplete'
 import {
     Store,
@@ -46,9 +47,13 @@ interface TabletNuevaCitaModalProps {
     horarioSucursalProps?: any
     citasDelDia: any[] // Array of CitaDesdeVista
     onCitaCreada: () => void
+    /** Pre-loaded from parent to skip sub-fetch on open */
+    bloqueosDelDia?: any[]
+    /** Pre-loaded from parent to skip sub-fetch on open */
+    almuerzoBarberoProps?: any
 }
 
-export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, horarioSucursalProps, citasDelDia, onCitaCreada }: TabletNuevaCitaModalProps) {
+export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, horarioSucursalProps, citasDelDia, onCitaCreada, bloqueosDelDia = [], almuerzoBarberoProps = null }: TabletNuevaCitaModalProps) {
     const [loading, setLoading] = useState(false)
     const [servicios, setServicios] = useState<Servicio[]>([])
     const [error, setError] = useState('')
@@ -62,6 +67,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
     const [servicioId, setServicioId] = useState('')
     const [horaInicio, setHoraInicio] = useState('')
     const [origen, setOrigen] = useState<'walkin' | 'whatsapp' | 'telefono'>('walkin')
+    const contentRef = useRef<HTMLDivElement>(null)
 
     const getHoyStr = () => {
         return getHermosilloDateStr(new Date())
@@ -79,10 +85,14 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
         }
     }, [citasDelDia, barberoId])
 
-    const [bloqueosParaFecha, setBloqueosParaFecha] = useState<any[]>([])
-    const [almuerzoBarbero, setAlmuerzoBarbero] = useState<any>(null)
+    const [bloqueosParaFecha, setBloqueosParaFecha] = useState<any[]>(bloqueosDelDia)
+    const [almuerzoBarbero, setAlmuerzoBarbero] = useState<any>(almuerzoBarberoProps)
     const [horarioSucursal, setHorarioSucursal] = useState<any>(horarioSucursalProps || null)
     const [isRefreshing, setIsRefreshing] = useState(false)
+
+    // Keep in sync if parent updates these
+    useEffect(() => { setBloqueosParaFecha(bloqueosDelDia) }, [bloqueosDelDia])
+    useEffect(() => { if (almuerzoBarberoProps !== null) setAlmuerzoBarbero(almuerzoBarberoProps) }, [almuerzoBarberoProps])
 
     const selectedService = useMemo(() =>
         servicios.find(s => String(s.id) === String(servicioId)),
@@ -111,75 +121,46 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                 console.error("Error refreshing appointments:", err)
             }
 
-            // Bloqueos y Almuerzo
-            const [bloqueosRes, barberoRes, sucursalRes] = await Promise.all([
-                supabase.from('bloqueos').select('*').gte('fecha_inicio', `${fecha}T00:00:00`).lte('fecha_inicio', `${fecha}T23:59:59`),
-                barberoId ? supabase.from('barberos').select('bloqueo_almuerzo').eq('id', barberoId).single() : Promise.resolve({ data: null } as any),
-                sucursalId ? supabase.from('sucursales').select('horario_apertura').eq('id', sucursalId).single() : Promise.resolve({ data: null } as any)
-            ])
+            // Only fetch bloqueos/almuerzo if not pre-loaded from parent (optimization)
+            if (bloqueosDelDia.length === 0) {
+                const [bloqueosRes, barberoRes] = await Promise.all([
+                    supabase.from('bloqueos').select('*').gte('fecha_inicio', `${fecha}T00:00:00`).lte('fecha_inicio', `${fecha}T23:59:59`),
+                    barberoId ? supabase.from('barberos').select('bloqueo_almuerzo').eq('id', barberoId).single() : Promise.resolve({ data: null } as any),
+                ])
 
-            if (bloqueosRes.error) {
-                console.error('❌ [TabletNuevaCitaModal] Error al obtener bloqueos:', bloqueosRes.error)
+                if (bloqueosRes.data) {
+                    setBloqueosParaFecha(bloqueosRes.data.filter((b: any) => !b.barbero_id || String(b.barbero_id) === String(barberoId)))
+                }
+                if (barberoRes.data) setAlmuerzoBarbero(barberoRes.data.bloqueo_almuerzo)
             }
 
-            if (bloqueosRes.data) {
-                const filteredBloqueos = bloqueosRes.data.filter((b: any) => !b.barbero_id || String(b.barbero_id) === String(barberoId))
-                console.log(`📡 [TabletNuevaCitaModal] Bloqueos encontrados:`, filteredBloqueos.length)
-                setBloqueosParaFecha(filteredBloqueos)
-            } else {
-                setBloqueosParaFecha([])
-            }
-
-            if (barberoRes.data) {
-                setAlmuerzoBarbero(barberoRes.data.bloqueo_almuerzo)
-            }
-
-            if (sucursalRes.data) {
-                setHorarioSucursal(sucursalRes.data.horario_apertura)
+            // Sucursal horario: use prop if available
+            if (!horarioSucursal && sucursalId) {
+                const sucursalRes = await supabase.from('sucursales').select('horario_apertura').eq('id', sucursalId).single()
+                if ((sucursalRes as any).data) setHorarioSucursal((sucursalRes as any).data.horario_apertura)
             } else if (horarioSucursalProps) {
                 setHorarioSucursal(horarioSucursalProps)
             }
+
             setIsRefreshing(false)
         }
 
         fetchDatosDia()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fecha, isOpen, barberoId]) // Elimino citasDelDia de deps para evitar bucles si el padre cambia pero no necesitamos refrescar nosotros mismos
 
-    const formato12h = (hora24: string) => {
-        if (!hora24) return 'Ninguna'
-        const [h, m] = hora24.split(':')
-        const hNum = parseInt(h, 10)
-        const ampm = hNum >= 12 ? 'PM' : 'AM'
-        const h12 = hNum % 12 || 12
-        return `${h12.toString().padStart(2, '0')}:${m} ${ampm}`
-    }
-
-    // Nueva función para parsear el formato "HH:MI AM/PM" de la vista a minutos
-    const parse12hToMins = (hora12: string) => {
-        if (!hora12) return 0
-        const matches = hora12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
-        if (!matches) return 0
-
-        let hours = parseInt(matches[1], 10)
-        const minutes = parseInt(matches[2], 10)
-        const ampm = matches[3].toUpperCase()
-
-        if (ampm === 'PM' && hours < 12) hours += 12
-        if (ampm === 'AM' && hours === 12) hours = 0
-
-        return hours * 60 + minutes
-    }
+    // formato12h and parse12hToMins are now imported from '@/lib/utils'
 
     // Custom Dropdown State
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     // Date Navigation
-    const shiftFecha = (days: number) => {
+    const shiftFecha = useCallback((days: number) => {
         const current = new Date(`${fecha}T12:00:00-07:00`)
         current.setDate(current.getDate() + days)
         setFecha(current.toISOString().split('T')[0])
-    }
+    }, [fecha])
 
-    const getRelativeLabel = (fechaStr: string) => {
+    const getRelativeLabel = useCallback((fechaStr: string) => {
         if (fechaStr === getHoyStr()) return 'HOY'
 
         const target = new Date(`${fechaStr}T12:00:00-07:00`)
@@ -191,21 +172,21 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
         if (diffDays === 1) return 'MAÑANA'
         if (diffDays === -1) return 'AYER'
         return target.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    }
+    }, [getHoyStr])
 
     const dropdownRef = useRef<HTMLDivElement>(null)
     const dateInputRef = useRef<HTMLInputElement>(null)
 
     // Double Tap State for Mobile compatibility
     const lastTap = useRef<number>(0)
-    const handleDoubleTap = () => {
+    const handleDoubleTap = useCallback(() => {
         const now = Date.now()
         const DOUBLE_PRESS_DELAY = 300
         if (now - lastTap.current < DOUBLE_PRESS_DELAY) {
             setFecha(getHoyStr())
         }
         lastTap.current = now
-    }
+    }, [getHoyStr])
 
     // Click outside handler para el Dropdown
     useEffect(() => {
@@ -246,7 +227,17 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
         fetchServicios()
     }, [isOpen])
 
-    const handleSubmit = async (e?: React.FormEvent, isConfirmedPast = false) => {
+    const resetForm = useCallback(() => {
+        setNombre('')
+        setClienteId(null)
+        setTelefono('')
+        setServicioId('')
+        setOrigen('walkin')
+        setError('')
+        setFecha(getHoyStr())
+    }, [getHoyStr])
+
+    const handleSubmit = useCallback(async (e?: React.FormEvent, isConfirmedPast = false) => {
         if (e) e.preventDefault()
         setError('')
 
@@ -361,34 +352,26 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
 
             // Exito
             resetForm()
-            // Delay closing to let DB views sync
-            setTimeout(() => {
-                onCitaCreada()
-                onClose()
-            }, 500)
+            // Immediate closure and notification to parent
+            onCitaCreada()
+            onClose()
 
         } catch (err: any) {
             setError(err.message || 'Error de conexión. Revisa la disponibilidad de ese horario.')
         } finally {
             setLoading(false)
         }
-    }
-
-    const resetForm = () => {
-        setNombre('')
-        setClienteId(null)
-        setTelefono('')
-        setServicioId('')
-        setOrigen('walkin')
-        setError('')
-        setFecha(getHoyStr())
-    }
+    }, [
+        nombre, servicioId, horaInicio, fecha, clienteId, telefono, originalTelefono, 
+        origen, selectedService, citasParaFecha, bloqueosParaFecha, barberoId, 
+        sucursalId, onCitaCreada, onClose, resetForm
+    ])
 
     // Handlers
-    const handleClose = () => {
+    const handleClose = useCallback(() => {
         resetForm()
         onClose()
-    }
+    }, [resetForm, onClose])
 
     // Horarios para generar botones (ajustado al horario de la sucursal) - MEMOIZED for performance
     const slotsParaCita = useMemo(() => {
@@ -510,29 +493,32 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             }
         }
         return slots
-    }, [fecha, citasParaFecha, bloqueosParaFecha, almuerzoBarbero, horarioSucursal, servicioId, servicios])
+    }, [fecha, citasParaFecha, bloqueosParaFecha, almuerzoBarbero, horarioSucursal, selectedService, getHoyStr])
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent showCloseButton={false} className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] p-0 overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,1)] w-[95vw] sm:max-w-lg max-h-[96vh] flex flex-col border outline-none">
+            <DialogContent 
+                initialFocus={contentRef as any}
+                showCloseButton={false}
+                className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[92vh] overflow-hidden p-0 outline-none border flex flex-col duration-200"
+            >
+                <div ref={contentRef} tabIndex={-1} className="outline-none" />
                 {/* Status Bar */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-amber-600 z-50 shrink-0" />
 
-                {/* Decorative background light */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
 
-                <DialogHeader className="px-6 sm:px-8 py-5 sm:py-6 border-b border-white/5 bg-black/40 flex flex-row items-center justify-between space-y-0 relative z-10 shrink-0">
+                <DialogHeader className="px-5 sm:px-6 py-3 sm:py-4 border-b border-white/5 bg-black/40 flex flex-row items-center justify-between space-y-0 relative z-10 shrink-0">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 shadow-inner">
-                            <CalendarIcon className="w-6 h-6 text-primary" />
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 shadow-inner">
+                            <CalendarIcon className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                            <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white font-display">
+                            <h2 className="text-xl font-black uppercase tracking-tighter text-white font-display">
                                 Añadir Cita
-                            </DialogTitle>
-                            <div className="flex items-center gap-2 mt-1">
-                                <div className="h-1 w-6 bg-primary rounded-full shadow-[0_0_10px_rgba(245,200,66,0.5)]" />
-                                <p className="text-[9px] sm:text-[10px] text-primary/60 font-black uppercase tracking-[0.2em]">Registro Manual</p>
+                            </h2>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <div className="h-0.5 w-4 bg-primary rounded-full" />
+                                <p className="text-[8px] text-primary/60 font-black uppercase tracking-widest">Manual</p>
                             </div>
                         </div>
                     </div>
@@ -541,213 +527,220 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                         variant="ghost"
                         size="icon"
                         onClick={handleClose}
-                        className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0"
+                        className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0 group"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-8 h-8 group-hover:scale-110 transition-transform" />
                     </Button>
                 </DialogHeader>
 
-                <div className="p-6 sm:p-8 space-y-5 sm:space-y-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+                <div className="p-3 sm:p-4 space-y-3 sm:space-y-3 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                     {/* Errores */}
                     {error && (
-                        <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 animate-shake">
+                        <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3">
                             <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
                             <span className="font-bold uppercase tracking-widest text-[9px] text-red-400">{error}</span>
                         </div>
                     )}
 
-                    {/* Selector de Origen */}
-                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 shrink-0">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => setOrigen('walkin')}
-                            className={cn(
-                                "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
-                                origen === 'walkin' ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
-                            )}
-                        >
-                            <Store className="w-4 h-4" />
-                            Local
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => setOrigen('whatsapp')}
-                            className={cn(
-                                "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
-                                origen === 'whatsapp' ? 'bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
-                            )}
-                        >
-                            <MessageCircle className="w-4 h-4" />
-                            WP
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => setOrigen('telefono')}
-                            className={cn(
-                                "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
-                                origen === 'telefono' ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
-                            )}
-                        >
-                            <Phone className="w-4 h-4" />
-                            Llamada
-                        </Button>
+                    {/* Selector de Origen - Centered and small */}
+                    <div className="flex justify-center shrink-0">
+                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 w-full max-w-md">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setOrigen('walkin')}
+                                className={cn(
+                                    "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
+                                    origen === 'walkin' ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                                )}
+                            >
+                                <Store className="w-4 h-4" />
+                                Local
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setOrigen('whatsapp')}
+                                className={cn(
+                                    "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
+                                    origen === 'whatsapp' ? 'bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                                )}
+                            >
+                                <MessageCircle className="w-4 h-4" />
+                                WP
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setOrigen('telefono')}
+                                className={cn(
+                                    "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
+                                    origen === 'telefono' ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                                )}
+                            >
+                                <Phone className="w-4 h-4" />
+                                Llamada
+                            </Button>
+                        </div>
                     </div>
 
-                    <div className="space-y-6">
-                        {/* Cliente Input */}
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-2 block">Nombre del Cliente</Label>
-                            <ClientAutocomplete
-                                value={nombre}
-                                onChange={(val) => {
-                                    setNombre(val)
-                                    if (clienteId) {
-                                        setClienteId(null)
-                                        setTelefono("")
-                                        setOriginalTelefono(null)
-                                    }
-                                }}
-                                onSelect={(cliente) => {
-                                    setNombre(cliente.nombre)
-                                    setClienteId(cliente.id)
-                                    setOriginalTelefono(cliente.telefono)
-                                    setTelefono(cliente.telefono || "Sin registro de numero celular")
-                                }}
-                                placeholder="Nombre del Cliente"
-                            />
-                        </div>
-
-                        {/* Teléfono Input */}
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1">
-                                Teléfono <span className="text-white/20">(Opcional)</span>
-                            </Label>
-                            <div className="group relative flex items-center">
-                                <Phone className="absolute left-4 w-4 h-4 text-white/20 group-focus-within:text-primary transition-colors" />
-                                <Input
-                                    type="tel"
-                                    value={telefono}
-                                    onFocus={() => {
-                                        if (telefono === "Sin registro de numero celular") setTelefono("")
-                                    }}
-                                    onBlur={() => {
-                                        if (telefono === "" && !originalTelefono && clienteId) {
-                                            setTelefono("Sin registro de numero celular")
+                    <div className="grid md:grid-cols-2 gap-4 items-start">
+                        <div className="space-y-4">
+                            {/* Cliente Input */}
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-2 block">Nombre del Cliente</Label>
+                                <ClientAutocomplete
+                                    value={nombre}
+                                    onChange={(val) => {
+                                        setNombre(val)
+                                        if (clienteId) {
+                                            setClienteId(null)
+                                            setTelefono("")
+                                            setOriginalTelefono(null)
                                         }
                                     }}
-                                    onChange={(e) => setTelefono(e.target.value)}
-                                    className={cn(
-                                        "pl-11 h-12 bg-white/5 border-white/10 rounded-2xl text-sm font-bold focus-visible:ring-primary/50 focus-visible:bg-black/40 transition-all",
-                                        telefono === "Sin registro de numero celular" ? "text-amber-500/40 italic font-normal" : "text-white placeholder:text-white/10"
-                                    )}
-                                    placeholder="Teléfono del Cliente"
+                                    onSelect={(cliente) => {
+                                        setNombre(cliente.nombre)
+                                        setClienteId(cliente.id)
+                                        setOriginalTelefono(cliente.telefono)
+                                        setTelefono(cliente.telefono || "Sin registro de numero celular")
+                                    }}
+                                    placeholder="Nombre del Cliente"
                                 />
-                                {clienteId && (telefono !== (originalTelefono || "") && (telefono !== "Sin registro de numero celular" && telefono !== "")) && (
-                                    <div className="absolute -bottom-6 left-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-300">
-                                        <AlertTriangle className="w-3 h-3 text-amber-500" />
-                                        <span className="text-[9px] font-bold text-amber-500/80 uppercase tracking-tight">
-                                            Se actualizará este dato en el perfil del cliente
-                                        </span>
-                                    </div>
-                                )}
                             </div>
-                        </div>
 
-                        {/* Servicio Selector */}
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1">Servicio</Label>
-                            <Select value={servicioId} onValueChange={(val) => val && setServicioId(val)}>
-                                <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-2xl text-sm font-semibold focus:ring-primary/50 focus:bg-black/40 transition-all px-4">
-                                    <div className="flex items-center gap-3 w-full overflow-hidden">
-                                        <Scissors className="w-4 h-4 text-primary shrink-0" />
-                                        {selectedService ? (
-                                            <div className="flex items-center justify-between flex-1 truncate pr-2">
-                                                <span className="truncate">{selectedService.nombre}</span>
-                                                <span className="text-primary font-bold ml-2 shrink-0">${selectedService.precio}</span>
-                                            </div>
-                                        ) : (
-                                            <SelectValue placeholder="Selecciona el servicio" className="text-white/40" />
-                                        )}
-                                    </div>
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#0A0C10] border-white/10 text-white rounded-2xl w-[var(--radix-select-trigger-width)] min-w-[240px] p-1">
-                                    {servicios.map(s => (
-                                        <SelectItem
-                                            key={s.id}
-                                            value={s.id.toString()}
-                                            className="focus:bg-primary/10 focus:text-primary rounded-xl py-3 px-3 transition-colors group"
-                                        >
-                                            <div className="flex items-center justify-between w-full">
-                                                <span className="text-xs sm:text-sm font-semibold truncate group-data-[state=checked]:text-primary transition-colors">
-                                                    {s.nombre}
-                                                </span>
-                                                <Badge variant="outline" className="text-[9px] font-bold bg-white/5 border-white/5 text-white/40 ml-2 shrink-0">
-                                                    ${s.precio}
-                                                </Badge>
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Fecha y Día */}
-                        <div className="grid grid-cols-2 gap-4">
+                            {/* Teléfono Input */}
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1 block truncate">Fecha</Label>
-                                <Popover>
-                                    <PopoverTrigger
+                                <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1">
+                                    Teléfono <span className="text-white/20">(Opcional)</span>
+                                </Label>
+                                <div className="group relative flex items-center">
+                                    <Phone className="absolute left-4 w-4 h-4 text-white/20 group-focus-within:text-primary transition-colors" />
+                                    <Input
+                                        type="tel"
+                                        value={telefono}
+                                        onFocus={() => {
+                                            if (telefono === "Sin registro de numero celular") setTelefono("")
+                                        }}
+                                        onBlur={() => {
+                                            if (telefono === "" && !originalTelefono && clienteId) {
+                                                setTelefono("Sin registro de numero celular")
+                                            }
+                                        }}
+                                        onChange={(e) => setTelefono(e.target.value)}
                                         className={cn(
-                                            "w-full h-12 justify-start text-left font-bold bg-white/5 border border-white/10 rounded-2xl gap-3 text-xs sm:text-sm transition-all hover:bg-white/10 hover:border-white/20 flex items-center px-4",
-                                            !fecha && "text-white/20"
+                                            "pl-11 h-12 bg-white/5 border-white/10 rounded-2xl text-sm font-bold focus-visible:ring-primary/50 focus-visible:bg-black/40 transition-all",
+                                            telefono === "Sin registro de numero celular" ? "text-amber-500/40 italic font-normal" : "text-white placeholder:text-white/10"
                                         )}
-                                    >
-                                        <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
-                                        <span className="truncate">
-                                            {fecha ? format(new Date(`${fecha}T12:00:00`), "eee, d 'de' MMM", { locale: es }) : "Elegir fecha"}
-                                        </span>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0 bg-[#0A0C10] border-white/10 rounded-2xl overflow-hidden shadow-2xl" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={new Date(`${fecha}T12:00:00`)}
-                                            onSelect={(date) => date && setFecha(format(date, "yyyy-MM-dd"))}
-                                            initialFocus
-                                            locale={es}
-                                            className="bg-transparent text-white"
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest text-center block truncate">Acceso Rápido</Label>
-                                <div className="flex items-center justify-between bg-white/5 h-12 rounded-2xl border border-primary/10 bg-primary/5 px-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => shiftFecha(-1)}
-                                        className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-white/10 rounded-xl transition-all"
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                    </Button>
-                                    <span className="text-white text-[9px] sm:text-[10px] font-black uppercase tracking-tight flex-1 text-center select-none cursor-pointer hover:text-primary transition-colors" onClick={() => setFecha(getHoyStr())}>
-                                        {getRelativeLabel(fecha)}
-                                    </span>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => shiftFecha(1)}
-                                        className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-white/10 rounded-xl transition-all"
-                                    >
-                                        <ChevronRight className="h-4 w-4" />
-                                    </Button>
+                                        placeholder="Teléfono del Cliente"
+                                    />
+                                    {clienteId && (telefono !== (originalTelefono || "") && (telefono !== "Sin registro de numero celular" && telefono !== "")) && (
+                                        <div className="absolute -bottom-6 left-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-300">
+                                            <AlertTriangle className="w-3 h-3 text-amber-500" />
+                                            <span className="text-[9px] font-bold text-amber-500/80 uppercase tracking-tight">
+                                                Se actualizará este dato en el perfil del cliente
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
+
+                        <div className="space-y-6">
+                            {/* Servicio Selector */}
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1">Servicio</Label>
+                                <Select value={servicioId} onValueChange={(val) => val && setServicioId(val)}>
+                                    <SelectTrigger className="h-10 bg-white/5 border-white/10 rounded-2xl text-sm font-semibold focus:ring-primary/50 focus:bg-black/40 transition-all px-4">
+                                        <div className="flex items-center gap-3 w-full overflow-hidden">
+                                            <Scissors className="w-4 h-4 text-primary shrink-0" />
+                                            {selectedService ? (
+                                                <div className="flex items-center justify-between flex-1 truncate pr-2">
+                                                    <span className="truncate">{selectedService.nombre}</span>
+                                                    <span className="text-primary font-bold ml-2 shrink-0">${selectedService.precio}</span>
+                                                </div>
+                                            ) : (
+                                                <SelectValue placeholder="Selecciona el servicio" className="text-white/40" />
+                                            )}
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#0A0C10] border-white/10 text-white rounded-2xl w-[var(--radix-select-trigger-width)] min-w-[240px] p-1">
+                                        {servicios.map(s => (
+                                            <SelectItem
+                                                key={s.id}
+                                                value={s.id.toString()}
+                                                className="focus:bg-primary/10 focus:text-primary rounded-xl py-3 px-3 transition-colors group"
+                                            >
+                                                <div className="flex items-center justify-between w-full">
+                                                    <span className="text-xs sm:text-sm font-semibold truncate group-data-[state=checked]:text-primary transition-colors">
+                                                        {s.nombre}
+                                                    </span>
+                                                    <Badge variant="outline" className="text-[9px] font-bold bg-white/5 border-white/5 text-white/40 ml-2 shrink-0">
+                                                        ${s.precio}
+                                                    </Badge>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Fecha y Día */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1 block truncate">Fecha</Label>
+                                    <Popover>
+                                        <PopoverTrigger
+                                            className={cn(
+                                                "w-full h-10 justify-start text-left font-bold bg-white/5 border border-white/10 rounded-2xl gap-3 text-xs sm:text-sm transition-all hover:bg-white/10 hover:border-white/20 flex items-center px-4",
+                                                !fecha && "text-white/20"
+                                            )}
+                                        >
+                                            <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
+                                            <span className="truncate">
+                                                {fecha ? format(new Date(`${fecha}T12:00:00`), "eee, d 'de' MMM", { locale: es }) : "Elegir fecha"}
+                                            </span>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 bg-[#0A0C10] border-white/10 rounded-2xl overflow-hidden shadow-2xl" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={new Date(`${fecha}T12:00:00`)}
+                                                onSelect={(date) => date && setFecha(format(date, "yyyy-MM-dd"))}
+                                                initialFocus
+                                                locale={es}
+                                                className="bg-transparent text-white"
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest text-center block truncate">Acceso Rápido</Label>
+                                    <div className="flex items-center justify-between bg-white/5 h-10 rounded-2xl border border-primary/10 bg-primary/5 px-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => shiftFecha(-1)}
+                                            className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-white/10 rounded-xl transition-all"
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        <span className="text-white text-[9px] sm:text-[10px] font-black uppercase tracking-tight flex-1 text-center select-none cursor-pointer hover:text-primary transition-colors" onClick={() => setFecha(getHoyStr())}>
+                                            {getRelativeLabel(fecha)}
+                                        </span>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => shiftFecha(1)}
+                                            className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-white/10 rounded-xl transition-all"
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                         {/* Horarios */}
                         <div className="space-y-3">
@@ -793,7 +786,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                                     // Libre disponible
                                                     !isDisabled && !isPast && "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10",
                                                     // Seleccionado
-                                                    isSelected && !isDisabled && "bg-primary/20 text-primary border-primary/50 shadow-[0_0_20px_rgba(245,200,66,0.1)]",
+                                                    isSelected && !isDisabled && "bg-primary/20 text-primary border-primary/50",
                                                 )}
                                             >
                                                 <span className={cn(
@@ -820,24 +813,25 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                             </div>
                         </div>
 
-                        {/* Botones de acción dentro del scroll para maximizar espacio */}
-                        <div className="pt-4 border-t border-white/5 flex flex-col-reverse sm:flex-row gap-3">
+                        {/* Botones de acción - Aligned with Primary Theme */}
+                        <div className="pt-3 border-t border-white/5 flex flex-col-reverse sm:flex-row gap-3">
                             <Button
                                 variant="ghost"
                                 onClick={handleClose}
-                                className="h-12 sm:h-14 sm:flex-1 bg-white/5 text-white/60 rounded-xl sm:rounded-2xl font-semibold text-sm hover:text-white hover:bg-white/10 transition-all border border-white/10"
+                                className="h-12 sm:flex-1 bg-white/5 text-white/40 rounded-xl font-black uppercase tracking-widest text-[9px] hover:text-white hover:bg-white/10 transition-all border border-white/10"
                             >
                                 <X className="w-4 h-4 mr-2" />
                                 Cancelar
                             </Button>
+                            
                             <Button
                                 onClick={(e) => handleSubmit(e)}
                                 disabled={loading}
                                 className={cn(
-                                    "h-12 sm:h-14 sm:flex-[2] rounded-xl sm:rounded-2xl font-semibold text-sm transition-all",
-                                    loading
-                                        ? 'bg-primary/50 text-black/50'
-                                        : 'bg-primary text-black hover:bg-amber-400 shadow-lg shadow-primary/20 active:scale-[0.98]'
+                                    "h-12 sm:flex-[2] rounded-xl font-black uppercase tracking-tight text-[13px] transition-all",
+                                    loading 
+                                        ? 'bg-primary/20 text-black/40 cursor-not-allowed' 
+                                        : 'bg-gradient-to-r from-primary to-amber-500 text-black shadow-lg shadow-primary/20 active:scale-[0.98]'
                                 )}
                             >
                                 {loading ? (
@@ -848,20 +842,19 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                 ) : (
                                     <div className="flex items-center gap-2">
                                         <CheckCircle2 className="w-5 h-5" />
-                                        <span>Confirmar Cita</span>
+                                        <span>Confirmar Agendado</span>
                                     </div>
                                 )}
                             </Button>
                         </div>
                     </div>
-                </div>
 
 
                 {/* Confirmación Retroactiva Nested Dialog */}
                 {showPastConfirm && (
                     <div className="absolute inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
-                        <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowPastConfirm(false)} />
-                        <div className="relative bg-[#0A0C10] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 w-full max-w-[calc(100%-2rem)] sm:max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="absolute inset-0 bg-black/95" onClick={() => setShowPastConfirm(false)} />
+                        <div className="relative bg-[#0A0C10] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 w-full max-w-[calc(100%-2rem)] sm:max-w-sm shadow-xl">
                             <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-8 mx-auto border border-amber-500/20 shadow-inner">
                                 <History className="w-10 h-10 text-amber-500" />
                             </div>

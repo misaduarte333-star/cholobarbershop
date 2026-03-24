@@ -54,7 +54,6 @@ interface AgendaTimelineProps {
     currentTime: Date
     barbero?: any
     onUpdate?: () => void
-    isEfficiencyMode?: boolean
 }
 
 
@@ -92,14 +91,14 @@ const TimelineAppointmentCard = memo(({
     handleCancelClick,
     handleCheckoutClick,
     actualizarEstadoDirecto,
-    isEfficiencyMode
+    onUpdate
 }: any) => {
     const controls = useDragControls()
     const isThisLongPress = longPressActive === (item.tipo === 'cita' ? item.data.id : null)
     const isThisHighlighted = highlightedCitaId === item.data.id
 
-    const CardContainer = isEfficiencyMode ? 'div' : motion.div as any
-    const motionProps = isEfficiencyMode ? {} : {
+    const CardContainer = motion.div as any
+    const motionProps = {
         drag: item.tipo === 'cita' && (item.data.estado === 'confirmada' || item.data.estado === 'en_espera' || item.data.estado === 'finalizada') ? "y" : false,
         dragElastic: 0,
         dragMomentum: false,
@@ -107,24 +106,16 @@ const TimelineAppointmentCard = memo(({
         dragListener: false,
         onDragStart: () => handleDragStart(item.data.id),
         onDragEnd: (e: any, info: any) => handleDragEnd(e, info, item.data),
+        initial: { opacity: 0, scale: 0.98 },
         animate: {
-            y: isThisLongPress ? undefined : 0,
-            scale: isThisLongPress ? (isEfficiencyMode ? 1.01 : 1.03) : isThisHighlighted ? [1, 1.05, 1] : 1,
-            boxShadow: isEfficiencyMode ? 'none' : (isThisLongPress
-                ? '0 10px 20px rgba(0,0,0,0.4), 0 0 15px rgba(234,179,8,0.2)'
-                : isThisHighlighted
-                    ? '0 0 25px rgba(16,185,129,0.5)'
-                    : '0 2px 6px rgba(0,0,0,0.1)'),
-            zIndex: isThisLongPress || isThisHighlighted ? 100 : 20,
-            borderColor: isThisHighlighted ? '#10b981' : undefined
+            opacity: 1,
+            scale: isThisLongPress ? 1.02 : (isThisHighlighted ? [1, 1.03, 1] : 1),
+            boxShadow: isThisLongPress
+                ? '0 10px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.3)'
+                : 'none',
+            zIndex: isThisLongPress ? 40 : 10
         },
-        transition: isEfficiencyMode ? { type: 'tween', duration: 0.1 } : {
-            type: 'spring',
-            damping: 20,
-            stiffness: 400,
-            mass: 0.3,
-            scale: isThisHighlighted ? { repeat: 3, duration: 1 } : undefined
-        }
+        transition: { type: 'spring', stiffness: 300, damping: 25 }
     }
 
     return (
@@ -137,8 +128,8 @@ const TimelineAppointmentCard = memo(({
             {...(motionProps as any)}
             className={cn(
                 "absolute inset-x-0 h-[calc(100%-4px)] flex items-center justify-between gap-1 px-2.5 py-1 rounded-xl border transition-colors group/card overflow-hidden cursor-pointer select-none",
-                !isEfficiencyMode && "animate-fade-in backdrop-blur-sm",
-                isThisHighlighted ? (isEfficiencyMode ? 'bg-emerald-500/30' : 'bg-emerald-500/20') : cardBorder
+                "animate-fade-in",
+                isThisHighlighted ? 'bg-emerald-500/20' : cardBorder
             )}
             style={{
                 backgroundColor: isThisLongPress ? 'rgba(30,34,45,0.98)' : undefined,
@@ -242,7 +233,7 @@ const TimelineAppointmentCard = memo(({
     )
 })
 
-export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, barbero, onUpdate, isEfficiencyMode }: AgendaTimelineProps) {
+export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, barbero, onUpdate }: AgendaTimelineProps) {
     // Determinar día de la semana para el horario de sucursal
     const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
     const todayLocalStr = new Intl.DateTimeFormat('en-CA', {
@@ -968,7 +959,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                             handleCancelClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('cancel'); }}
                                                             handleCheckoutClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('checkout'); }}
                                                             actualizarEstadoDirecto={actualizarEstadoDirecto}
-                                                            isEfficiencyMode={isEfficiencyMode}
+                                                            onUpdate={onUpdate}
                                                         />
                                                     ) : (
                                                         <div className="h-px w-4 bg-white/5 ml-1" />
@@ -984,7 +975,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 </div>
             </div>
 
-            <div className="shrink-0 bg-black/40 backdrop-blur-xl border-t border-white/5 p-3 pb-safe">
+            <div className="shrink-0 bg-[#050505] border-t border-white/5 p-3 pb-safe">
                 <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em] text-white/40">
                     <div className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.3)]" />

@@ -16,7 +16,9 @@ import {
     Calculator,
     Edit2,
     Check,
-    CalendarDays
+    CalendarDays,
+    ChevronLeft,
+    Wallet
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -48,9 +50,10 @@ import {
 
 interface FinanzasBarberoProps {
     barbero: Barbero
+    onBack: () => void
 }
 
-export function FinanzasBarbero({ barbero }: FinanzasBarberoProps) {
+export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
     const [gastos, setGastos] = useState<Gasto[]>([])
     const [loading, setLoading] = useState(true)
     const [income, setIncome] = useState(0)
@@ -244,17 +247,57 @@ export function FinanzasBarbero({ barbero }: FinanzasBarberoProps) {
     }, [gastos, income, barbero])
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-            {/* Break-Even Header */}
-            <header className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                <div>
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-                        <Calculator className="text-primary w-6 h-6" />
-                        Punto de <span className="text-primary">Equilibrio</span>
-                    </h2>
-                    <p className="text-white/40 text-xs font-medium uppercase tracking-widest mt-1">
-                        Control de gastos personales y metas
-                    </p>
+        <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+            {/* Header de Navegación - Exact match with Metrics Dashboard */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                <div className="flex items-center gap-4">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onBack}
+                        className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 active:scale-95 transition-all shadow-sm"
+                    >
+                        <ChevronLeft className="w-6 h-6" />
+                    </Button>
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-inner">
+                                <Wallet className="w-4 h-4 text-emerald-500" />
+                            </div>
+                            <h1 className="text-xl md:text-2xl font-black font-display tracking-tight uppercase text-white">Mis Finanzas</h1>
+                        </div>
+                        <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] mt-1.5 ml-11">Gestión de Gastos y Metas del Barbero</p>
+                    </div>
+                </div>
+
+                <div className="hidden md:flex items-center gap-3 bg-white/2 border border-white/5 p-3 rounded-2xl">
+                    <div className="text-right mr-3">
+                        <p className="text-[9px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Sesión Activa</p>
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-tight leading-none">{barbero?.nombre}</p>
+                    </div>
+                    <div className="h-8 w-[1px] bg-white/10" />
+                    <Badge variant="outline" className="bg-emerald-500/5 text-emerald-500 border-emerald-500/20 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest select-none">
+                        Online
+                    </Badge>
+                </div>
+            </div>
+
+            {/* Meta control and new expense section - refined to be secondary */}
+            <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center bg-white/[0.03] border border-white/5 p-8 rounded-[2.5rem] relative overflow-hidden group">
+                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                
+                <div className="flex items-center gap-4 relative z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 shadow-inner">
+                        <Calculator className="text-primary w-7 h-7" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-black text-white uppercase tracking-tight leading-none">
+                            Punto de <span className="text-primary">Equilibrio</span>
+                        </h2>
+                        <p className="text-white/20 text-[9px] font-black uppercase tracking-[0.3em] mt-2">
+                            Análisis de Gastos y Metas
+                        </p>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -379,12 +422,12 @@ export function FinanzasBarbero({ barbero }: FinanzasBarberoProps) {
                         </DialogContent>
                     </Dialog>
                 </div>
-            </header>
+            </div>
 
             {/* Summary Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-emerald-500/5 border-emerald-500/20 overflow-hidden relative group shadow-lg shadow-emerald-500/5">
-                    <CardContent className="p-6">
+                <Card className="relative p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl overflow-hidden group">
+                    <CardContent className="p-0">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                 <TrendingUp className="w-5 h-5" />
@@ -400,8 +443,8 @@ export function FinanzasBarbero({ barbero }: FinanzasBarberoProps) {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-red-500/5 border-red-500/20 shadow-lg shadow-red-500/5">
-                    <CardContent className="p-6">
+                <Card className="relative p-6 bg-red-500/10 border border-red-500/20 rounded-3xl overflow-hidden group">
+                    <CardContent className="p-0">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
                                 <AlertTriangle className="w-5 h-5" />
@@ -422,8 +465,8 @@ export function FinanzasBarbero({ barbero }: FinanzasBarberoProps) {
                     </CardContent>
                 </Card>
 
-                <Card className={`relative overflow-hidden shadow-lg ${metrics.remaining === 0 && metrics.allPaid ? 'bg-emerald-500/10 border-emerald-500/30 shadow-emerald-500/10' : 'bg-primary/10 border-primary/30 shadow-primary/5'}`}>
-                    <CardContent className="p-6 relative z-10">
+                <Card className={`relative p-6 rounded-3xl overflow-hidden group ${metrics.remaining === 0 && metrics.allPaid ? 'bg-emerald-500/10 border-emerald-500/30 shadow-emerald-500/10' : 'bg-primary/10 border-primary/30 shadow-primary/5'}`}>
+                    <CardContent className="p-0 relative z-10">
                         <div className="flex items-center gap-3 mb-4">
                             <div className={`p-2 rounded-lg border ${metrics.remaining === 0 && metrics.allPaid ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-primary/20 text-primary border-primary/30'}`}>
                                 {metrics.remaining === 0 && metrics.allPaid ? <TrendingUp className="w-5 h-5" /> : <Target className="w-5 h-5" />}

@@ -408,11 +408,10 @@ export default function TabletReportesPage() {
     return (
         <div className="min-h-screen bg-[#06070a] text-white flex flex-col font-sans selection:bg-blue-500/30">
             {/* Background elements */}
-            <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/10 via-black to-black pointer-events-none" />
-            <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600" />
+            <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 z-[60]" />
 
             {/* Header */}
-            <header className="sticky top-0 z-50 bg-black/40 backdrop-blur-2xl border-b border-white/5 px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <header className="sticky top-0 z-50 bg-[#06070a]/95 border-b border-white/5 px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
                     <Button
                         variant="ghost"
@@ -431,7 +430,7 @@ export default function TabletReportesPage() {
                     </div>
                 </div>
 
-                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-xl">
+                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
                     {(['hoy', 'semana', 'mes', 'año'] as const).map((r) => (
                         <Button
                             key={r}
@@ -440,7 +439,7 @@ export default function TabletReportesPage() {
                             className={cn(
                                 "h-10 px-6 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                                 dateRange === r
-                                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                                    ? "bg-blue-600 text-white"
                                     : "text-white/40 hover:text-white hover:bg-white/5"
                             )}
                         >
@@ -540,7 +539,7 @@ export default function TabletReportesPage() {
 
                             {/* Main Charts Row */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                 <Card className="lg:col-span-2 bg-white/[0.02] border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-xl group flex flex-col">
+                                 <Card className="lg:col-span-2 bg-[#0A0C10] border-white/5 rounded-[2rem] overflow-hidden group flex flex-col">
                                     <CardHeader className="p-8 border-b border-white/5 bg-white/[0.01]">
                                         <div className="flex items-center justify-between">
                                             <div>
@@ -574,10 +573,10 @@ export default function TabletReportesPage() {
                                                         </TableCell>
                                                      </TableRow>
                                                 ) : metrics.cortesAnálisis.map((item: any, i: number) => (
-                                                    <TableRow key={i} className={cn("border-white/5 hover:bg-white/[0.01] transition-colors h-16", item.esActual && "bg-blue-500/5 hover:bg-blue-500/10 relative shadow-[inset_0_0_20px_rgba(59,130,246,0.1)]")}>
+                                                    <TableRow key={i} className={cn("border-white/5 hover:bg-white/[0.01] transition-colors h-16", item.esActual && "bg-blue-500/5 hover:bg-blue-500/10 relative")}>
                                                         <TableCell className="px-8 flex flex-col justify-center h-16 relative">
                                                             {item.esActual && (
-                                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
                                                             )}
                                                             <div className="flex items-center gap-2">
                                                                 <span className={cn("text-xs font-black uppercase", item.esActual ? "text-blue-400" : "text-white")}>{item.label}</span>
@@ -595,7 +594,7 @@ export default function TabletReportesPage() {
                                                                 <div className="flex items-center gap-2">
                                                                     <div className={cn(
                                                                         "w-1.5 h-1.5 rounded-full",
-                                                                        item.completo !== false ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" : "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]"
+                                                                        item.completo !== false ? "bg-emerald-500" : "bg-amber-500"
                                                                     )} />
                                                                     <span className={cn("text-[10px] font-black uppercase tracking-widest", item.completo !== false ? "text-white/60" : "text-amber-400/80")}>
                                                                         {item.completo !== false ? 'Corte Finalizado' : 'Corte Parcial/Pendiente'}
@@ -623,7 +622,7 @@ export default function TabletReportesPage() {
                                     </CardContent>
                                 </Card>
 
-                                <Card className="bg-white/[0.02] border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-xl">
+                                 <Card className="bg-[#0A0C10] border-white/5 rounded-[2rem] overflow-hidden">
                                     <CardHeader className="p-8 border-b border-white/5">
                                         <CardTitle className="text-lg font-black uppercase tracking-widest text-white/90 text-center text-ellipsis">Métodos de Pago</CardTitle>
                                     </CardHeader>
@@ -639,7 +638,8 @@ export default function TabletReportesPage() {
                                                         outerRadius={100}
                                                         paddingAngle={10}
                                                         dataKey="value"
-                                                        animationDuration={1500}
+                                                        animationDuration={0}
+                                                        isAnimationActive={false}
                                                     >
                                                         {metrics.paymentData.map((entry, index) => (
                                                             <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
@@ -738,7 +738,7 @@ export default function TabletReportesPage() {
                                                             <Progress
                                                                 value={Math.min(100, s.efficiency)}
                                                                 className="h-1.5 bg-white/5"
-                                                                indicatorClassName={isOver ? "bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.3)]" : "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.3)]"}
+                                                                indicatorClassName={isOver ? "bg-orange-400" : "bg-emerald-400"}
                                                             />
                                                         </div>
                                                     </div>
@@ -758,7 +758,7 @@ export default function TabletReportesPage() {
                                     <div className="flex-1 h-[1px] bg-white/5" />
                                 </div>
 
-                                <Card className="bg-white/[0.01] border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-sm">
+                                <Card className="bg-[#0A0C10] border-white/5 rounded-[2rem] overflow-hidden">
                                     <CardContent className="p-0">
                                         <div className="overflow-x-auto">
                                             <Table>
@@ -870,15 +870,15 @@ interface KPICardProps {
 
 function KPICard({ title, value, subtitle, icon, color, status, trend }: KPICardProps) {
     const variants = {
-        blue: "bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.05)]",
-        emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]",
-        amber: "bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]",
-        purple: "bg-purple-500/10 text-purple-400 border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.05)]",
+        blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+        emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        amber: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+        purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
     }
     const colorStyles = variants[color] || ""
 
     return (
-        <Card className="bg-white/[0.02] border-white/5 rounded-2xl overflow-hidden backdrop-blur-xl group hover:bg-white/[0.04] transition-all duration-500">
+        <Card className="bg-[#0A0C10] border-white/5 rounded-2xl overflow-hidden group hover:bg-white/[0.04] transition-all duration-500">
             <CardContent className="p-3 md:p-4">
                 <div className="flex justify-between items-start mb-2">
                     <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center border", colorStyles)}>

@@ -49,3 +49,27 @@ export function getMinsFromHermosilloString(dateStr: string): number {
     const [h, m] = timePart.split(':').map(Number);
     return (h || 0) * 60 + (m || 0);
 }
+
+/** Parse "HH:MM AM/PM" → total minutes. Shared across CitaCard and TabletNuevaCitaModal. */
+export function parse12hToMins(hora12: string): number {
+    if (!hora12) return 0
+    const matches = hora12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+    if (!matches) return 0
+    let hours = parseInt(matches[1], 10)
+    const minutes = parseInt(matches[2], 10)
+    const ampm = matches[3].toUpperCase()
+    if (ampm === 'PM' && hours < 12) hours += 12
+    if (ampm === 'AM' && hours === 12) hours = 0
+    return hours * 60 + minutes
+}
+
+/** Convert "HH:MM" (24h) → "HH:MM AM/PM". Shared across CitaCard and TabletNuevaCitaModal. */
+export function formato12h(hora24: string): string {
+    if (!hora24) return 'Ninguna'
+    const [h, m] = hora24.split(':')
+    const hNum = parseInt(h, 10)
+    const ampm = hNum >= 12 ? 'PM' : 'AM'
+    const h12 = hNum % 12 || 12
+    return `${h12.toString().padStart(2, '0')}:${m} ${ampm}`
+}
+
