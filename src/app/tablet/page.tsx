@@ -93,8 +93,7 @@ export default function TabletDashboard() {
         return () => document.removeEventListener('fullscreenchange', onFsChange)
     }, [])
 
-    // Auto-enter fullscreen on first tap (required by browser policy)
-    // Also tries immediately on load and on every pageshow (reload)
+    // Fullscreen persistence: re-enter after lock/unlock, reload, tab-switch, or focus
     useEffect(() => {
         const requestFs = () => {
             if (!document.fullscreenElement) {
@@ -102,27 +101,33 @@ export default function TabletDashboard() {
             }
         }
 
-        // Try immediately — works if user previously granted fullscreen this session
+        // Try immediately on mount
         requestFs()
 
-        // Re-enter on every page show (handles F5 / reload)
+        // KEY: re-enter when screen is unlocked (visibility: hidden → visible)
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                // Small delay to let the browser finish unlock animation
+                setTimeout(requestFs, 300)
+            }
+        }
+        document.addEventListener('visibilitychange', onVisibilityChange)
+
+        // Re-enter on pageshow (handles reload / back-cache)
         const onPageShow = () => requestFs()
         window.addEventListener('pageshow', onPageShow)
 
-        // Re-enter when tab gets focus (back from another tab)
+        // Re-enter when window gets focus (alt-tab, etc.)
         const onFocus = () => requestFs()
         window.addEventListener('focus', onFocus)
 
-        // Fallback: enter on first user interaction (fresh session)
-        const onFirstInteraction = () => {
-            requestFs()
-            window.removeEventListener('touchstart', onFirstInteraction, { capture: true })
-            window.removeEventListener('click', onFirstInteraction, { capture: true })
-        }
+        // Fallback for fresh sessions: first user touch
+        const onFirstInteraction = () => requestFs()
         window.addEventListener('touchstart', onFirstInteraction, { once: true, capture: true })
         window.addEventListener('click', onFirstInteraction, { once: true, capture: true })
 
         return () => {
+            document.removeEventListener('visibilitychange', onVisibilityChange)
             window.removeEventListener('pageshow', onPageShow)
             window.removeEventListener('focus', onFocus)
             window.removeEventListener('touchstart', onFirstInteraction, { capture: true })
