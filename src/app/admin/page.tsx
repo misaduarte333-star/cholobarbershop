@@ -149,19 +149,19 @@ export default function AdminDashboard() {
     }, [allBarberos, todaysCitas, currentTime])
 
     return (
-        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
-            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
+        <div className="relative min-h-full bg-background selection:bg-primary selection:text-primary-foreground transition-colors duration-300">
+            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-primary-foreground">
                 {/* Header (Desktop Only) */}
-                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
-                    <div className="flex items-center gap-3 text-white">
-                        <div className="size-10 rounded-lg overflow-hidden border border-primary/20 transition-all hover:scale-105 bg-black">
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border mb-4 font-display">
+                    <div className="flex items-center gap-3 text-foreground">
+                        <div className="size-10 rounded-lg overflow-hidden border border-primary/20 transition-all hover:scale-105 bg-background">
                             <img src="/logo-cholo.jpg" alt="Logo" className="w-full h-full object-cover transform scale-110" />
                         </div>
                         <h2 className="text-lg font-black tracking-tighter uppercase italic">Panel Control</h2>
                     </div>
-                    <div className="flex items-center gap-4 text-white">
+                    <div className="flex items-center gap-4 text-foreground">
                         {/* Time & Date - Premium Compact Style */}
-                        <div className="bg-[#141414]/90 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-1.5 flex items-center gap-4 shadow-2xl hover:border-primary/30 transition-all group">
+                        <div className="bg-muted/90 backdrop-blur-xl border border-border rounded-xl px-4 py-1.5 flex items-center gap-4 shadow-2xl hover:border-primary/30 transition-all group">
                             <div className="flex flex-col items-end">
                                 <p className="text-xs font-black tracking-tighter tabular-nums leading-tight">
                                     {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Hermosillo' })}
@@ -176,8 +176,8 @@ export default function AdminDashboard() {
                                     })()}
                                 </p>
                             </div>
-                            <div className="h-6 w-[1px] bg-white/10 group-hover:bg-primary/20 transition-colors" />
-                            <Clock className="w-4 h-4 text-slate-500 group-hover:text-primary transition-colors" />
+                            <div className="h-6 w-[1px] bg-border group-hover:bg-primary/20 transition-colors" />
+                            <Clock className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                         </div>
                     </div>
                 </header>
@@ -186,7 +186,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
                     {loading ? (
                         Array(4).fill(null).map((_, i) => (
-                            <div key={i} className="bg-card-dark h-32 animate-pulse rounded-2xl border-l-4 border-primary/20" />
+                            <div key={i} className="bg-card h-32 animate-pulse rounded-2xl border-l-4 border-primary/20" />
                         ))
                     ) : (
                         <>
@@ -223,16 +223,16 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-                    {/* Admin Daily Calendar */}
+                    {/* Clients Table Card */}
                     <div className="order-2 lg:order-1 lg:col-span-9 space-y-4 lg:space-y-6">
                         <div className="flex items-center justify-between px-2">
-                            <h4 className="text-lg lg:text-xl font-black text-white flex items-center gap-3">
+                            <h4 className="text-lg lg:text-xl font-black text-foreground flex items-center gap-3">
                                 <CalendarDays className="text-primary w-6 h-6" />
                                 <span className="uppercase tracking-tight">Agenda Global</span>
                             </h4>
-                            <div className="flex bg-card-dark rounded-xl p-1 border border-primary/20 shadow-inner">
-                                <button className="px-4 py-1.5 text-[10px] font-black bg-primary text-black rounded-lg shadow-sm transition-all">HOY</button>
-                                <button className="px-4 py-1.5 text-[10px] font-black text-slate-500 hover:text-white transition-colors uppercase">Semana</button>
+                            <div className="flex bg-card rounded-xl p-1 border border-border shadow-inner">
+                                <button className="px-4 py-1.5 text-[10px] font-black bg-primary text-primary-foreground rounded-lg shadow-sm transition-all">HOY</button>
+                                <button className="px-4 py-1.5 text-[10px] font-black text-muted-foreground hover:text-foreground transition-colors uppercase">Semana</button>
                             </div>
                         </div>
                         
@@ -253,29 +253,29 @@ export default function AdminDashboard() {
                         <section className="space-y-4">
                             <div className="flex items-center gap-2 px-1">
                                 <div className="h-4 w-1 bg-primary rounded-full" />
-                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Acciones Rápidas</h4>
+                                <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Acciones Rápidas</h4>
                             </div>
                             <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-                                <Link href="/admin/citas?action=agenda-manual" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-[#D4AF37] rounded-xl text-black hover:scale-[1.02] transition-all shadow-xl shadow-primary/20 border border-white/10">
+                                <Link href="/admin/citas?action=agenda-manual" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-primary rounded-xl text-primary-foreground hover:scale-[1.02] transition-all shadow-xl shadow-primary/20 border border-border">
                                     <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] mb-2 lg:mb-0">Nueva Cita</span>
-                                    <div className="size-8 lg:size-9 rounded-lg bg-black/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                    <div className="size-8 lg:size-9 rounded-lg bg-primary-foreground/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
                                         <PlusCircle className="w-4 h-4 lg:w-5 lg:h-5 font-black" />
                                     </div>
                                 </Link>
-                                <Link href="/admin/citas?action=walk-in" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-[#141414]/80 backdrop-blur-xl border border-white/5 rounded-xl text-white hover:border-primary/40 transition-all hover:bg-white/5 shadow-lg">
-                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 group-hover:text-white mb-2 lg:mb-0">Walk-In</span>
+                                <Link href="/admin/citas?action=walk-in" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-card/80 backdrop-blur-xl border border-border rounded-xl text-foreground hover:border-primary/40 transition-all hover:bg-card shadow-lg">
+                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground group-hover:text-foreground mb-2 lg:mb-0">Walk-In</span>
                                     <div className="size-8 lg:size-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:scale-110 transition-transform">
                                         <UserPlus className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                                     </div>
                                 </Link>
-                                <Link href="/admin/citas" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-[#141414]/80 backdrop-blur-xl border border-white/5 rounded-xl text-white hover:border-red-500/40 transition-all hover:bg-white/5 shadow-lg">
+                                <Link href="/admin/citas" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-card/80 backdrop-blur-xl border border-border rounded-xl text-foreground hover:border-red-500/40 transition-all hover:bg-card shadow-lg">
                                     <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] text-red-900/60 group-hover:text-red-500 mb-2 lg:mb-0">Bloqueo</span>
                                     <div className="size-8 lg:size-9 rounded-lg bg-red-500/10 flex items-center justify-center border border-red-500/20 group-hover:scale-110 transition-transform">
                                         <Ban className="w-4 h-4 lg:w-5 lg:h-5 text-red-500/50 group-hover:text-red-500" />
                                     </div>
                                 </Link>
-                                <Link href="/admin/reportes" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-[#141414]/80 backdrop-blur-xl border border-white/5 rounded-xl text-white hover:border-primary/40 transition-all hover:bg-white/5 shadow-lg">
-                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 group-hover:text-white mb-2 lg:mb-0">Reportes</span>
+                                <Link href="/admin/reportes" className="group flex flex-col lg:flex-row items-center justify-between p-3 lg:p-4 bg-card/80 backdrop-blur-xl border border-border rounded-xl text-foreground hover:border-primary/40 transition-all hover:bg-card shadow-lg">
+                                    <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground group-hover:text-foreground mb-2 lg:mb-0">Reportes</span>
                                     <div className="size-8 lg:size-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:scale-110 transition-transform">
                                         <FileText className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                                     </div>
@@ -288,7 +288,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center justify-between px-1">
                                 <div className="flex items-center gap-2">
                                     <div className="h-4 w-1 bg-emerald-500 rounded-full" />
-                                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Estaciones</h4>
+                                    <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Estaciones</h4>
                                 </div>
                                 <span className="flex items-center gap-1.5 text-[8px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                                     <span className="size-1 rounded-full bg-emerald-500 animate-pulse" />
@@ -299,41 +299,41 @@ export default function AdminDashboard() {
                                 {derivedBarberStatuses.length === 0 ? (
                                     <div className="p-10 flex flex-col items-center justify-center glass rounded-2xl border-dashed sm:col-span-2 lg:col-span-1">
                                         <Activity className="w-5 h-5 mb-3 text-primary animate-pulse" />
-                                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest text-center">Sincronizando Estaciones...</p>
+                                        <p className="text-[9px] font-bold text-foreground/20 uppercase tracking-widest text-center">Sincronizando Estaciones...</p>
                                     </div>
                                 ) : (
                                     derivedBarberStatuses.map((barbero) => (
-                                        <div key={barbero.id} className="glass p-2 lg:p-2.5 rounded-xl border border-white/5 flex items-center justify-between transition-all hover:bg-white/5 hover:border-primary/20 group">
+                                        <div key={barbero.id} className="glass p-2 lg:p-2.5 rounded-xl border border-border flex items-center justify-between transition-all hover:bg-muted/50 hover:border-primary/20 group">
                                             <div className="flex items-center gap-2 lg:gap-3 min-w-0">
                                                 <div className="relative shrink-0">
                                                     <div className={cn(
-                                                        "size-8 lg:size-9 rounded-lg bg-black/40 flex items-center justify-center border-2 transition-all",
-                                                        barbero.estado === 'ocupado' ? 'border-primary ring-2 ring-primary/10' : 'border-slate-800'
+                                                        "size-8 lg:size-9 rounded-lg bg-muted flex items-center justify-center border-2 transition-all",
+                                                        barbero.estado === 'ocupado' ? 'border-primary ring-2 ring-primary/10' : 'border-border'
                                                     )}>
                                                         <span className={cn(
                                                             "font-black text-[9px] lg:text-[10px]",
-                                                            barbero.estado === 'ocupado' ? 'text-primary' : 'text-slate-600'
+                                                            barbero.estado === 'ocupado' ? 'text-primary' : 'text-muted-foreground'
                                                         )}>
                                                             {barbero.estacion}
                                                         </span>
                                                     </div>
                                                     <div className={cn(
-                                                        "absolute -bottom-0.5 -right-0.5 size-2 lg:size-2.5 rounded-full border border-card-dark shadow-sm",
-                                                        barbero.estado === 'ocupado' ? 'bg-primary' : 'bg-slate-700'
+                                                        "absolute -bottom-0.5 -right-0.5 size-2 lg:size-2.5 rounded-full border border-card shadow-sm",
+                                                        barbero.estado === 'ocupado' ? 'bg-primary' : 'bg-muted-foreground/30'
                                                     )} />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="text-[9px] lg:text-[10px] font-black text-white uppercase tracking-tight truncate leading-none mb-1">
+                                                    <p className="text-[9px] lg:text-[10px] font-black text-foreground uppercase tracking-tight truncate leading-none mb-1">
                                                         {barbero.nombre.split(' ')[0]}
                                                     </p>
-                                                    <p className="text-[7px] lg:text-[8px] font-bold text-slate-500 truncate uppercase tracking-tighter">
+                                                    <p className="text-[7px] lg:text-[8px] font-bold text-muted-foreground truncate uppercase tracking-tighter">
                                                         {barbero.estado === 'ocupado' ? barbero.cliente : 'Disponible'}
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className={cn(
                                                 "shrink-0 p-1 lg:p-1.5 rounded-lg border transition-colors",
-                                                barbero.estado === 'ocupado' ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-slate-900 border-white/5 text-slate-600'
+                                                barbero.estado === 'ocupado' ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-muted border-border text-muted-foreground'
                                             )}>
                                                 <Activity className="size-2.5 lg:size-3" />
                                             </div>

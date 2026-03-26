@@ -22,6 +22,7 @@ import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { KPICard } from '@/components/KPICard'
 
 export default function ReportesPage() {
     const [loading, setLoading] = useState(true)
@@ -189,11 +190,11 @@ export default function ReportesPage() {
     const maxIngreso = Math.max(...ingresosPorDia.map(d => d.monto), 1)
 
     return (
-        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
-            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
+        <div className="relative min-h-full bg-background selection:bg-primary selection:text-primary-foreground">
+            <div className="space-y-6 lg:space-y-8">
                 {/* Header (Desktop Only) - Compact Elite Style */}
-                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
-                    <div className="flex items-center gap-3 text-white">
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border/50 mb-4 font-display">
+                    <div className="flex items-center gap-3 text-foreground">
                         <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 transition-all hover:scale-105">
                             <BarChart3 className="text-primary w-4 h-4 shadow-lg shadow-primary/20" />
                         </div>
@@ -202,32 +203,32 @@ export default function ReportesPage() {
 
                     <div className="flex items-center gap-4">
                         {/* Time & Date - Premium Compact Style */}
-                        <div className="bg-[#141414]/90 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-1.5 flex items-center gap-4 shadow-2xl hover:border-primary/30 transition-all group">
+                        <div className="bg-muted/50 backdrop-blur-xl border border-border rounded-xl px-4 py-1.5 flex items-center gap-4 shadow-sm hover:border-primary/30 transition-all group">
                             <div className="flex flex-col items-end">
-                                <p className="text-xs font-black tracking-tighter tabular-nums leading-tight text-white">
+                                <p className="text-xs font-black tracking-tighter tabular-nums leading-tight text-foreground">
                                     {formattedTime}
                                 </p>
                                 <p className="text-[9px] text-primary font-black uppercase tracking-[0.1em] leading-tight">
                                     {formattedDate}
                                 </p>
                             </div>
-                            <div className="h-6 w-[1px] bg-white/10 group-hover:bg-primary/20 transition-colors" />
-                            <Clock className="w-4 h-4 text-slate-500 group-hover:text-primary transition-colors" />
+                            <div className="h-6 w-[1px] bg-border group-hover:bg-primary/20 transition-colors" />
+                            <Clock className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                         </div>
 
-                        <div className="flex items-center gap-2 bg-black/40 border border-white/10 p-1.5 rounded-xl">
+                        <div className="flex items-center gap-2 bg-muted/30 border border-border p-1.5 rounded-xl">
                             <input
                                 type="date"
                                 value={dateRange.start}
                                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                                className="bg-transparent border-none text-[10px] font-black uppercase text-white w-28 focus:ring-0"
+                                className="bg-transparent border-none text-[10px] font-black uppercase text-foreground w-28 focus:ring-0"
                             />
-                            <span className="text-white/20 text-xs">/</span>
+                            <span className="text-muted-foreground/30 text-xs">/</span>
                             <input
                                 type="date"
                                 value={dateRange.end}
                                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                                className="bg-transparent border-none text-[10px] font-black uppercase text-white w-28 focus:ring-0"
+                                className="bg-transparent border-none text-[10px] font-black uppercase text-foreground w-28 focus:ring-0"
                             />
                         </div>
                     </div>
@@ -238,33 +239,33 @@ export default function ReportesPage() {
                     <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
                         <BarChart3 className="text-primary w-4 h-4" />
                     </div>
-                    <h2 className="text-lg font-black tracking-tighter uppercase italic text-white">Reportes</h2>
+                    <h2 className="text-lg font-black tracking-tighter uppercase italic text-foreground">Reportes</h2>
                 </div>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <KPIMetricCard 
+                <KPICard 
                     title="Ingresos"
                     value={`$${Math.round(stats.totalIngresos).toLocaleString()}`}
                     icon={<DollarSign className="w-4 h-4" />}
                     trend="+12%"
-                    color="gold"
+                    color="amber"
                 />
-                <KPIMetricCard 
+                <KPICard 
                     title="Ticket Promedio"
                     value={`$${Math.round(stats.ticketPromedio).toLocaleString()}`}
                     icon={<TrendingUp className="w-4 h-4" />}
                     trend="+5%"
                     color="blue"
                 />
-                <KPIMetricCard 
+                <KPICard 
                     title="Citas Totales"
                     value={stats.totalCitas.toString()}
                     icon={<Calendar className="w-4 h-4" />}
                     trend="-2%"
                     color="purple"
                 />
-                <KPIMetricCard 
+                <KPICard 
                     title="Ocupación"
                     value={`${stats.ocupacion}%`}
                     icon={<Users className="w-4 h-4" />}
@@ -275,28 +276,28 @@ export default function ReportesPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Chart: Ingresos por Día */}
-                <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2rem]">
-                    <CardHeader className="p-6 pb-2">
-                        <CardTitle className="text-xs font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-[#D4AF37]" />
+                <Card className="glass-card border-border/50 bg-muted/20 overflow-hidden rounded-[2.5rem]">
+                    <CardHeader className="p-8 pb-2">
+                        <CardTitle className="text-xs font-black text-muted-foreground/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-primary" />
                             Ingresos Semanales
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6">
+                    <CardContent className="p-8">
                         <div className="h-64 flex items-end justify-between gap-3 pt-8">
                             {ingresosPorDia.map((item, i) => (
                                 <div key={i} className="flex-1 flex flex-col items-center gap-3 group px-1">
                                     <div className="w-full relative flex items-end justify-center">
                                         <div
-                                            className="w-full bg-gradient-to-t from-[#D4AF37]/40 to-[#D4AF37] rounded-lg transition-all duration-500 relative shadow-[0_0_15px_rgba(212,175,55,0.2)]"
+                                            className="w-full bg-gradient-to-t from-primary/20 to-primary rounded-xl transition-all duration-500 relative shadow-[0_0_20px_rgba(var(--primary),0.1)]"
                                             style={{ height: `${(item.monto / maxIngreso) * 180}px` }}
                                         >
-                                            <div className="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 border border-white/10 text-white text-[10px] font-black px-2 py-1.5 rounded-lg whitespace-nowrap transition-all scale-75 group-hover:scale-100 z-50">
+                                            <div className="opacity-0 group-hover:opacity-100 absolute -top-12 left-1/2 -translate-x-1/2 bg-background border border-border text-foreground text-[10px] font-black px-3 py-2 rounded-xl whitespace-nowrap transition-all scale-75 group-hover:scale-100 z-50 shadow-2xl">
                                                 ${Math.round(item.monto).toLocaleString()}
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-[9px] text-white/40 font-black uppercase tracking-widest">{item.dia}</span>
+                                    <span className="text-[9px] text-muted-foreground/40 font-black uppercase tracking-widest leading-none">{item.dia}</span>
                                 </div>
                             ))}
                         </div>
@@ -304,28 +305,28 @@ export default function ReportesPage() {
                 </Card>
 
                 {/* Chart: Servicios Populares */}
-                <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2rem]">
-                    <CardHeader className="p-6 pb-2">
-                        <CardTitle className="text-xs font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Card className="glass-card border-border/50 bg-muted/20 overflow-hidden rounded-[2.5rem]">
+                    <CardHeader className="p-8 pb-2">
+                        <CardTitle className="text-xs font-black text-muted-foreground/40 uppercase tracking-[0.2em] flex items-center gap-2">
                             <PieChart className="w-4 h-4 text-purple-400" />
                             Servicios Elite
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-6">
+                    <CardContent className="p-8 space-y-6">
                         {citasPorServicio.map((item, i) => (
-                            <div key={i} className="space-y-2">
+                            <div key={i} className="space-y-2.5">
                                 <div className="flex justify-between items-end">
-                                    <span className="text-[10px] font-black text-white uppercase tracking-tight">{item.servicio}</span>
-                                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">{item.cantidad} servicios</span>
+                                    <span className="text-[10px] font-black text-foreground uppercase tracking-tight leading-none">{item.servicio}</span>
+                                    <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest leading-none">{item.cantidad} servicios</span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden border border-white/5 p-[1px]">
+                                    <div className="flex-1 h-3 bg-muted/30 rounded-full overflow-hidden border border-border/50 p-[1px]">
                                         <div
-                                            className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(168,85,247,0.3)]"
+                                            className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
                                             style={{ width: `${item.porcentaje}%` }}
                                         />
                                     </div>
-                                    <span className="text-[10px] font-black text-purple-400 w-8">{Math.round(item.porcentaje)}%</span>
+                                    <span className="text-[10px] font-black text-purple-400 w-10 text-right">{Math.round(item.porcentaje)}%</span>
                                 </div>
                             </div>
                         ))}
@@ -333,32 +334,32 @@ export default function ReportesPage() {
                 </Card>
 
                 {/* Metrics by Barber */}
-                <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-[2.5rem] lg:col-span-2">
-                    <CardHeader className="p-8 pb-4">
-                        <CardTitle className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
-                                <Timer className="w-5 h-5" />
+                <Card className="glass-card border-border/50 bg-muted/20 overflow-hidden rounded-[3rem] lg:col-span-2 shadow-2xl shadow-primary/5">
+                    <CardHeader className="p-10 pb-4">
+                        <CardTitle className="text-base font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-inner">
+                                <Timer className="w-6 h-6" />
                             </div>
                             Eficiencia Operativa por Barbero
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-8 pt-2">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <CardContent className="p-10 pt-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             {tiemposBarberos.length === 0 ? (
-                                <div className="col-span-full text-center py-12 text-white/20 text-xs font-black uppercase tracking-widest">
+                                <div className="col-span-full text-center py-16 text-muted-foreground/20 text-[10px] font-black uppercase tracking-[0.3em]">
                                     Sin datos suficientes para este periodo
                                 </div>
                             ) : (
                                 tiemposBarberos.map((tb, idx) => (
-                                    <div key={idx} className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 flex flex-col items-center text-center group hover:bg-white/[0.04] transition-all">
-                                        <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center mb-5 border border-blue-500/20 shadow-lg shadow-blue-500/5 group-hover:scale-110 transition-transform">
-                                            <Users className="w-7 h-7" />
+                                    <div key={idx} className="bg-muted/30 border border-border/50 rounded-[2.5rem] p-8 flex flex-col items-center text-center group hover:bg-muted/50 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/5">
+                                        <div className="w-16 h-16 rounded-[1.25rem] bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-6 border border-indigo-500/20 shadow-lg shadow-indigo-500/5 group-hover:scale-110 transition-transform duration-500">
+                                            <Users className="w-8 h-8" />
                                         </div>
-                                        <h3 className="text-white font-black text-lg uppercase tracking-tighter mb-1">{tb.barbero}</h3>
-                                        <div className="text-4xl font-black text-gradient-gold my-2 tracking-tighter">
-                                            {tb.promedio}<span className="text-sm text-white/40 ml-1">min</span>
+                                        <h3 className="text-foreground font-black text-xl uppercase tracking-tighter mb-1.5">{tb.barbero}</h3>
+                                        <div className="text-5xl font-black text-primary my-3 tracking-tighter flex items-baseline gap-1">
+                                            {tb.promedio}<span className="text-[10px] text-muted-foreground/30 uppercase tracking-widest ml-1">min</span>
                                         </div>
-                                        <p className="text-[9px] text-white/20 uppercase font-black tracking-widest pt-4 border-t border-white/5 w-full mt-2">
+                                        <p className="text-[9px] text-muted-foreground/20 uppercase font-black tracking-widest pt-6 border-t border-border w-full mt-4 group-hover:text-primary/40 transition-colors">
                                             {tb.totalServicios} servicios realizados
                                         </p>
                                     </div>
@@ -370,46 +371,5 @@ export default function ReportesPage() {
                 </div>
             </div>
         </div>
-    )
-}
-
-function KPIMetricCard({ title, value, icon, trend, color }: { title: string, value: string, icon: React.ReactNode, trend: string, color: 'gold' | 'blue' | 'purple' | 'emerald' }) {
-    const colorMap = {
-        gold: 'from-[#D4AF37] to-[#B8962E] text-black shadow-gold/20',
-        blue: 'from-blue-600 to-blue-400 text-white shadow-blue-500/20',
-        purple: 'from-purple-600 to-purple-400 text-white shadow-purple-500/20',
-        emerald: 'from-emerald-600 to-emerald-400 text-white shadow-emerald-500/20'
-    }
-
-    const isPositive = trend.startsWith('+')
-
-    return (
-        <Card className="glass-card border-white/5 bg-black/40 overflow-hidden rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
-            <CardContent className="p-4 flex flex-col justify-between h-full">
-                <div className="flex items-center justify-between mb-3">
-                    <div className={cn(
-                        "w-8 h-8 rounded-xl flex items-center justify-center bg-gradient-to-br shadow-lg",
-                        colorMap[color]
-                    )}>
-                        {icon}
-                    </div>
-                    <div className={cn(
-                        "flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest",
-                        isPositive ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
-                    )}>
-                        {isPositive ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
-                        {trend}
-                    </div>
-                </div>
-                <div>
-                    <h3 className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">{title}</h3>
-                    <p className="text-xl sm:text-2xl font-black text-white tracking-tighter">{value}</p>
-                </div>
-                <div className={cn(
-                    "absolute -right-4 -bottom-4 w-16 h-16 rounded-full blur-2xl opacity-10",
-                    color === 'gold' ? 'bg-[#D4AF37]' : color === 'blue' ? 'bg-blue-500' : color === 'purple' ? 'bg-purple-500' : 'bg-emerald-500'
-                )} />
-            </CardContent>
-        </Card>
     )
 }

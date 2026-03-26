@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Edit2, Check, Scissors, User as UserIcon, DollarSign } from 'lucide-react'
+import { Edit2, Check, Scissors, User as UserIcon, DollarSign, Banknote, Landmark, Timer as TimerIcon } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import type { Servicio, Barbero } from '@/lib/types'
@@ -61,6 +61,7 @@ interface CitaCardProps {
     currentTime: Date
     allCitas: CitaDesdeVista[]
     autoOpen?: 'move' | 'cancel' | 'details' | 'checkout' | null
+    onCheckout?: (cita: CitaDesdeVista) => void
     bloqueos?: any[]
     almuerzoBarbero?: any
     horarioSucursal?: any
@@ -79,6 +80,7 @@ export const CitaCard = memo(function CitaCard({
     currentTime,
     allCitas,
     autoOpen,
+    onCheckout,
     bloqueos = [],
     almuerzoBarbero = null,
     horarioSucursal,
@@ -93,6 +95,14 @@ export const CitaCard = memo(function CitaCard({
         if (autoOpen === 'cancel') setShowCancel(true)
         if (autoOpen === 'checkout') setShowCheckout(true)
     }, [autoOpen, cita.id]) // Depend on cita.id too in case the same ghost card is reused for different appointments
+
+    // Preload CheckOutModal bundle as soon as cita is ready for payment
+    // so the first click on "Cobrar" doesn't stall waiting for the JS chunk
+    useEffect(() => {
+        if (cita.estado === 'por_cobrar') {
+            import('./CheckOutModal')
+        }
+    }, [cita.estado])
 
     // States
     const [loading, setLoading] = useState(false)
@@ -386,14 +396,14 @@ export const CitaCard = memo(function CitaCard({
 
 
     const config = {
-        confirmada: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-yellow-500', badgeVariant: 'outline' as const, label: 'Confirmada', badgeClass: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
-        en_espera: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-yellow-500', badgeVariant: 'outline' as const, label: 'En Sucursal', badgeClass: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
-        en_proceso: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-emerald-500', badgeVariant: 'outline' as const, label: 'En Proceso', badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-        por_cobrar: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-blue-500', badgeVariant: 'outline' as const, label: 'Por Cobrar', badgeClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-        finalizada: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-zinc-500', badgeVariant: 'outline' as const, label: 'Finalizada', badgeClass: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
-        cancelada: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'Cancelada', badgeClass: 'bg-red-500/10 text-red-400 border-red-500/20' },
-        no_show: { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'No Show', badgeClass: 'bg-red-500/10 text-red-400 border-red-500/20' }
-    }[cita.estado] || { bg: 'bg-slate-900/40', border: 'border-slate-800/50', accent: 'border-l-slate-500', badgeVariant: 'outline' as const, label: cita.estado, badgeClass: 'bg-slate-500/10 text-slate-400' }
+        confirmada: { bg: 'bg-card', border: 'border-border', accent: 'border-l-yellow-500', badgeVariant: 'outline' as const, label: 'Confirmada', badgeClass: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/30' },
+        en_espera: { bg: 'bg-card', border: 'border-border', accent: 'border-l-yellow-500', badgeVariant: 'outline' as const, label: 'En Sucursal', badgeClass: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/30' },
+        en_proceso: { bg: 'bg-card', border: 'border-border', accent: 'border-l-emerald-500', badgeVariant: 'outline' as const, label: 'En Proceso', badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
+        por_cobrar: { bg: 'bg-card', border: 'border-border', accent: 'border-l-blue-500', badgeVariant: 'outline' as const, label: 'Por Cobrar', badgeClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30' },
+        finalizada: { bg: 'bg-card', border: 'border-border', accent: 'border-l-zinc-400', badgeVariant: 'outline' as const, label: 'Finalizada', badgeClass: 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 border-zinc-500/20' },
+        cancelada: { bg: 'bg-card', border: 'border-border', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'Cancelada', badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30' },
+        no_show: { bg: 'bg-card', border: 'border-border', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'No Show', badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30' }
+    }[cita.estado] || { bg: 'bg-card', border: 'border-border', accent: 'border-l-slate-500', badgeVariant: 'outline' as const, label: cita.estado, badgeClass: 'bg-slate-500/10 text-slate-500 dark:text-slate-400' }
 
     const citaStartTime = new Date(cita.timestamp_inicio_local)
     const minutosDiferencia = Math.floor((currentTime.getTime() - citaStartTime.getTime()) / 60000)
@@ -560,11 +570,11 @@ export const CitaCard = memo(function CitaCard({
     return (
         <Card
             className={cn(
-                "relative md:rounded-[1.5rem] border-l-[4px] glass-card overflow-hidden transition-all duration-700 hover:bg-black/60 group animate-fade-in",
+                "relative md:rounded-[1.5rem] border-l-[4px] bg-card border-border overflow-hidden transition-all duration-700 hover:bg-muted/50 group animate-fade-in",
                 config.bg,
                 config.border,
                 config.accent,
-                (isHighlighted || isInProcess) ? 'shadow-[0_10px_30px_rgba(234,179,8,0.1)] border-primary/20' : 'border-white/5',
+                (isHighlighted || isInProcess) ? 'shadow-[0_10px_30px_rgba(234,179,8,0.1)] border-primary/20' : 'border-border',
                 isHighlighted ? 'z-10' : 'z-0'
             )}
             style={style}
@@ -575,14 +585,14 @@ export const CitaCard = memo(function CitaCard({
             )}
 
             <CardContent className="p-3 md:p-4">
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-8 text-white relative z-10">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 md:gap-8 text-foreground relative z-10">
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 md:gap-4 mb-1.5 md:mb-3">
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-black/60 border border-white/10 flex items-center justify-center shrink-0 shadow-xl group-hover:border-primary/40 transition-colors duration-500">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-muted border border-border flex items-center justify-center shrink-0 shadow-xl group-hover:border-primary/40 transition-colors duration-500">
                                 <span className="text-sm md:text-xl font-black text-primary font-display group-hover:scale-105 transition-transform">{cita.cliente_nombre.charAt(0).toUpperCase()}</span>
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-xs md:text-lg font-black text-white truncate tracking-tight font-display uppercase leading-none">
+                                <h3 className="text-xs md:text-lg font-black text-foreground truncate tracking-tight font-display uppercase leading-none">
                                     {cita.cliente_nombre}
                                 </h3>
                                 <div className="flex flex-wrap items-center gap-1.5 mt-0.5 md:mt-1">
@@ -591,7 +601,7 @@ export const CitaCard = memo(function CitaCard({
                                     </Badge>
 
                                     {isEnSucursal && (
-                                        <Badge className="bg-emerald-500 text-black animate-pulse flex items-center gap-1 shadow-[0_0_15px_rgba(16,185,129,0.5)] text-[8px] md:text-[9px] uppercase font-black">
+                                        <Badge className="bg-emerald-500 text-primary-foreground animate-pulse flex items-center gap-1 shadow-[0_0_15px_rgba(16,185,129,0.5)] text-[8px] md:text-[9px] uppercase font-black">
                                             <UserCheck className="w-2.5 h-2.5" />
                                             En sucursal
                                         </Badge>
@@ -603,7 +613,7 @@ export const CitaCard = memo(function CitaCard({
                                             En {minHastaCita} min
                                         </Badge>
                                     )}
-                                    <div className="h-0.5 w-0.5 rounded-full bg-white/20" />
+                                    <div className="h-0.5 w-0.5 rounded-full bg-foreground/20" />
                                     <span className="text-[9px] font-black text-primary uppercase tracking-[0.1em]">
                                         {cita.servicio_nombre}
                                     </span>
@@ -628,10 +638,10 @@ export const CitaCard = memo(function CitaCard({
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 md:gap-4 text-white/40 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-[7px] md:text-[8px]">
-                            <div className="flex items-center gap-2 md:gap-3 px-2 md:px-3 py-1 md:py-1.5 bg-black/40 rounded-lg md:rounded-xl border border-white/5 shadow-inner group-hover:border-primary/20 transition-colors">
+                        <div className="flex flex-wrap items-center gap-2 md:gap-4 text-foreground/40 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-[7px] md:text-[8px]">
+                            <div className="flex items-center gap-2 md:gap-3 px-2 md:px-3 py-1 md:py-1.5 bg-muted rounded-lg md:rounded-xl border border-border shadow-inner group-hover:border-primary/20 transition-colors">
                                 <Clock className="w-3 h-3 text-primary" />
-                                <span className="text-white tracking-[0.05em] md:tracking-[0.1em]">{horaInicio} — {horaFin}</span>
+                                <span className="text-foreground tracking-[0.05em] md:tracking-[0.1em]">{horaInicio} — {horaFin}</span>
                             </div>
                             {cita.notas && (
                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/5 rounded-xl border border-blue-500/20 max-w-[200px] md:max-w-[300px]">
@@ -663,8 +673,8 @@ export const CitaCard = memo(function CitaCard({
                                         cita.estado === 'finalizada' 
                                             ? "hidden" 
                                             : (esNoShow
-                                                ? "bg-amber-500 text-white hover:bg-amber-400 border-amber-300 shadow-[0_5px_15px_rgba(245,158,11,0.2)] animate-pulse"
-                                                : "bg-gradient-gold text-black hover:scale-[1.02] border border-primary/20 shadow-[0_5px_15px_rgba(234,179,8,0.15)]")
+                                                ? "bg-amber-500 text-primary-foreground hover:bg-amber-400 border-amber-300 shadow-[0_5px_15px_rgba(245,158,11,0.2)] animate-pulse"
+                                                : "bg-gradient-gold text-primary-foreground hover:scale-[1.02] border border-primary/20 shadow-[0_5px_15px_rgba(234,179,8,0.15)]")
                                     )}
                                 >
                                     <Play className="w-3.5 h-3.5 fill-current" />
@@ -675,7 +685,7 @@ export const CitaCard = memo(function CitaCard({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setShowMove(true)}
-                                    className="h-auto py-2.5 px-3 bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-[9px] font-black uppercase tracking-[0.1em]"
+                                    className="h-auto py-2.5 px-3 bg-muted border-border text-foreground/60 hover:text-foreground hover:bg-accent text-[9px] font-black uppercase tracking-[0.1em]"
                                 >
                                     <CalendarClock className="w-3.5 h-3.5" />
                                     Mover
@@ -698,7 +708,7 @@ export const CitaCard = memo(function CitaCard({
                                 size="lg"
                                 onClick={() => actualizarEstado('en_proceso')}
                                 disabled={loading}
-                                className="h-auto py-4 px-6 rounded-2xl bg-primary/10 border-2 border-primary/50 text-primary hover:bg-primary hover:text-black shadow-[0_10px_40px_rgba(234,179,8,0.2)] transition-all flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em]"
+                                className="h-auto py-4 px-6 rounded-2xl bg-primary/10 border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground shadow-[0_10px_40px_rgba(234,179,8,0.2)] transition-all flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em]"
                             >
                                 <PlayCircle className="w-5 h-5" />
                                 Confirmar Inicio
@@ -710,7 +720,7 @@ export const CitaCard = memo(function CitaCard({
                                 size="lg"
                                 onClick={() => actualizarEstado('por_cobrar')}
                                 disabled={loading}
-                                className="h-auto py-4 px-6 rounded-2xl bg-blue-600 text-white hover:bg-blue-500 shadow-[0_15px_40px_rgba(59,130,246,0.3)] border-2 border-blue-400/50 text-[11px] font-black uppercase tracking-[0.2em]"
+                                className="h-auto py-4 px-6 rounded-2xl bg-blue-600 text-primary-foreground hover:bg-blue-500 shadow-[0_15px_40px_rgba(59,130,246,0.3)] border-2 border-blue-400/50 text-[11px] font-black uppercase tracking-[0.2em]"
                             >
                                 <Scissors className="w-5 h-5" />
                                 Finalizar
@@ -720,9 +730,9 @@ export const CitaCard = memo(function CitaCard({
                         {cita.estado === 'por_cobrar' && (
                             <Button
                                 size="lg"
-                                onClick={() => setShowCheckout(true)}
+                                onClick={() => onCheckout ? onCheckout(cita) : setShowCheckout(true)}
                                 disabled={loading}
-                                className="h-auto py-4 px-6 rounded-2xl bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_20px_50px_rgba(16,185,129,0.3)] border-2 border-emerald-300 text-[11px] font-black uppercase tracking-[0.2em]"
+                                className="h-auto py-4 px-6 rounded-2xl bg-emerald-500 text-primary-foreground hover:bg-emerald-400 shadow-[0_20px_50px_rgba(16,185,129,0.3)] border-2 border-emerald-300 text-[11px] font-black uppercase tracking-[0.2em]"
                             >
                                 <CreditCard className="w-5 h-5" />
                                 Cobrar
@@ -734,7 +744,7 @@ export const CitaCard = memo(function CitaCard({
                                 variant="outline"
                                 size="icon"
                                 onClick={() => setShowDetails(true)}
-                                className="h-9 w-9 bg-white/5 border-white/5 text-white/30 hover:text-white"
+                                className="h-9 w-9 bg-muted border-border text-foreground/30 hover:text-foreground"
                             >
                                 <Info className="w-4 h-4" />
                             </Button>
@@ -747,14 +757,14 @@ export const CitaCard = memo(function CitaCard({
 
             {/* Early Warning Dialog */}
             <Dialog open={showEarlyWarning} onOpenChange={(open) => { setShowEarlyWarning(open); if (!open) onClose?.(); }}>
-                <DialogContent className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] sm:max-w-sm w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
+                <DialogContent className="bg-background border-border text-foreground rounded-[2rem] sm:max-w-sm w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold opacity-50" />
                     <DialogHeader className="flex flex-col items-center pt-6">
                         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                             <Clock className="w-8 h-8 text-primary animate-pulse" />
                         </div>
                         <DialogTitle className="text-xl font-black uppercase tracking-tight text-center">Atención Adelantada</DialogTitle>
-                        <DialogDescription className="text-white/60 text-center text-sm">
+                        <DialogDescription className="text-foreground/60 text-center text-sm">
                             Faltan <strong>{minHastaCita} minutos</strong> para esta cita. ¿Deseas comenzar el servicio ahora mismo?
                         </DialogDescription>
                     </DialogHeader>
@@ -762,7 +772,7 @@ export const CitaCard = memo(function CitaCard({
                         <Button onClick={() => { setShowEarlyWarning(false); actualizarEstado('en_proceso') }} className="w-full bg-gradient-gold text-black font-black uppercase tracking-widest py-6">
                             Sí, Atender Ahora
                         </Button>
-                        <Button variant="ghost" onClick={() => setShowEarlyWarning(false)} className="w-full text-white/40 hover:text-white hover:bg-white/5 font-black uppercase">
+                        <Button variant="ghost" onClick={() => setShowEarlyWarning(false)} className="w-full text-foreground/40 hover:text-foreground hover:bg-muted font-black uppercase">
                             No, Esperar
                         </Button>
                     </div>
@@ -771,7 +781,7 @@ export const CitaCard = memo(function CitaCard({
 
             {/* Active Appointment Warning Dialog */}
             <Dialog open={showActiveWarning} onOpenChange={(open) => { setShowActiveWarning(open); if (!open) onClose?.(); }}>
-                <DialogContent className="bg-[#050608] border-red-500/20 text-white rounded-[2rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border shadow-[0_0_50px_rgba(239,68,68,0.15)]">
+                <DialogContent className="bg-background border-red-500/20 text-foreground rounded-[2rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border shadow-[0_0_50px_rgba(239,68,68,0.15)]">
                     <div className="absolute top-0 left-0 w-full h-1 bg-red-600 opacity-50" />
                     <DialogHeader className="flex flex-col items-center pt-10 px-6">
                         <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
@@ -787,9 +797,9 @@ export const CitaCard = memo(function CitaCard({
 
                     <div className="p-8 space-y-4">
                         {citaActiva && (
-                            <div className="p-6 bg-white/[0.03] rounded-[1.5rem] border border-white/5">
-                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">Cita Activa</p>
-                                <p className="text-xl font-black text-white uppercase italic">{citaActiva.cliente_nombre}</p>
+                            <div className="p-6 bg-muted/30 rounded-[1.5rem] border border-border">
+                                <p className="text-[9px] font-black text-foreground/20 uppercase tracking-[0.3em] mb-2">Cita Activa</p>
+                                <p className="text-xl font-black text-foreground uppercase italic">{citaActiva.cliente_nombre}</p>
                                 <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-widest">{citaActiva.servicio_nombre}</p>
                             </div>
                         )}
@@ -802,7 +812,7 @@ export const CitaCard = memo(function CitaCard({
                                     // to see it highlighted in the timeline if it's visible.
                                     // If we had a global store or context, we could trigger the scroll here too.
                                 }}
-                                className="w-full bg-white text-black hover:bg-white/90 font-black uppercase tracking-widest py-7 rounded-2xl shadow-xl active:scale-[0.98] transition-all"
+                                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-black uppercase tracking-widest py-7 rounded-2xl shadow-xl active:scale-[0.98] transition-all"
                             >
                                 Entendido
                             </Button>
@@ -814,20 +824,35 @@ export const CitaCard = memo(function CitaCard({
 
             {/* Details Dialog */}
             <Dialog open={showDetails} onOpenChange={(open) => { setShowDetails(open); if (!open) onClose?.(); }}>
-                <DialogContent className="bg-[#050608] border-white/10 text-white rounded-[2rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border shadow-[0_0_50px_rgba(0,0,0,1)]">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold opacity-50" />
-                    
-                    <DialogHeader className="px-8 pt-8 pb-4">
-                        <div className="flex items-center justify-between">
-                            <DialogTitle className="text-xl font-black uppercase tracking-widest font-display text-white">
-                                Detalles de la Cita
-                            </DialogTitle>
+                <DialogContent showCloseButton={false} className="bg-background border-border text-foreground rounded-[2rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-hidden p-0 outline-none border shadow-2xl flex flex-col">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold z-50 shrink-0" />
+
+                    {/* Header — mismo estilo que otros modales */}
+                    <DialogHeader className="px-5 py-3 border-b border-border/50 bg-card/20 shrink-0 relative z-10 flex flex-row items-center justify-between space-y-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
+                                <Info className="w-5 h-5 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                                <DialogTitle className="text-lg font-black uppercase tracking-tighter text-foreground font-display leading-none">
+                                    Detalles de la Cita
+                                </DialogTitle>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <User className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+                                    <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary/70 font-bold text-[10px] px-1.5 py-0 h-4 truncate">
+                                        {cita.cliente_nombre}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
                             {!isEditing ? (
                                 <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => setIsEditing(true)}
-                                    className="h-8 w-8 text-white/20 hover:text-primary hover:bg-white/5"
+                                    className="h-9 w-9 rounded-xl border border-border bg-muted text-muted-foreground hover:text-primary hover:bg-muted/80 transition-all"
                                 >
                                     <Edit2 className="w-4 h-4" />
                                 </Button>
@@ -845,60 +870,95 @@ export const CitaCard = memo(function CitaCard({
                                             setBarberoEdit(cita.barbero_id)
                                             setNotasEdit(cita.notas || '')
                                         }}
-                                        className="h-8 w-8 text-red-400 hover:bg-red-400/10"
+                                        className="h-9 w-9 rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-all"
                                     >
-                                        <X className="w-4 h-4" />
+                                        <RotateCcw className="w-4 h-4" />
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={guardarTodo}
                                         disabled={loading}
-                                        className="h-8 w-8 text-emerald-400 hover:bg-emerald-400/10"
+                                        className="h-9 w-9 rounded-xl border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-all"
                                     >
                                         <Check className="w-4 h-4" />
                                     </Button>
                                 </div>
                             )}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => { setShowDetails(false); onClose?.() }}
+                                className="w-12 h-12 rounded-xl bg-muted border border-border text-foreground/60 hover:text-foreground hover:bg-muted/80 transition-all shrink-0 group"
+                            >
+                                <X className="w-7 h-7 group-hover:scale-110 transition-transform" />
+                            </Button>
                         </div>
                     </DialogHeader>
 
-                    <div className="px-8 pb-8 space-y-4">
+                    {/* Scrollable content */}
+                    <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-none sm:scrollbar-thin">
+                    <div className="p-4 space-y-3">
                         {/* Cliente Section */}
-                        <div className="p-8 bg-white/[0.03] rounded-[2rem] border border-white/5 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                            <div className="flex items-center justify-between mb-4">
-                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Cliente</p>
-                            </div>
-                            
+                        <div className="p-5 bg-muted rounded-2xl border border-border relative overflow-hidden">
+                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.4em] mb-3 flex items-center gap-1.5">
+                                <User className="w-3 h-3" />
+                                Cliente
+                            </p>
                             {!isEditing ? (
-                                <>
-                                    <h2 className="text-3xl font-black text-white font-display uppercase tracking-tighter leading-tight italic">
-                                        {cita.cliente_nombre}
-                                    </h2>
-                                    {cita.cliente_telefono && (
-                                        <p className="text-lg font-black text-primary mt-2 tracking-widest font-mono">
-                                            {cita.cliente_telefono}
-                                        </p>
-                                    )}
-                                </>
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <h2 className="text-base font-black text-foreground font-display uppercase tracking-tight italic truncate">
+                                            {cita.cliente_nombre}
+                                        </h2>
+                                        {cita.cliente_telefono ? (
+                                            <p className="text-[11px] font-bold text-primary mt-1 tracking-widest font-mono flex items-center gap-1.5">
+                                                <Phone className="w-3 h-3 opacity-60 shrink-0" />
+                                                {cita.cliente_telefono}
+                                            </p>
+                                        ) : (
+                                            <p className="text-[9px] font-bold text-muted-foreground/50 mt-1 uppercase tracking-widest italic">Sin teléfono registrado</p>
+                                        )}
+                                    </div>
+                                    {/* Origen badge */}
+                                    <div className="shrink-0">
+                                        {cita.origen === 'walkin' && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[9px] font-black text-primary uppercase tracking-widest">
+                                                <Store className="w-2.5 h-2.5" />
+                                                Local
+                                            </span>
+                                        )}
+                                        {cita.origen === 'whatsapp' && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#25D366]/10 border border-[#25D366]/20 text-[9px] font-black text-[#25D366] uppercase tracking-widest">
+                                                <MessageCircleIcon className="w-2.5 h-2.5" />
+                                                WhatsApp
+                                            </span>
+                                        )}
+                                        {cita.origen === 'telefono' && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                                                <Phone className="w-2.5 h-2.5" />
+                                                Llamada
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
                             ) : (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black">Nombre</Label>
-                                        <Input 
+                                <div className="space-y-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">Nombre</Label>
+                                        <Input
                                             value={nombreEdit}
                                             onChange={(e) => setNombreEdit(e.target.value)}
-                                            className="bg-black/40 border-white/10 text-white font-black uppercase tracking-widest"
+                                            className="bg-background/40 border-border text-foreground font-black uppercase tracking-widest"
                                             placeholder="Nombre del cliente"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black">Teléfono</Label>
-                                        <Input 
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">Teléfono</Label>
+                                        <Input
                                             value={telefonoEdit}
                                             onChange={(e) => setTelefonoEdit(e.target.value)}
-                                            className="bg-black/40 border-white/10 text-primary font-mono tracking-widest"
+                                            className="bg-background/40 border-border text-primary font-mono tracking-widest"
                                             placeholder="Teléfono (opcional)"
                                         />
                                     </div>
@@ -907,31 +967,41 @@ export const CitaCard = memo(function CitaCard({
                         </div>
 
                         {/* Info Grid */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3">
                             {/* Servicio y Barbero */}
-                            <div className="p-8 bg-white/[0.03] rounded-[2.5rem] border border-white/5 relative overflow-hidden group col-span-2 sm:col-span-1">
+                            <div className="p-5 bg-muted rounded-2xl border border-border relative overflow-hidden col-span-2 sm:col-span-1">
                                 {!isEditing ? (
                                     <>
-                                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Servicio</p>
-                                        <p className="text-xl font-black text-white uppercase tracking-tight italic leading-tight">
+                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.4em] mb-3 flex items-center gap-1.5">
+                                            <Scissors className="w-3 h-3" />
+                                            Servicio
+                                        </p>
+                                        <p className="text-sm font-black text-foreground uppercase tracking-tight italic leading-tight">
                                             {cita.servicio_nombre}
                                         </p>
-                                        <p className="text-2xl font-black text-primary mt-2 flex items-baseline gap-1">
-                                            <span className="text-sm opacity-50">$</span>
-                                            {cita.servicio_precio}
-                                        </p>
-                                        <div className="mt-4 pt-4 border-t border-white/5">
-                                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-2">Barbero</p>
-                                            <p className="text-sm font-bold text-white/60 uppercase tracking-widest flex items-center gap-2">
-                                                <UserIcon className="w-3.5 h-3.5 text-primary" />
+                                        <div className="flex items-baseline gap-3 mt-1.5">
+                                            <p className="text-2xl font-black text-primary flex items-baseline gap-1 tabular-nums">
+                                                <span className="text-xs opacity-50">$</span>
+                                                {cita.servicio_precio}
+                                            </p>
+                                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                                {cita.servicio_duracion} min
+                                            </span>
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-border/30">
+                                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-1.5 flex items-center gap-1.5">
+                                                <UserIcon className="w-3 h-3" />
+                                                Barbero
+                                            </p>
+                                            <p className="text-xs font-bold text-foreground uppercase tracking-wider">
                                                 {cita.barbero_nombre}
                                             </p>
                                         </div>
                                     </>
                                 ) : (
                                     <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black flex items-center gap-2">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-black flex items-center gap-2">
                                                 <Scissors className="w-3 h-3" />
                                                 Servicio
                                             </Label>
@@ -942,10 +1012,10 @@ export const CitaCard = memo(function CitaCard({
                                                     if (s) setPrecioEdit(s.precio)
                                                 }
                                             }}>
-                                                <SelectTrigger className="bg-black/40 border-white/10 text-white font-black uppercase tracking-widest h-10">
+                                                <SelectTrigger className="bg-background/40 border-border text-foreground font-black uppercase tracking-widest h-10">
                                                     <SelectValue placeholder="Seleccionar servicio" />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-[#0A0C10] border-white/10 text-white">
+                                                <SelectContent className="bg-background border-border text-foreground">
                                                     {allServicios.map(s => (
                                                         <SelectItem key={s.id} value={s.id} className="focus:bg-primary/20 focus:text-primary">
                                                             {s.nombre} - ${s.precio}
@@ -955,31 +1025,31 @@ export const CitaCard = memo(function CitaCard({
                                             </Select>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black flex items-center gap-2">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-black flex items-center gap-2">
                                                 <DollarSign className="w-3 h-3" />
                                                 Precio
                                             </Label>
-                                            <Input 
+                                            <Input
                                                 type="number"
                                                 value={precioEdit}
                                                 onChange={(e) => setPrecioEdit(Number(e.target.value))}
-                                                className="bg-black/40 border-white/10 text-primary font-black tracking-widest h-10"
+                                                className="bg-background/40 border-border text-primary font-black tracking-widest h-10"
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] text-white/40 uppercase tracking-widest font-black flex items-center gap-2">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-black flex items-center gap-2">
                                                 <UserIcon className="w-3 h-3" />
                                                 Barbero
                                             </Label>
                                             <Select value={barberoEdit} onValueChange={(val: string | null) => {
                                                 if (val) setBarberoEdit(val)
                                             }}>
-                                                <SelectTrigger className="bg-black/40 border-white/10 text-white font-black uppercase tracking-widest h-10">
+                                                <SelectTrigger className="bg-background/40 border-border text-foreground font-black uppercase tracking-widest h-10">
                                                     <SelectValue placeholder="Seleccionar barbero" />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-[#0A0C10] border-white/10 text-white">
+                                                <SelectContent className="bg-background border-border text-foreground">
                                                     {allBarberos.map(b => (
                                                         <SelectItem key={b.id} value={b.id} className="focus:bg-primary/20 focus:text-primary">
                                                             {b.nombre}
@@ -993,31 +1063,108 @@ export const CitaCard = memo(function CitaCard({
                             </div>
 
                             {/* Horario */}
-                            <div className="p-8 bg-white/[0.03] rounded-[2.5rem] border border-white/5 relative overflow-hidden group text-right">
-                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Horario</p>
-                                <p className="text-xl font-black text-white uppercase tracking-tighter tabular-nums leading-tight italic">
+                            <div className="p-5 bg-muted rounded-2xl border border-border relative overflow-hidden col-span-2 sm:col-span-1">
+                                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.4em] mb-3 flex items-center gap-1.5">
+                                    <Clock className="w-3 h-3" />
+                                    Horario
+                                </p>
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                                    {cita.fecha_cita_local
+                                        ? new Date(`${cita.fecha_cita_local}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+                                        : ''}
+                                </p>
+                                <p className="text-2xl font-black text-foreground tabular-nums leading-tight">
                                     {horaInicio.replace('.', '')}
                                 </p>
-                                <p className="text-xs font-bold text-white/30 uppercase tracking-widest mt-2">
-                                    {horaFin.replace('.', '')}
-                                </p>
+                                <div className="mt-2 pt-2 border-t border-border/30">
+                                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-1">Finaliza</p>
+                                    <p className="text-[11px] font-bold text-foreground/70 uppercase tracking-widest tabular-nums">
+                                        {horaFin.replace('.', '')}
+                                    </p>
+                                </div>
+                                <div className="mt-2 pt-2 border-t border-border/30">
+                                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-1 flex items-center gap-1">
+                                        <TimerIcon className="w-2.5 h-2.5" />
+                                        Duración estimada
+                                    </p>
+                                    <p className="text-sm font-black text-foreground tabular-nums">
+                                        {cita.servicio_duracion}<span className="text-[9px] font-bold text-muted-foreground ml-1">min</span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         
+                        {['finalizada', 'cobrada', 'completada'].includes(cita.estado) && !isEditing && (
+                            <div className="p-6 bg-emerald-500/5 rounded-[1.5rem] border border-emerald-500/20">
+                                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.35em] mb-4 flex items-center gap-2">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                    Resumen del Servicio
+                                </p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-1">Cobrado</p>
+                                        <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 flex items-baseline gap-1 tabular-nums">
+                                            <span className="text-sm opacity-50">$</span>
+                                            {cita.monto_pagado ?? cita.servicio_precio}
+                                        </p>
+                                        {cita.metodo_pago && (
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
+                                                {cita.metodo_pago === 'efectivo'
+                                                    ? <Banknote className="w-3 h-3" />
+                                                    : <Landmark className="w-3 h-3" />
+                                                }
+                                                {cita.metodo_pago}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-1">Duración</p>
+                                        {(() => {
+                                            const mins = cita.duracion_real_minutos
+                                                ?? (cita.timestamp_inicio_servicio && cita.timestamp_fin_servicio
+                                                    ? Math.round((new Date(cita.timestamp_fin_servicio).getTime() - new Date(cita.timestamp_inicio_servicio).getTime()) / 60000)
+                                                    : null)
+                                            return mins != null ? (
+                                                <>
+                                                    <p className="text-2xl font-black text-foreground tabular-nums">
+                                                        {mins}<span className="text-sm font-bold text-muted-foreground ml-1">min</span>
+                                                    </p>
+                                                    <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mt-1 flex items-center justify-end gap-1">
+                                                        <TimerIcon className="w-2.5 h-2.5" />
+                                                        Real
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <p className="text-2xl font-black text-foreground tabular-nums">
+                                                    {cita.servicio_duracion}<span className="text-sm font-bold text-muted-foreground ml-1">min</span>
+                                                </p>
+                                            )
+                                        })()}
+                                    </div>
+                                </div>
+                                {cita.notas_crm && (
+                                    <div className="mt-3 pt-3 border-t border-emerald-500/15">
+                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-1">Notas CRM</p>
+                                        <p className="text-[11px] font-medium text-foreground/70 italic leading-relaxed">"{cita.notas_crm}"</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {(cita.notas || isEditing) && (
                             <div className={cn(
                                 "p-6 rounded-[1.5rem] border transition-colors",
-                                isEditing ? "bg-black/40 border-white/10" : "bg-blue-500/5 border-blue-500/10"
+                                isEditing ? "bg-background/40 border-border" : "bg-blue-500/5 border-blue-500/10"
                             )}>
                                 <p className={cn(
                                     "text-[8px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-2",
-                                    isEditing ? "text-white/40" : "text-blue-400/40"
+                                    isEditing ? "text-muted-foreground" : "text-blue-500 dark:text-blue-400/60"
                                 )}>
                                     <StickyNote className="w-2.5 h-2.5" />
                                     Notas
                                 </p>
                                 {!isEditing ? (
-                                    <p className="text-[11px] font-medium text-blue-300 italic opacity-80 leading-relaxed">
+                                    <p className="text-[11px] font-medium text-blue-700 dark:text-blue-300 italic opacity-80 leading-relaxed">
                                         "{cita.notas}"
                                     </p>
                                 ) : (
@@ -1025,31 +1172,32 @@ export const CitaCard = memo(function CitaCard({
                                         value={notasEdit}
                                         onChange={(e) => setNotasEdit(e.target.value)}
                                         placeholder="Escribe notas aquí..."
-                                        className="bg-transparent border-none text-[12px] text-white p-0 focus-visible:ring-0 min-h-[60px] resize-none font-medium italic"
+                                        className="bg-transparent border-none text-[12px] text-foreground p-0 focus-visible:ring-0 min-h-[60px] resize-none font-medium italic"
                                     />
                                 )}
                             </div>
                         )}
                     </div>
+                    </div>{/* end flex-1 scroll wrapper */}
                 </DialogContent>
             </Dialog>
 
             {/* Move/Reschedule Dialog */}
             <Dialog open={showMove} onOpenChange={(open) => { setShowMove(open); if (!open) onClose?.(); }}>
-                <DialogContent showCloseButton={false} className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] p-0 overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,1)] w-[95vw] sm:max-w-lg max-h-[96vh] flex flex-col border outline-none">
+                <DialogContent showCloseButton={false} className="bg-background border-border text-foreground rounded-[2rem] p-0 overflow-hidden shadow-2xl w-[95vw] sm:max-w-lg max-h-[96vh] flex flex-col border outline-none">
                     {/* Status Bar */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-gold z-50 shrink-0" />
 
                     {/* Decorative background light */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
 
-                    <DialogHeader className="px-6 sm:px-8 py-5 sm:py-6 border-b border-white/5 bg-black/40 flex flex-row items-center justify-between space-y-0 relative z-10 shrink-0">
+                    <DialogHeader className="px-6 sm:px-8 py-5 sm:py-6 border-b border-border/5 bg-background/40 flex flex-row items-center justify-between space-y-0 relative z-10 shrink-0">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 shadow-inner">
                                 <CalendarIcon className="w-6 h-6 text-primary" />
                             </div>
                             <div>
-                                <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white font-display">
+                                <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-foreground font-display">
                                     Reagendar Cita
                                 </DialogTitle>
                                 <div className="flex items-center gap-2 mt-1">
@@ -1063,7 +1211,7 @@ export const CitaCard = memo(function CitaCard({
                             variant="ghost"
                             size="icon"
                             onClick={() => { setShowMove(false); onClose?.(); }}
-                            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white"
+                            className="w-10 h-10 rounded-xl bg-foreground/5 border border-border/10 text-foreground/40 hover:text-foreground"
                         >
                             <X className="w-5 h-5" />
                         </Button>
@@ -1096,11 +1244,11 @@ export const CitaCard = memo(function CitaCard({
                                             // Pasado con cita finalizada/cobrada: verde apagado inhabilitado
                                             isTerminada && "bg-emerald-500/5 text-emerald-600/60 border-emerald-500/15 opacity-70 cursor-not-allowed",
                                             // Pasado sin cita: atenuado pero seleccionable
-                                            isPast && "opacity-60 bg-white/5 border-white/5 text-white/40",
+                                            isPast && "opacity-60 bg-foreground/5 border-border/5 text-foreground/40",
                                             // Bloqueado manual
-                                            isBloqueado && "bg-white/5 text-white/20 border-white/5 opacity-50",
+                                            isBloqueado && "bg-foreground/5 text-foreground/20 border-border/5 opacity-50",
                                             // Libre disponible
-                                            !isDisabled && !isPast && "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10",
+                                            !isDisabled && !isPast && "bg-foreground/5 border-border/10 text-foreground/40 hover:text-foreground hover:bg-foreground/10",
                                             // Seleccionado
                                             isSelected && !isDisabled && "bg-primary/20 text-primary border-primary/50 shadow-[0_0_20px_rgba(245,200,66,0.1)]",
                                         )}
@@ -1123,11 +1271,11 @@ export const CitaCard = memo(function CitaCard({
                         </div>
                     </div>
 
-                    <DialogFooter className="px-6 sm:px-8 py-5 sm:py-6 border-t border-white/5 bg-black/40 relative z-10 shrink-0 flex flex-col-reverse sm:flex-row gap-3">
+                    <DialogFooter className="px-6 sm:px-8 py-5 sm:py-6 border-t border-border/5 bg-background/40 relative z-10 shrink-0 flex flex-col-reverse sm:flex-row gap-3">
                         <Button
                             variant="ghost"
                             onClick={() => { setShowMove(false); onClose?.(); }}
-                            className="h-12 sm:h-14 sm:flex-1 bg-white/5 text-white/60 rounded-xl sm:rounded-2xl font-semibold text-sm hover:text-white hover:bg-white/10 transition-all border border-white/10"
+                            className="h-12 sm:h-14 sm:flex-1 bg-foreground/5 text-foreground/60 rounded-xl sm:rounded-2xl font-semibold text-sm hover:text-foreground hover:bg-foreground/10 transition-all border border-border/10"
                         >
                             Cancelar
                         </Button>
@@ -1137,8 +1285,8 @@ export const CitaCard = memo(function CitaCard({
                             className={cn(
                                 "h-12 sm:h-14 sm:flex-[2] rounded-xl sm:rounded-2xl font-semibold text-sm transition-all",
                                 !newHour || loading
-                                    ? "bg-primary/50 text-black/50"
-                                    : "bg-primary text-black hover:bg-amber-400 shadow-lg shadow-primary/20 active:scale-[0.98]"
+                                    ? "bg-primary/50 text-primary-foreground/50"
+                                    : "bg-primary text-primary-foreground hover:bg-amber-400 shadow-lg shadow-primary/20 active:scale-[0.98]"
                             )}
                         >
                             {loading ? (
@@ -1165,14 +1313,14 @@ export const CitaCard = memo(function CitaCard({
 
             {/* Cancel Dialog */}
             <Dialog open={showCancel} onOpenChange={(open) => { setShowCancel(open); if (!open) onClose?.(); }}>
-                <DialogContent className="bg-[#050608] border-red-500/20 text-white rounded-[2.5rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
+                <DialogContent className="bg-background border-red-500/20 text-foreground rounded-[2.5rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
                     <DialogHeader className="flex flex-col items-center pt-6">
                         <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
                             <AlertTriangle className="w-10 h-10" />
                         </div>
                         <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-center">¿Confirmar Cancelación?</DialogTitle>
-                        <DialogDescription className="text-sm font-bold text-white/30 uppercase tracking-widest text-center mt-2">
-                            Esta acción liberará el espacio de <span className="text-white font-black">{cita.cliente_nombre}</span> permanentemente.
+                        <DialogDescription className="text-sm font-bold text-foreground/30 uppercase tracking-widest text-center mt-2">
+                            Esta acción liberará el espacio de <span className="text-foreground font-black">{cita.cliente_nombre}</span> permanentemente.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1181,26 +1329,26 @@ export const CitaCard = memo(function CitaCard({
                             onClick={() => setAgreedCancel(!agreedCancel)}
                             className={cn(
                                 "flex items-center gap-4 p-5 rounded-[1.5rem] border cursor-pointer transition-all",
-                                agreedCancel ? "bg-red-500/10 border-red-500/30" : "bg-white/5 border-white/5"
+                                agreedCancel ? "bg-red-500/10 border-red-500/30" : "bg-foreground/5 border-border/5"
                             )}
                         >
                             <div className={cn(
                                 "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all",
-                                agreedCancel ? "bg-red-500 border-red-500" : "border-white/20"
+                                agreedCancel ? "bg-red-500 border-red-500" : "border-foreground/20"
                             )}>
-                                {agreedCancel && <X className="w-4 h-4 text-white" />}
+                                {agreedCancel && <X className="w-4 h-4 text-primary-foreground" />}
                             </div>
-                            <span className={cn("text-[10px] font-black uppercase tracking-widest transition-all", agreedCancel ? "text-red-400" : "text-white/40")}>
+                            <span className={cn("text-[10px] font-black uppercase tracking-widest transition-all", agreedCancel ? "text-red-400" : "text-foreground/40")}>
                                 Entiendo las consecuencias
                             </span>
                         </div>
 
                         <div className="flex gap-4">
-                            <Button variant="ghost" onClick={() => setShowCancel(false)} className="flex-1 py-6 bg-white/5 text-white/40 rounded-2xl font-black">REGRESAR</Button>
+                            <Button variant="ghost" onClick={() => setShowCancel(false)} className="flex-1 py-6 bg-foreground/5 text-foreground/40 rounded-2xl font-black">REGRESAR</Button>
                             <Button
                                 onClick={() => actualizarEstado('cancelada')}
                                 disabled={loading || !agreedCancel}
-                                className={cn("flex-1 py-6 rounded-2xl font-black", agreedCancel ? "bg-red-600 hover:bg-red-500 shadow-xl shadow-red-900/20" : "bg-white/5 text-white/10")}
+                                className={cn("flex-1 py-6 rounded-2xl font-black", agreedCancel ? "bg-red-600 hover:bg-red-500 shadow-xl shadow-red-900/20" : "bg-foreground/5 text-foreground/10")}
                             >
                                 {loading ? '...' : 'CANCELAR CITA'}
                             </Button>
@@ -1211,26 +1359,26 @@ export const CitaCard = memo(function CitaCard({
 
             {/* Late Warning Dialog */}
             <Dialog open={showLateWarning} onOpenChange={(open) => { setShowLateWarning(open); if (!open) onClose?.(); }}>
-                <DialogContent className="bg-[#050608] border-amber-500/20 text-white rounded-[2.5rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
+                <DialogContent className="bg-background border-amber-500/20 text-foreground rounded-[2.5rem] sm:max-w-md w-[95vw] max-h-[95vh] overflow-y-auto p-0 outline-none border">
                     <div className="p-10 text-center bg-amber-500/5 border-b border-amber-500/10">
                         <div className="w-20 h-20 bg-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-amber-500/20">
                             <Timer className="w-10 h-10" />
                         </div>
                         <DialogTitle className="text-3xl font-black uppercase tracking-tighter text-amber-500">Retraso Excesivo</DialogTitle>
-                        <div className="mt-6 p-6 bg-black/60 rounded-[2rem] border border-amber-500/20 inline-flex flex-col items-center">
-                            <span className="text-5xl font-black text-white font-display tracking-tighter">{minutosDiferencia}</span>
+                        <div className="mt-6 p-6 bg-background/60 rounded-[2rem] border border-amber-500/20 inline-flex flex-col items-center">
+                            <span className="text-5xl font-black text-foreground font-display tracking-tighter">{minutosDiferencia}</span>
                             <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mt-2">MIN TARDE</span>
                         </div>
                     </div>
                     <div className="p-10 space-y-8">
-                        <p className="text-sm font-bold text-white/40 leading-relaxed text-center">
-                            El cliente ha superado el tiempo límite. <span className="text-white">¿Deseas atenderlo o reorganizar tu agenda?</span>
+                        <p className="text-sm font-bold text-foreground/40 leading-relaxed text-center">
+                            El cliente ha superado el tiempo límite. <span className="text-foreground">¿Deseas atenderlo o reorganizar tu agenda?</span>
                         </p>
                         <div className="flex gap-4">
-                            <Button variant="outline" onClick={() => { setShowLateWarning(false); setShowMove(true); }} className="flex-1 py-7 bg-white/5 border-white/5 text-white/40 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]">
+                            <Button variant="outline" onClick={() => { setShowLateWarning(false); setShowMove(true); }} className="flex-1 py-7 bg-foreground/5 border-border/5 text-foreground/40 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]">
                                 Mover
                             </Button>
-                            <Button onClick={() => actualizarEstado('en_proceso')} className="flex-[1.5] py-7 bg-amber-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-amber-500 shadow-2xl shadow-amber-900/20">
+                            <Button onClick={() => actualizarEstado('en_proceso')} className="flex-[1.5] py-7 bg-amber-600 text-primary-foreground rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-amber-500 shadow-2xl shadow-amber-900/20">
                                 {loading ? '...' : 'Atender'}
                             </Button>
                         </div>

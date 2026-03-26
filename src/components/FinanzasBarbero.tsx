@@ -255,7 +255,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                         variant="ghost"
                         size="icon"
                         onClick={onBack}
-                        className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 active:scale-95 transition-all shadow-sm"
+                        className="w-12 h-12 rounded-2xl bg-muted hover:bg-accent text-foreground/70 border border-border active:scale-95 transition-all shadow-sm"
                     >
                         <ChevronLeft className="w-6 h-6" />
                     </Button>
@@ -264,18 +264,18 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                             <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-inner">
                                 <Wallet className="w-4 h-4 text-emerald-500" />
                             </div>
-                            <h1 className="text-xl md:text-2xl font-black font-display tracking-tight uppercase text-white">Mis Finanzas</h1>
+                            <h1 className="text-xl md:text-2xl font-black font-display tracking-tight uppercase text-foreground">Mis Finanzas</h1>
                         </div>
-                        <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] mt-1.5 ml-11">Gestión de Gastos y Metas del Barbero</p>
+                        <p className="text-[10px] text-foreground/30 font-black uppercase tracking-[0.3em] mt-1.5 ml-11">Gestión de Gastos y Metas del Barbero</p>
                     </div>
                 </div>
 
-                <div className="hidden md:flex items-center gap-3 bg-white/2 border border-white/5 p-3 rounded-2xl">
+                <div className="hidden md:flex items-center gap-3 bg-foreground/2 border border-foreground/5 p-3 rounded-2xl">
                     <div className="text-right mr-3">
-                        <p className="text-[9px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Sesión Activa</p>
+                        <p className="text-[9px] font-black text-foreground/20 uppercase tracking-widest leading-none mb-1">Sesión Activa</p>
                         <p className="text-[10px] font-bold text-primary uppercase tracking-tight leading-none">{barbero?.nombre}</p>
                     </div>
-                    <div className="h-8 w-[1px] bg-white/10" />
+                    <div className="h-8 w-[1px] bg-foreground/10" />
                     <Badge variant="outline" className="bg-emerald-500/5 text-emerald-500 border-emerald-500/20 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest select-none">
                         Online
                     </Badge>
@@ -283,7 +283,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
             </div>
 
             {/* Meta control and new expense section - refined to be secondary */}
-            <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center bg-white/[0.03] border border-white/5 p-8 rounded-[2.5rem] relative overflow-hidden group">
+            <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center bg-card border border-border p-8 rounded-[2.5rem] relative overflow-hidden group">
                 <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
                 
                 <div className="flex items-center gap-4 relative z-10">
@@ -291,10 +291,10 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                         <Calculator className="text-primary w-7 h-7" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-tight leading-none">
+                        <h2 className="text-xl font-black text-foreground uppercase tracking-tight leading-none">
                             Punto de <span className="text-primary">Equilibrio</span>
                         </h2>
-                        <p className="text-white/20 text-[9px] font-black uppercase tracking-[0.3em] mt-2">
+                        <p className="text-foreground/20 text-[9px] font-black uppercase tracking-[0.3em] mt-2">
                             Análisis de Gastos y Metas
                         </p>
                     </div>
@@ -302,13 +302,13 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
 
                 <div className="flex items-center gap-3">
                     <div className="flex flex-col items-end">
-                        <Label className="text-[10px] text-white/30 uppercase font-black mb-1">Meta de Cortes</Label>
+                        <Label className="text-[10px] text-foreground/30 uppercase font-black mb-1">Meta de Cortes</Label>
                         <div className="flex items-center gap-2">
                             <Input 
                                 type="number" 
                                 value={metaCortes} 
                                 onChange={(e) => setMetaCortes(e.target.value)}
-                                className="w-20 h-8 bg-white/5 border-white/10 text-xs text-center font-black"
+                                className="w-20 h-8 bg-foreground/5 border-foreground/10 text-xs text-center font-black"
                             />
                             <Button size="sm" variant="outline" className="h-8 border-primary/20 text-primary hover:bg-primary/10" onClick={handleUpdateMeta}>
                                 <Target className="w-3 h-3" />
@@ -325,48 +325,48 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                 </Button>
                             }
                         />
-                        <DialogContent className="bg-black/95 border-white/10 text-white">
+                        <DialogContent className="bg-background border-border text-foreground">
                             <form onSubmit={handleSaveGasto} className="space-y-6 p-2">
                                 <DialogHeader>
                                     <DialogTitle className="text-xl font-black uppercase text-primary">
                                         {editingGasto ? 'Editar Gasto' : 'Registrar Gasto Personal'}
                                     </DialogTitle>
-                                    <DialogDescription className="text-white/40 uppercase text-[10px] font-bold">
+                                    <DialogDescription className="text-foreground/40 uppercase text-[10px] font-bold">
                                         Detalla tus salidas de dinero para calcular tu punto de equilibrio
                                     </DialogDescription>
                                 </DialogHeader>
 
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-white/30">Descripción</Label>
+                                        <Label className="text-[10px] font-black uppercase text-foreground/30">Descripción</Label>
                                         <Input 
                                             value={descripcion} 
                                             onChange={(e) => setDescripcion(e.target.value)}
                                             placeholder="Ej: Renta, Comida, Insumos"
-                                            className="bg-white/5 border-white/10"
+                                            className="bg-muted border-border"
                                             required
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-white/30">Monto (MXN)</Label>
+                                            <Label className="text-[10px] font-black uppercase text-foreground/30">Monto (MXN)</Label>
                                             <Input 
                                                 type="number"
                                                 value={monto}
                                                 onChange={(e) => setMonto(e.target.value)}
                                                 placeholder="0.00"
-                                                className="bg-white/5 border-white/10"
+                                                className="bg-muted border-border"
                                                 required
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-white/30">Fecha de Pago</Label>
+                                            <Label className="text-[10px] font-black uppercase text-foreground/30">Fecha de Pago</Label>
                                             <div className="relative">
                                                 <Input 
                                                     type="date"
                                                     value={format(fechaPago, 'yyyy-MM-dd')}
                                                     onChange={(e) => setFechaPago(new Date(e.target.value + 'T12:00:00'))}
-                                                    className="bg-white/5 border-white/10 text-xs"
+                                                    className="bg-muted border-border text-xs"
                                                     required
                                                 />
                                             </div>
@@ -375,20 +375,20 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-white/30">Es Recurrente?</Label>
+                                            <Label className="text-[10px] font-black uppercase text-foreground/30">Es Recurrente?</Label>
                                             <div className="flex items-center gap-2 h-10">
                                                 <Switch checked={esRecurrente} onCheckedChange={setEsRecurrente} />
-                                                <span className="text-[10px] text-white/40 font-bold uppercase">{esRecurrente ? 'SÍ' : 'NO'}</span>
+                                                <span className="text-[10px] text-foreground/40 font-bold uppercase">{esRecurrente ? 'SÍ' : 'NO'}</span>
                                             </div>
                                         </div>
                                         {esRecurrente && (
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase text-white/30">Frecuencia</Label>
+                                                <Label className="text-[10px] font-black uppercase text-foreground/30">Frecuencia</Label>
                                                 <Select value={frecuencia} onValueChange={(val: any) => setFrecuencia(val)}>
-                                                    <SelectTrigger className="bg-white/5 border-white/10 text-xs h-10">
+                                                    <SelectTrigger className="bg-muted border-border text-xs h-10">
                                                         <SelectValue placeholder="Frecuencia" />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-black border-white/10 text-white">
+                                                    <SelectContent className="bg-background border-border text-foreground">
                                                         <SelectItem value="diario">Diario</SelectItem>
                                                         <SelectItem value="semanal">Semanal</SelectItem>
                                                         <SelectItem value="mensual">Mensual</SelectItem>
@@ -400,10 +400,10 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                     </div>
 
                                     <div className="pt-2">
-                                        <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                                        <div className="flex items-center justify-between p-3 rounded-xl bg-muted border border-border">
                                             <div className="space-y-0.5">
-                                                <Label className="text-[10px] font-black uppercase text-white">¿Ya está pagado?</Label>
-                                                <p className="text-[9px] text-white/30 uppercase">Marca si ya realizaste el desembolso</p>
+                                                <Label className="text-[10px] font-black uppercase text-foreground">¿Ya está pagado?</Label>
+                                                <p className="text-[9px] text-foreground/30 uppercase">Marca si ya realizaste el desembolso</p>
                                             </div>
                                             <Switch checked={pagado} onCheckedChange={setPagado} />
                                         </div>
@@ -435,8 +435,8 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                             <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400/50">Ingresos (Comisión)</span>
                         </div>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-black text-white">${income.toLocaleString()}</span>
-                            <span className="text-[10px] text-white/20 uppercase font-black">Este Mes</span>
+                            <span className="text-3xl font-black text-foreground">${income.toLocaleString()}</span>
+                            <span className="text-[10px] text-foreground/20 uppercase font-black">Este Mes</span>
                         </div>
                         <div className="absolute top-0 right-0 p-8 opacity-10">
                             <DollarSign className="w-16 h-16 text-emerald-400" />
@@ -452,12 +452,12 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                             <span className="text-[10px] font-black uppercase tracking-widest text-red-400/50">Gastos Registrados</span>
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-3xl font-black text-white">${metrics.totalExpenses.toLocaleString()}</span>
+                            <span className="text-3xl font-black text-foreground">${metrics.totalExpenses.toLocaleString()}</span>
                             <div className="flex items-center gap-2 mt-1">
                                 <Badge variant="outline" className="text-[8px] border-red-500/30 text-red-400 uppercase font-bold">
                                     {gastos.length} Items ({gastos.filter(g => g.pagado).length} Pagados)
                                 </Badge>
-                                <span className="text-[10px] text-white/40 font-bold uppercase tracking-tighter">
+                                <span className="text-[10px] text-foreground/40 font-bold uppercase tracking-tighter">
                                     Liquidado: ${metrics.totalPaid.toLocaleString()}
                                 </span>
                             </div>
@@ -476,7 +476,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                             </span>
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-3xl font-black text-white">
+                            <span className="text-3xl font-black text-foreground">
                                 ${metrics.remaining === 0 && metrics.allPaid ? metrics.profit.toLocaleString() : metrics.remaining.toLocaleString()}
                             </span>
                             
@@ -489,7 +489,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                         <p className="text-[10px] font-medium text-emerald-400/80 leading-relaxed uppercase tracking-tight">
                                             Aún no has registrado compromisos este mes.
                                             <br />
-                                            <span className="text-white font-bold">Todo tu ingreso es ganancia: ${metrics.profit.toLocaleString()}</span>
+                                            <span className="text-foreground font-bold">Todo tu ingreso es ganancia: ${metrics.profit.toLocaleString()}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -498,9 +498,9 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                     <p className="text-xs font-black text-primary flex items-center gap-1.5 uppercase tracking-wide">
                                         <Clock className="w-4 h-4" /> Faltan ~{metrics.cutsNeeded} cortes por realizar
                                     </p>
-                                    <div className="bg-black/20 p-2 rounded-md border border-white/5">
-                                        <p className="text-[10px] font-medium text-white/50 leading-relaxed uppercase tracking-tight">
-                                            Basado en servicio <span className="text-white font-bold">Corte $200</span>
+                                    <div className="bg-card/20 p-2 rounded-md border border-foreground/5">
+                                        <p className="text-[10px] font-medium text-foreground/50 leading-relaxed uppercase tracking-tight">
+                                            Basado en servicio <span className="text-foreground font-bold">Corte $200</span>
                                             <br />
                                             Ingreso real por corte ({barbero.comision_porcentaje}%): <span className="text-primary font-bold">${metrics.incomePerCut}</span>
                                         </p>
@@ -526,7 +526,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                         <p className="text-[10px] font-medium text-emerald-400/80 leading-relaxed uppercase tracking-tight">
                                             Todos tus gastos mensuales han sido cubiertos y liquidados.
                                             <br />
-                                            <span className="text-white font-bold">Dinero libre para ti: ${metrics.profit.toLocaleString()}</span>
+                                            <span className="text-foreground font-bold">Dinero libre para ti: ${metrics.profit.toLocaleString()}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -535,12 +535,12 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                         {/* Progress Bar */}
                         <div className="mt-4 space-y-1.5">
                             <div className="flex justify-between text-[10px] font-black uppercase tracking-tight">
-                                <span className={metrics.remaining === 0 && metrics.allPaid ? "text-emerald-400" : "text-white/40"}>Progreso Financiero</span>
-                                <span className={metrics.remaining === 0 && metrics.allPaid ? "text-emerald-400" : "text-white"}>
+                                <span className={metrics.remaining === 0 && metrics.allPaid ? "text-emerald-400" : "text-foreground/40"}>Progreso Financiero</span>
+                                <span className={metrics.remaining === 0 && metrics.allPaid ? "text-emerald-400" : "text-foreground"}>
                                     {metrics.remaining === 0 && metrics.allPaid ? 'OBJETIVO CUMPLIDO' : `${Math.round(metrics.progress)}%`}
                                 </span>
                             </div>
-                            <Progress value={metrics.progress} className={`h-2 bg-white/5 ${metrics.remaining === 0 && metrics.allPaid ? '[&>div]:bg-emerald-500' : ''}`} />
+                            <Progress value={metrics.progress} className={`h-2 bg-muted ${metrics.remaining === 0 && metrics.allPaid ? '[&>div]:bg-emerald-500' : ''}`} />
                         </div>
                     </CardContent>
                     <div className="absolute top-0 right-0 p-8 opacity-10">
@@ -550,33 +550,33 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
             </div>
 
             {/* Expenses List */}
-            <Card className="bg-black/40 border-white/5 rounded-2xl overflow-hidden">
-                <CardHeader className="border-b border-white/5 bg-white/5 py-4">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest text-white/80 flex items-center gap-2">
+            <Card className="bg-card/40 border-foreground/5 rounded-2xl overflow-hidden">
+                <CardHeader className="border-b border-foreground/5 bg-foreground/5 py-4">
+                    <CardTitle className="text-sm font-black uppercase tracking-widest text-foreground/80 flex items-center gap-2">
                         Lista de Gastos Personales
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-white/5 border-b border-white/5">
+                            <thead className="bg-foreground/5 border-b border-foreground/5">
                                 <tr>
-                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Concepto</th>
-                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-white/30 text-center">Frecuencia</th>
-                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-white/30 text-center">Estado</th>
-                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-white/30 text-right">Monto</th>
-                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-white/30 text-right">Acciones</th>
+                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-foreground/30">Concepto</th>
+                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-foreground/30 text-center">Frecuencia</th>
+                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-foreground/30 text-center">Estado</th>
+                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-foreground/30 text-right">Monto</th>
+                                    <th className="px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-foreground/30 text-right">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5">
+                            <tbody className="divide-y divide-foreground/5">
                                 {gastos.map((gasto) => (
-                                    <tr key={gasto.id} className="hover:bg-white/5 transition-colors group">
+                                    <tr key={gasto.id} className="hover:bg-foreground/5 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-black text-white uppercase tracking-tight">{gasto.descripcion}</span>
+                                                <span className="text-xs font-black text-foreground uppercase tracking-tight">{gasto.descripcion}</span>
                                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <CalendarDays className="w-3 h-3 text-white/20" />
-                                                    <span className="text-[10px] text-white/20 font-medium uppercase tracking-tighter">
+                                                    <CalendarDays className="w-3 h-3 text-foreground/20" />
+                                                    <span className="text-[10px] text-foreground/20 font-medium uppercase tracking-tighter">
                                                         {format(new Date(gasto.fecha_pago), 'PPP', { locale: es })}
                                                     </span>
                                                 </div>
@@ -588,7 +588,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                                     {gasto.frecuencia}
                                                 </Badge>
                                             ) : (
-                                                <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest">Puntual</span>
+                                                <span className="text-[10px] text-foreground/20 font-bold uppercase tracking-widest">Puntual</span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-center">
@@ -599,7 +599,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <span className="text-sm font-black text-white">${gasto.monto.toLocaleString()}</span>
+                                            <span className="text-sm font-black text-foreground">${gasto.monto.toLocaleString()}</span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
@@ -616,7 +616,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                                 <Button 
                                                     variant="outline" 
                                                     size="icon" 
-                                                    className="h-8 w-8 border-white/10 bg-white/5 text-white/40 hover:text-primary hover:border-primary/40 hover:bg-primary/10"
+                                                    className="h-8 w-8 border-border bg-muted text-foreground/40 hover:text-primary hover:border-primary/40 hover:bg-primary/10"
                                                     onClick={() => handleEditClick(gasto)}
                                                 >
                                                     <Edit2 className="w-3.5 h-3.5" />
@@ -635,7 +635,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                 ))}
                                 {gastos.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-white/20 uppercase font-black tracking-widest text-[10px]">
+                                        <td colSpan={5} className="px-6 py-12 text-center text-foreground/20 uppercase font-black tracking-widest text-[10px]">
                                             Sin gastos registrados este mes
                                         </td>
                                     </tr>

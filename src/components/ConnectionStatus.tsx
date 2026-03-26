@@ -51,7 +51,7 @@ export function ConnectionStatus() {
     }, [])
 
     if (status === 'loading') return (
-        <div className="fixed bottom-4 left-4 z-[9999] p-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/5 animate-pulse">
+        <div className="fixed bottom-4 left-4 z-[9999] p-1.5 bg-muted/80 backdrop-blur-md rounded-full border border-border animate-pulse">
             <div className="w-2 h-2 rounded-full bg-slate-500" />
         </div>
     )
@@ -85,7 +85,7 @@ export function ConnectionStatus() {
             </span>
 
             {/* Subtle dot label for non-hover state */}
-            <span className="text-[8px] font-bold text-white/20 uppercase tracking-tighter group-hover:hidden">
+            <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-tighter group-hover:hidden">
                 {status === 'connected' ? 'OK' : '!!'}
             </span>
         </div>

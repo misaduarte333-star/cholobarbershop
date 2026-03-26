@@ -369,9 +369,18 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
 
     // Handlers
     const handleClose = useCallback(() => {
-        resetForm()
         onClose()
-    }, [resetForm, onClose])
+    }, [onClose])
+
+    // Reset when modal closes (after animation) or when it opens
+    useEffect(() => {
+        if (!isOpen) {
+            const timer = setTimeout(() => {
+                resetForm()
+            }, 300)
+            return () => clearTimeout(timer)
+        }
+    }, [isOpen, resetForm])
 
     // Horarios para generar botones (ajustado al horario de la sucursal) - MEMOIZED for performance
     const slotsParaCita = useMemo(() => {
@@ -500,20 +509,20 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             <DialogContent 
                 initialFocus={contentRef as any}
                 showCloseButton={false}
-                className="bg-[#0A0C10] border-white/10 text-white rounded-[2rem] w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[92vh] overflow-hidden p-0 outline-none border flex flex-col duration-200"
+                className="bg-background border-border text-foreground rounded-[2rem] w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[92vh] overflow-hidden p-0 outline-none border flex flex-col duration-150 data-closed:zoom-out-100 data-closed:fade-out-0"
             >
                 <div ref={contentRef} tabIndex={-1} className="outline-none" />
                 {/* Status Bar */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-amber-600 z-50 shrink-0" />
 
 
-                <DialogHeader className="px-5 sm:px-6 py-3 sm:py-4 border-b border-white/5 bg-black/40 flex flex-row items-center justify-between space-y-0 relative z-10 shrink-0">
+                <DialogHeader className="px-5 sm:px-6 py-3 sm:py-4 border-b border-border/50 bg-card/40 flex flex-row items-center justify-between space-y-0 relative z-10 shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 shadow-inner">
                             <CalendarIcon className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black uppercase tracking-tighter text-white font-display">
+                            <h2 className="text-xl font-black uppercase tracking-tighter text-foreground font-display">
                                 Añadir Cita
                             </h2>
                             <div className="flex items-center gap-2 mt-0.5">
@@ -527,7 +536,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                         variant="ghost"
                         size="icon"
                         onClick={handleClose}
-                        className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all shrink-0 group"
+                        className="w-12 h-12 rounded-xl bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:border-border/20 transition-all shrink-0 group"
                     >
                         <X className="w-8 h-8 group-hover:scale-110 transition-transform" />
                     </Button>
@@ -544,14 +553,14 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
 
                     {/* Selector de Origen - Centered and small */}
                     <div className="flex justify-center shrink-0">
-                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 w-full max-w-md">
+                        <div className="flex bg-muted p-1 rounded-xl border border-border w-full max-w-md">
                             <Button
                                 type="button"
                                 variant="ghost"
                                 onClick={() => setOrigen('walkin')}
                                 className={cn(
                                     "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
-                                    origen === 'walkin' ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                                    origen === 'walkin' ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
                                 )}
                             >
                                 <Store className="w-4 h-4" />
@@ -563,7 +572,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                 onClick={() => setOrigen('whatsapp')}
                                 className={cn(
                                     "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
-                                    origen === 'whatsapp' ? 'bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                                    origen === 'whatsapp' ? 'bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30' : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
                                 )}
                             >
                                 <MessageCircle className="w-4 h-4" />
@@ -575,7 +584,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                 onClick={() => setOrigen('telefono')}
                                 className={cn(
                                     "flex-1 h-9 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all gap-2",
-                                    origen === 'telefono' ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                                    origen === 'telefono' ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
                                 )}
                             >
                                 <Phone className="w-4 h-4" />
@@ -612,10 +621,10 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                             {/* Teléfono Input */}
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1">
-                                    Teléfono <span className="text-white/20">(Opcional)</span>
+                                    Teléfono <span className="text-muted-foreground/50">(Opcional)</span>
                                 </Label>
                                 <div className="group relative flex items-center">
-                                    <Phone className="absolute left-4 w-4 h-4 text-white/20 group-focus-within:text-primary transition-colors" />
+                                    <Phone className="absolute left-4 w-4 h-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
                                     <Input
                                         type="tel"
                                         value={telefono}
@@ -629,8 +638,8 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                         }}
                                         onChange={(e) => setTelefono(e.target.value)}
                                         className={cn(
-                                            "pl-11 h-12 bg-white/5 border-white/10 rounded-2xl text-sm font-bold focus-visible:ring-primary/50 focus-visible:bg-black/40 transition-all",
-                                            telefono === "Sin registro de numero celular" ? "text-amber-500/40 italic font-normal" : "text-white placeholder:text-white/10"
+                                            "pl-11 h-12 bg-muted border-border rounded-2xl text-sm font-bold focus-visible:ring-primary/50 focus-visible:bg-card/40 transition-all",
+                                            telefono === "Sin registro de numero celular" ? "text-amber-500/40 italic font-normal" : "text-foreground placeholder:text-muted-foreground/30"
                                         )}
                                         placeholder="Teléfono del Cliente"
                                     />
@@ -651,7 +660,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest ml-1">Servicio</Label>
                                 <Select value={servicioId} onValueChange={(val) => val && setServicioId(val)}>
-                                    <SelectTrigger className="h-10 bg-white/5 border-white/10 rounded-2xl text-sm font-semibold focus:ring-primary/50 focus:bg-black/40 transition-all px-4">
+                                    <SelectTrigger className="h-10 bg-muted border-border rounded-2xl text-sm font-semibold focus:ring-primary/50 focus:bg-card/40 transition-all px-4">
                                         <div className="flex items-center gap-3 w-full overflow-hidden">
                                             <Scissors className="w-4 h-4 text-primary shrink-0" />
                                             {selectedService ? (
@@ -660,11 +669,11 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                                     <span className="text-primary font-bold ml-2 shrink-0">${selectedService.precio}</span>
                                                 </div>
                                             ) : (
-                                                <SelectValue placeholder="Selecciona el servicio" className="text-white/40" />
+                                                <SelectValue placeholder="Selecciona el servicio" className="text-foreground/40" />
                                             )}
                                         </div>
                                     </SelectTrigger>
-                                    <SelectContent className="bg-[#0A0C10] border-white/10 text-white rounded-2xl w-[var(--radix-select-trigger-width)] min-w-[240px] p-1">
+                                    <SelectContent className="bg-background border-border text-foreground rounded-2xl w-[var(--radix-select-trigger-width)] min-w-[240px] p-1">
                                         {servicios.map(s => (
                                             <SelectItem
                                                 key={s.id}
@@ -675,7 +684,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                                     <span className="text-xs sm:text-sm font-semibold truncate group-data-[state=checked]:text-primary transition-colors">
                                                         {s.nombre}
                                                     </span>
-                                                    <Badge variant="outline" className="text-[9px] font-bold bg-white/5 border-white/5 text-white/40 ml-2 shrink-0">
+                                                    <Badge variant="outline" className="text-[9px] font-bold bg-muted border-border text-muted-foreground ml-2 shrink-0">
                                                         ${s.precio}
                                                     </Badge>
                                                 </div>
@@ -692,8 +701,8 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                     <Popover>
                                         <PopoverTrigger
                                             className={cn(
-                                                "w-full h-10 justify-start text-left font-bold bg-white/5 border border-white/10 rounded-2xl gap-3 text-xs sm:text-sm transition-all hover:bg-white/10 hover:border-white/20 flex items-center px-4",
-                                                !fecha && "text-white/20"
+                                                "w-full h-10 justify-start text-left font-bold bg-muted border border-border rounded-2xl gap-3 text-xs sm:text-sm transition-all hover:bg-muted/80 hover:border-border/20 flex items-center px-4",
+                                                !fecha && "text-muted-foreground/50"
                                             )}
                                         >
                                             <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
@@ -701,14 +710,14 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                                 {fecha ? format(new Date(`${fecha}T12:00:00`), "eee, d 'de' MMM", { locale: es }) : "Elegir fecha"}
                                             </span>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0 bg-[#0A0C10] border-white/10 rounded-2xl overflow-hidden shadow-2xl" align="start">
+                                        <PopoverContent className="w-auto p-0 bg-background border-border rounded-2xl overflow-hidden shadow-2xl" align="start">
                                             <Calendar
                                                 mode="single"
                                                 selected={new Date(`${fecha}T12:00:00`)}
                                                 onSelect={(date) => date && setFecha(format(date, "yyyy-MM-dd"))}
                                                 initialFocus
                                                 locale={es}
-                                                className="bg-transparent text-white"
+                                                className="bg-transparent text-foreground"
                                             />
                                         </PopoverContent>
                                     </Popover>
@@ -716,23 +725,23 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
 
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold text-primary/60 uppercase tracking-widest text-center block truncate">Acceso Rápido</Label>
-                                    <div className="flex items-center justify-between bg-white/5 h-10 rounded-2xl border border-primary/10 bg-primary/5 px-1">
+                                    <div className="flex items-center justify-between bg-foreground/5 h-10 rounded-2xl border border-primary/10 bg-primary/5 px-1">
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => shiftFecha(-1)}
-                                            className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-white/10 rounded-xl transition-all"
+                                            className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-foreground/10 rounded-xl transition-all"
                                         >
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
-                                        <span className="text-white text-[9px] sm:text-[10px] font-black uppercase tracking-tight flex-1 text-center select-none cursor-pointer hover:text-primary transition-colors" onClick={() => setFecha(getHoyStr())}>
+                                        <span className="text-foreground text-[9px] sm:text-[10px] font-black uppercase tracking-tight flex-1 text-center select-none cursor-pointer hover:text-primary transition-colors" onClick={() => setFecha(getHoyStr())}>
                                             {getRelativeLabel(fecha)}
                                         </span>
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => shiftFecha(1)}
-                                            className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-white/10 rounded-xl transition-all"
+                                            className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-foreground/10 rounded-xl transition-all"
                                         >
                                             <ChevronRight className="h-4 w-4" />
                                         </Button>
@@ -780,11 +789,11 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                                     // Cita ya finalizada/cobrada en el pasado: verde apagado, inhabilitado
                                                     isFinalized && "bg-emerald-500/5 text-emerald-600/60 border-emerald-500/15 opacity-70 cursor-not-allowed",
                                                     // Pasado sin cita: atenuado pero seleccionable
-                                                    isPast && !isFinalized && "opacity-60 bg-white/5 border-white/5 text-white/40",
+                                                    isPast && !isFinalized && "opacity-60 bg-muted border-border/50 text-muted-foreground",
                                                     // Bloqueado manual
-                                                    isBlocked && "bg-white/5 text-white/20 border-white/5 opacity-50",
+                                                    isBlocked && "bg-muted text-muted-foreground/40 border-border/50 opacity-50",
                                                     // Libre disponible
-                                                    !isDisabled && !isPast && "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10",
+                                                    !isDisabled && !isPast && "bg-muted border-border text-muted-foreground hover:text-foreground hover:bg-muted/80",
                                                     // Seleccionado
                                                     isSelected && !isDisabled && "bg-primary/20 text-primary border-primary/50",
                                                 )}
@@ -805,20 +814,20 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                         )
                                     })
                                 ) : (
-                                    <div className="col-span-full py-10 bg-white/5 rounded-[1.5rem] border border-dashed border-white/10 flex flex-col items-center justify-center gap-3">
-                                        <Clock className="w-8 h-8 text-white/10" />
-                                        <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Sin Disponibilidad</span>
+                                    <div className="col-span-full py-10 bg-muted rounded-[1.5rem] border border-dashed border-border flex flex-col items-center justify-center gap-3">
+                                        <Clock className="w-8 h-8 text-muted-foreground/30" />
+                                        <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-[0.2em]">Sin Disponibilidad</span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Botones de acción - Aligned with Primary Theme */}
-                        <div className="pt-3 border-t border-white/5 flex flex-col-reverse sm:flex-row gap-3">
+                        <div className="pt-3 border-t border-border flex flex-col-reverse sm:flex-row gap-3">
                             <Button
                                 variant="ghost"
                                 onClick={handleClose}
-                                className="h-12 sm:flex-1 bg-white/5 text-white/40 rounded-xl font-black uppercase tracking-widest text-[9px] hover:text-white hover:bg-white/10 transition-all border border-white/10"
+                                className="h-12 sm:flex-1 bg-muted text-muted-foreground rounded-xl font-black uppercase tracking-widest text-[9px] hover:text-foreground hover:bg-muted/80 transition-all border border-border"
                             >
                                 <X className="w-4 h-4 mr-2" />
                                 Cancelar
@@ -853,14 +862,14 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                 {/* Confirmación Retroactiva Nested Dialog */}
                 {showPastConfirm && (
                     <div className="absolute inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
-                        <div className="absolute inset-0 bg-black/95" onClick={() => setShowPastConfirm(false)} />
-                        <div className="relative bg-[#0A0C10] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 w-full max-w-[calc(100%-2rem)] sm:max-w-sm shadow-xl">
+                        <div className="absolute inset-0 bg-background/95 dark:bg-black/95" onClick={() => setShowPastConfirm(false)} />
+                        <div className="relative bg-card border border-border rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 w-full max-w-[calc(100%-2rem)] sm:max-w-sm shadow-xl">
                             <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-8 mx-auto border border-amber-500/20 shadow-inner">
                                 <History className="w-10 h-10 text-amber-500" />
                             </div>
-                            <h3 className="text-2xl font-black text-white text-center mb-4 uppercase tracking-tighter">Cita Retroactiva</h3>
-                            <p className="text-white/40 text-[11px] font-bold text-center mb-10 leading-relaxed uppercase tracking-widest">
-                                Estás agendando una cita para una hora que ya pasó. <span className="text-white">¿Deseas registrarla de todas formas?</span>
+                            <h3 className="text-2xl font-black text-foreground text-center mb-4 uppercase tracking-tighter">Cita Retroactiva</h3>
+                            <p className="text-muted-foreground text-[11px] font-bold text-center mb-10 leading-relaxed uppercase tracking-widest">
+                                Estás agendando una cita para una hora que ya pasó. <span className="text-foreground">¿Deseas registrarla de todas formas?</span>
                             </p>
                             <div className="flex flex-col gap-3 sm:gap-4">
                                 <Button
@@ -875,7 +884,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                                 <Button
                                     variant="ghost"
                                     onClick={() => setShowPastConfirm(false)}
-                                    className="w-full h-12 sm:h-14 bg-white/5 text-white/40 font-black uppercase tracking-widest rounded-xl sm:rounded-2xl"
+                                    className="w-full h-12 sm:h-14 bg-muted text-muted-foreground font-black uppercase tracking-widest rounded-xl sm:rounded-2xl"
                                 >
                                     Cancelar
                                 </Button>

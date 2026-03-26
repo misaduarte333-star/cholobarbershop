@@ -18,8 +18,11 @@ import {
     AlertCircle,
     Users,
     Plus,
-    Clock
+    Clock,
+    UserCheck,
+    ArrowRight
 } from 'lucide-react'
+import { KPICard } from '@/components/KPICard'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -204,290 +207,326 @@ export default function ClientesPage() {
     }
 
     return (
-        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
-            <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
-                {/* Header (Desktop Only) - Compact Elite Style */}
-                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] flex items-center justify-center shadow-[0_0_20px_rgba(212,175,55,0.2)]">
-                            <Users className="w-7 h-7 text-black" strokeWidth={2.5} />
+        <div className="relative min-h-full bg-background selection:bg-primary selection:text-primary-foreground">
+            <div className="space-y-8 pb-10">
+                {/* Header Section */}
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+                    <div className="space-y-4">
+                        <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                            <Users className="size-3.5 text-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">CRM & FIDELIZACIÓN</span>
                         </div>
-                        <div>
-                            <h1 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">
-                                CRM <span className="text-gradient-gold italic">Clientes</span>
+                        <div className="space-y-1">
+                            <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase italic text-foreground">
+                                Gestión de <span className="text-primary">Clientes</span>
                             </h1>
-                            <p className="text-slate-400 mt-1 text-xs font-bold uppercase tracking-widest opacity-70">
-                                Gestión y fidelización de clientes
+                            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest opacity-70">
+                                Base de datos centralizada y análisis de recurrencia
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        {/* Live Clock & Date */}
-                        <div className="hidden lg:flex flex-col items-end mr-4">
-                            <span className="text-white font-black text-xl tracking-tighter leading-none uppercase">
+                    <div className="flex flex-wrap items-center gap-4">
+                        <div className="hidden lg:flex flex-col items-end px-6 border-r border-border/50">
+                            <span className="text-foreground font-black text-2xl tracking-tighter leading-none uppercase font-display">
                                 {formattedTime}
                             </span>
-                            <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-[0.2em]">
+                            <span className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mt-1">
                                 {formattedDate}
                             </span>
                         </div>
-
                         <Button 
                             onClick={openNewClientModal}
-                            className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-bold uppercase tracking-tighter shadow-lg shadow-gold/20 h-11 px-6 rounded-xl"
+                            className="bg-primary text-primary-foreground font-black uppercase tracking-tighter shadow-xl shadow-primary/20 h-14 px-8 rounded-2xl hover:scale-[1.02] active:scale-95 transition-all group"
                         >
-                            <UserPlus className="w-5 h-5 mr-2" />
-                            Nuevo Cliente
+                            <UserPlus className="w-5 h-5 mr-3 group-hover:rotate-12 transition-transform" />
+                            Registrar Nuevo Cliente
                         </Button>
                     </div>
                 </header>
 
-            {/* Filters & Search */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0A0A0A]/60 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
-                <div className="relative group flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/30 group-focus-within:text-primary transition-colors" />
-                    <Input
-                        placeholder="Buscar por nombre, teléfono o email..."
-                        className="pl-10 w-full bg-black/40 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 transition-all rounded-xl h-11"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                {/* KPI Metrics */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <KPICard
+                        title="Base de Datos"
+                        value={kpis.total.toString()}
+                        icon={<Users />}
+                        subtitle="Total de clientes registrados"
+                        color="blue"
+                    />
+                    <KPICard
+                        title="Clientes VIP"
+                        value={kpis.activos.toString()}
+                        icon={<UserCheck />}
+                        subtitle="Más de 3 visitas registradas"
+                        color="amber"
+                    />
+                    <KPICard
+                        title="Nuevos Clientes"
+                        value={kpis.nuevosHoy.toString()}
+                        icon={<Plus />}
+                        subtitle="Registros realizados hoy"
+                        trend={{ value: 12, isPositive: true }}
+                        color="green"
                     />
                 </div>
-            </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="glass-card border-white/5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-3xl" />
-                    <CardHeader className="pb-2">
-                        <CardDescription className="text-white/40 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                            <TrendingUp className="size-3 text-emerald-500" />
-                            Total Base de Datos
-                        </CardDescription>
-                        <CardTitle className="text-3xl font-black text-white font-display">{kpis.total}</CardTitle>
-                    </CardHeader>
-                </Card>
-                <Card className="glass-card border-white/5 relative overflow-hidden group">
-                    <CardHeader className="pb-2">
-                        <CardDescription className="text-white/40 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                            <MessageSquare className="size-3 text-blue-500" />
-                            Clientes VIP (+3 visitas)
-                        </CardDescription>
-                        <CardTitle className="text-3xl font-black font-display text-gradient-gold">{kpis.activos}</CardTitle>
-                    </CardHeader>
-                </Card>
-                <Card className="glass-card border-white/5 relative overflow-hidden group">
-                    <CardHeader className="pb-2">
-                        <CardDescription className="text-white/40 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                            <UserPlus className="size-3 text-amber-500" />
-                            Nuevos hoy
-                        </CardDescription>
-                        <CardTitle className="text-3xl font-black text-white font-display">{kpis.nuevosHoy}</CardTitle>
-                    </CardHeader>
-                </Card>
-            </div>
-
-            {/* Clients Table */}
-            <Card className="glass-card border-white/5 rounded-2xl md:rounded-[2rem] overflow-hidden">
-                <Table>
-                    <TableHeader className="bg-white/5">
-                        <TableRow className="border-white/5 hover:bg-transparent">
-                            <TableHead className="text-white/40 font-black uppercase text-[10px] tracking-widest py-5 px-6">Cliente</TableHead>
-                            <TableHead className="text-white/40 font-black uppercase text-[10px] tracking-widest py-5">Contacto</TableHead>
-                            <TableHead className="text-white/40 font-black uppercase text-[10px] tracking-widest py-5">Visitas</TableHead>
-                            <TableHead className="text-white/40 font-black uppercase text-[10px] tracking-widest py-5">Última Cita</TableHead>
-                            <TableHead className="text-right text-white/40 font-black uppercase text-[10px] tracking-widest py-5 px-6">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading ? (
-                            Array(5).fill(null).map((_, i) => (
-                                <TableRow key={i} className="border-white/5">
-                                    <TableCell colSpan={5} className="py-8">
-                                        <div className="h-4 bg-white/5 animate-pulse rounded w-full" />
-                                    </TableCell>
+                {/* Search and Filters */}
+                <div className="p-1 rounded-3xl bg-muted/30 border border-border/50 backdrop-blur-xl">
+                    <div className="relative group overflow-hidden rounded-2xl">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-all duration-300" />
+                        <Input
+                            placeholder="Buscar por nombre, teléfono o correo electrónico..."
+                            className="pl-12 w-full bg-transparent border-none text-foreground placeholder:text-muted-foreground/30 focus:ring-0 transition-all rounded-2xl h-14 text-lg font-bold"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity" />
+                    </div>
+                </div>
+                {/* Clients Table Card */}
+                <div className="p-1 rounded-[2.5rem] bg-muted/20 border border-border/50 overflow-hidden shadow-2xl">
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="border-border/50 hover:bg-transparent bg-muted/50">
+                                    <TableHead className="text-muted-foreground font-black uppercase text-[10px] tracking-widest py-6 px-8">Identidad Cliente</TableHead>
+                                    <TableHead className="text-muted-foreground font-black uppercase text-[10px] tracking-widest py-6">Canal de Contacto</TableHead>
+                                    <TableHead className="text-muted-foreground font-black uppercase text-[10px] tracking-widest py-6">Frecuencia</TableHead>
+                                    <TableHead className="text-muted-foreground font-black uppercase text-[10px] tracking-widest py-6">Historial</TableHead>
+                                    <TableHead className="text-right text-muted-foreground font-black uppercase text-[10px] tracking-widest py-6 px-8">Acciones</TableHead>
                                 </TableRow>
-                            ))
-                        ) : filteredClientes.length === 0 ? (
-                            <TableRow className="border-white/5">
-                                <TableCell colSpan={5} className="py-20 text-center">
-                                    <p className="text-white/20 font-black uppercase tracking-widest text-xs italic">
-                                        No se encontraron clientes
-                                    </p>
-                                </TableCell>
-                            </TableRow>
-                        ) : filteredClientes.map((cliente) => (
-                            <TableRow key={cliente.id} className="border-white/5 hover:bg-white/5 transition-all group">
-                                <TableCell className="px-6 py-5">
-                                    <div className="flex items-center gap-4">
-                                        <div className="size-10 rounded-xl bg-gradient-gold p-[1px] hidden sm:block">
-                                            <div className="w-full h-full rounded-xl bg-black flex items-center justify-center">
-                                                <span className="text-xs font-black text-gradient-gold">
-                                                    {cliente.nombre.slice(0, 2).toUpperCase()}
-                                                </span>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    Array(5).fill(null).map((_, i) => (
+                                        <TableRow key={i} className="border-border/50">
+                                            <TableCell colSpan={5} className="py-10 px-8">
+                                                <div className="flex items-center gap-4 animate-pulse">
+                                                    <div className="size-12 rounded-2xl bg-muted" />
+                                                    <div className="space-y-2 flex-1">
+                                                        <div className="h-4 bg-muted rounded w-1/4" />
+                                                        <div className="h-3 bg-muted rounded w-1/6" />
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : filteredClientes.length === 0 ? (
+                                    <TableRow className="border-border/50">
+                                        <TableCell colSpan={5} className="py-32 text-center">
+                                            <div className="flex flex-col items-center gap-4 opacity-20">
+                                                <Users className="size-16" />
+                                                <p className="font-black uppercase tracking-[0.3em] text-sm italic">
+                                                    No se encontraron coincidencias
+                                                </p>
                                             </div>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-black text-white uppercase tracking-tight font-display group-hover:text-primary transition-colors">
-                                                {cliente.nombre}
-                                            </p>
-                                            <p className="text-[10px] text-white/30 font-bold tracking-widest uppercase">
-                                                ID: {cliente.id.slice(0, 8)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-white/60">
-                                            <Phone className="size-3 text-primary/50" />
-                                            <span className="text-xs font-mono">{cliente.telefono || 'Sin tel'}</span>
-                                        </div>
-                                        {cliente.email && (
-                                            <div className="flex items-center gap-2 text-white/60">
-                                                <Mail className="size-3 text-primary/50" />
-                                                <span className="text-[10px]">{cliente.email}</span>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredClientes.map((cliente) => (
+                                    <TableRow key={cliente.id} className="border-border/50 hover:bg-muted/50 transition-all group">
+                                        <TableCell className="px-8 py-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
+                                                    <span className="text-sm font-black text-primary group-hover:text-primary-foreground">
+                                                        {cliente.nombre.slice(0, 2).toUpperCase()}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-base font-black text-foreground uppercase tracking-tight group-hover:translate-x-1 transition-transform">
+                                                        {cliente.nombre}
+                                                    </p>
+                                                    <p className="text-[10px] text-muted-foreground font-black tracking-widest uppercase mt-0.5">
+                                                        ID REF: {cliente.id.slice(0, 8)}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-black text-[10px] rounded-lg">
-                                        {cliente.total_citas} Citas
-                                    </Badge>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs text-white/80 font-bold">
-                                            {cliente.ultima_cita ? new Date(cliente.ultima_cita).toLocaleDateString('es-MX', {
-                                                day: 'numeric',
-                                                month: 'short',
-                                                year: 'numeric'
-                                            }).toUpperCase() : 'NUNCA'}
-                                        </span>
-                                        <span className="text-[10px] text-white/20 uppercase font-black tracking-widest">
-                                            {cliente.ultima_cita ? new Date(cliente.ultima_cita).toLocaleTimeString('es-MX', {
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            }) : '-'}
-                                        </span>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right px-6">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="rounded-xl hover:bg-primary/20 text-white/40 hover:text-primary active:scale-95 transition-all"
-                                        onClick={() => openEditClientModal(cliente)}
-                                    >
-                                        <Edit2 className="size-4" />
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </Card>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center gap-2.5 text-foreground/80">
+                                                    <Phone className="size-3.5 text-primary" />
+                                                    <span className="text-xs font-black tracking-tight">{cliente.telefono || 'SIN TELÉFONO'}</span>
+                                                </div>
+                                                {cliente.email && (
+                                                    <div className="flex items-center gap-2.5 text-muted-foreground">
+                                                        <Mail className="size-3.5" />
+                                                        <span className="text-[10px] font-bold">{cliente.email}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 flex items-center gap-2">
+                                                    <History className="size-3 text-primary" />
+                                                    <span className="text-[10px] font-black text-primary uppercase">
+                                                        {cliente.total_citas} SERVICIOS
+                                                    </span>
+                                                </div>
+                                                {cliente.total_citas >= 5 && (
+                                                    <div className="size-5 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                                                        <span className="text-[8px] font-black text-amber-500">VIP</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar className="size-3 text-muted-foreground" />
+                                                    <span className="text-xs text-foreground font-black uppercase italic">
+                                                        {cliente.ultima_cita ? new Date(cliente.ultima_cita).toLocaleDateString('es-MX', {
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            year: 'numeric'
+                                                        }) : 'PENDIENTE'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 pl-5">
+                                                    <Clock className="size-3 text-muted-foreground/50" />
+                                                    <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+                                                        {cliente.ultima_cita ? new Date(cliente.ultima_cita).toLocaleTimeString('es-MX', {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        }) : '--:--'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right px-8">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="size-10 rounded-xl hover:bg-primary hover:text-primary-foreground group/btn border border-transparent hover:border-primary/20 transition-all duration-300"
+                                                onClick={() => openEditClientModal(cliente)}
+                                            >
+                                                <Edit2 className="size-4 group-hover/btn:scale-110 transition-transform" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
 
             {/* Edit Modal */}
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent className="glass-card border-white/10 bg-black/90 text-white max-w-md rounded-[2rem]">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black font-display text-gradient-gold tracking-tight uppercase">
-                            {isNewClient ? 'Nuevo Cliente' : 'Perfil del Cliente'}
-                        </DialogTitle>
-                        <DialogDescription className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
-                            {isNewClient ? 'Registrar nuevo cliente en el CRM' : 'Ver y editar información de fidelidad'}
-                        </DialogDescription>
+                <DialogContent className="max-w-2xl bg-background border-border/50 text-foreground p-0 overflow-hidden rounded-[2.5rem] shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                    <DialogHeader className="p-8 border-b border-border/50 bg-muted/30">
+                        <div className="flex items-center gap-4">
+                            <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                                <Users className="size-7 text-primary" />
+                            </div>
+                            <div className="space-y-1">
+                                <DialogTitle className="text-2xl font-black font-display text-foreground tracking-tight uppercase italic">
+                                    {isNewClient ? 'Nuevo Registro' : 'Expediente Cliente'}
+                                </DialogTitle>
+                                <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-[0.2em]">
+                                    {isNewClient ? 'Alta de cliente en sistema CRM' : 'Información detallada y preferencias de servicio'}
+                                </DialogDescription>
+                            </div>
+                        </div>
                     </DialogHeader>
 
                     {selectedCliente && (
-                        <div className="space-y-6 pt-4">
-                            {!isNewClient && (
-                                <div className="flex justify-end">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg text-[10px] font-black uppercase tracking-widest gap-2"
-                                        onClick={() => setShowDeleteDialog(true)}
-                                    >
-                                        <Trash2 className="size-3" />
-                                        Eliminar Cliente
-                                    </Button>
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Nombre Completo</label>
+                        <div className="p-8 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2.5">
+                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Nombre Completo</label>
                                     <Input
-                                        className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl"
+                                        className="bg-muted/20 border-border/50 focus:border-primary/50 text-foreground rounded-2xl h-14 font-bold text-lg"
                                         value={selectedCliente.nombre}
                                         onChange={e => setSelectedCliente({ ...selectedCliente, nombre: e.target.value })}
+                                        placeholder="Ej. Juan Pérez"
                                         required
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Teléfono</label>
-                                        <Input
-                                            className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl font-mono"
-                                            value={selectedCliente.telefono || ''}
-                                            onChange={e => setSelectedCliente({ ...selectedCliente, telefono: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Email</label>
-                                        <Input
-                                            type="email"
-                                            className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl"
-                                            value={selectedCliente.email || ''}
-                                            onChange={e => setSelectedCliente({ ...selectedCliente, email: e.target.value })}
-                                        />
-                                    </div>
+                                <div className="space-y-2.5">
+                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Teléfono Móvil</label>
+                                    <Input
+                                        className="bg-muted/20 border-border/50 focus:border-primary/50 text-foreground rounded-2xl h-14 font-black tracking-widest text-lg"
+                                        value={selectedCliente.telefono || ''}
+                                        onChange={e => setSelectedCliente({ ...selectedCliente, telefono: e.target.value })}
+                                        placeholder="+52 000 000 0000"
+                                    />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Notas del Barbero (CRM)</label>
+                                <div className="space-y-2.5 md:col-span-2">
+                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Correo Electrónico</label>
+                                    <Input
+                                        type="email"
+                                        className="bg-muted/20 border-border/50 focus:border-primary/50 text-foreground rounded-2xl h-14 font-bold"
+                                        value={selectedCliente.email || ''}
+                                        onChange={e => setSelectedCliente({ ...selectedCliente, email: e.target.value })}
+                                        placeholder="ejemplo@dominio.com"
+                                    />
+                                </div>
+                                <div className="space-y-2.5 md:col-span-2">
+                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Notas de Perfil & Preferencias</label>
                                     <textarea
-                                        className="w-full bg-white/5 border border-white/10 focus:border-primary/50 text-white rounded-xl p-3 min-h-[100px] text-sm outline-none transition-all placeholder:text-white/10"
-                                        placeholder="Preferencias, estilo habitual, productos recomendados..."
+                                        className="w-full bg-muted/20 border border-border/50 focus:border-primary/50 text-foreground rounded-3xl p-5 min-h-[140px] text-base outline-none transition-all placeholder:text-muted-foreground/20 font-medium resize-none"
+                                        placeholder="Estilo de corte preferido, productos que utiliza, frecuencia, temas de conversación..."
                                         value={selectedCliente.notas_internas || ''}
                                         onChange={e => setSelectedCliente({ ...selectedCliente, notas_internas: e.target.value })}
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-white/5 border border-white/5">
-                                <div className="text-center">
-                                    <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Total Visitas</p>
-                                    <p className="text-xl font-black text-primary font-display">{selectedCliente.total_citas}</p>
+                            {!isNewClient && (
+                                <div className="grid grid-cols-2 gap-4 p-6 rounded-[2rem] bg-muted/30 border border-border/50">
+                                    <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-background/50 border border-border/30">
+                                        <TrendingUp className="size-5 text-primary mb-2" />
+                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Total Servicios</p>
+                                        <p className="text-3xl font-black text-foreground font-display">{selectedCliente.total_citas}</p>
+                                    </div>
+                                    <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-background/50 border border-border/30">
+                                        <Calendar className="size-5 text-primary mb-2" />
+                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Alta Sistema</p>
+                                        <p className="text-lg font-black text-foreground uppercase tracking-tighter">
+                                            {new Date(selectedCliente.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="text-center border-l border-white/5">
-                                    <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Registrado</p>
-                                    <p className="text-[11px] font-black text-white/60">
-                                        {new Date(selectedCliente.created_at).toLocaleDateString()}
-                                    </p>
-                                </div>
-                            </div>
+                            )}
 
-                            <DialogFooter className="gap-2 sm:gap-0 mt-6">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    className="rounded-xl text-white/30 hover:text-white hover:bg-white/5 font-black uppercase tracking-widest text-[10px]"
-                                    onClick={() => setShowEditModal(false)}
-                                >
-                                    Cancelar
-                                </Button>
-                                <Button
-                                    type="button"
-                                    disabled={isSaving}
-                                    onClick={() => isNewClient ? handleSaveCliente() : setShowConfirmEditDialog(true)}
-                                    className="btn-primary rounded-xl px-8 font-black uppercase tracking-widest text-[10px] shadow-[0_10px_20px_rgba(234,179,8,0.2)]"
-                                >
-                                    {isSaving ? 'Guardando...' : isNewClient ? 'Crear Cliente' : 'Guardar Perfil'}
-                                </Button>
+                            <DialogFooter className="md:flex !justify-between items-center gap-4 pt-4 border-t border-border/50">
+                                <div className="flex gap-2">
+                                    {!isNewClient && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            className="rounded-2xl h-14 px-6 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 font-black uppercase tracking-widest text-[10px] gap-2 transition-all"
+                                            onClick={() => setShowDeleteDialog(true)}
+                                        >
+                                            <Trash2 className="size-4" />
+                                            Eliminar
+                                        </Button>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="rounded-2xl h-14 px-8 text-muted-foreground hover:text-foreground font-black uppercase tracking-widest text-[10px] transition-all"
+                                        onClick={() => setShowEditModal(false)}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        disabled={isSaving}
+                                        onClick={() => isNewClient ? handleSaveCliente() : setShowConfirmEditDialog(true)}
+                                        className="bg-primary text-primary-foreground rounded-2xl h-14 px-10 font-black uppercase tracking-[0.1em] text-[10px] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all group"
+                                    >
+                                        {isSaving ? 'Guardando...' : isNewClient ? (
+                                            <>Crear Perfil <Plus className="size-4 ml-2" /></>
+                                        ) : (
+                                            <>Guardar Cambios <ArrowRight className="size-4 ml-2 group-hover:translate-x-1 transition-transform" /></>
+                                        )}
+                                    </Button>
+                                </div>
                             </DialogFooter>
                         </div>
                     )}
@@ -496,28 +535,36 @@ export default function ClientesPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <AlertDialogContent className="glass-card border-white/10 bg-black/95 text-white rounded-[2rem]">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-black text-red-500 uppercase tracking-tight flex items-center gap-3">
-                            <AlertCircle className="size-5" />
+                <AlertDialogContent className="bg-background border-border/50 text-foreground rounded-[2.5rem] p-10 max-w-lg shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+                    <AlertDialogHeader className="space-y-4">
+                        <div className="size-16 rounded-3xl bg-red-500/10 flex items-center justify-center border border-red-500/20 mb-2">
+                            <AlertCircle className="size-8 text-red-500" />
+                        </div>
+                        <AlertDialogTitle className="text-3xl font-black text-foreground uppercase tracking-tight italic">
                             ¿Eliminar Cliente?
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-white/60 font-medium">
-                            Esta acción es irreversible. Se eliminará el historial del cliente y sus notas del sistema.
+                        <AlertDialogDescription className="text-muted-foreground text-base font-medium leading-relaxed">
+                            Esta acción es irreversible y afectará permanentemente el historial de servicios de este cliente.
                             <br /><br />
-                            <span className="text-red-400 font-bold uppercase text-[10px] tracking-widest">Atención:</span> Si el cliente tiene citas activas, la eliminación podría fallar o dejar registros huérfanos.
+                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 font-black uppercase text-[10px] tracking-widest">
+                                <AlertCircle className="size-3" /> Peligro: Acción Destructiva
+                            </span>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="gap-2 sm:gap-0">
-                        <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl font-black uppercase tracking-widest text-[10px]">
-                            Cancelar
+                    <AlertDialogFooter className="gap-4 mt-8 pt-6 border-t border-border/50">
+                        <AlertDialogCancel className="bg-muted/50 border-border/50 text-foreground hover:bg-muted rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-[10px] transition-all">
+                            Mejor no
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteCliente}
                             disabled={isDeleting}
-                            className="bg-red-600 hover:bg-red-700 text-white border-none rounded-xl font-black uppercase tracking-widest text-[10px]"
+                            className="bg-red-600 hover:bg-red-700 text-white border-none rounded-2xl h-14 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl shadow-red-600/20 transition-all hover:scale-[1.02] active:scale-95"
                         >
-                            {isDeleting ? 'Eliminando...' : 'Sí, Eliminar Permanentemente'}
+                            {isDeleting ? (
+                                <Clock className="size-4 animate-spin" />
+                            ) : (
+                                'Sí, Eliminar Permanentemente'
+                            )}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -525,26 +572,32 @@ export default function ClientesPage() {
 
             {/* Edit Confirmation Dialog */}
             <AlertDialog open={showConfirmEditDialog} onOpenChange={setShowConfirmEditDialog}>
-                <AlertDialogContent className="glass-card border-white/10 bg-black/95 text-white rounded-[2rem]">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-black text-gradient-gold uppercase tracking-tight flex items-center gap-3">
-                            <Edit2 className="size-5 text-primary" />
+                <AlertDialogContent className="bg-background border-border/50 text-foreground rounded-[2.5rem] p-10 max-w-lg shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                    <AlertDialogHeader className="space-y-4">
+                        <div className="size-16 rounded-3xl bg-primary/10 flex items-center justify-center border border-primary/20 mb-2">
+                            <Edit2 className="size-8 text-primary" />
+                        </div>
+                        <AlertDialogTitle className="text-3xl font-black text-foreground uppercase tracking-tight italic">
                             ¿Confirmar Cambios?
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-white/60 font-medium">
-                            Estás a punto de modificar la información de este cliente. Asegúrate de que los datos sean correctos para mantener la integridad del CRM.
+                        <AlertDialogDescription className="text-muted-foreground text-base font-medium leading-relaxed">
+                            Estás a punto de actualizar la información esencial del cliente. Esto afectará los registros históricos y futuros envíos de notificaciones.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="gap-2 sm:gap-0">
-                        <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl font-black uppercase tracking-widest text-[10px]">
-                            Revisar
+                    <AlertDialogFooter className="gap-4 mt-8 pt-6 border-t border-border/50">
+                        <AlertDialogCancel className="bg-muted/50 border-border/50 text-foreground hover:bg-muted rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-[10px] transition-all">
+                            Regresar a editar
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleSaveCliente}
                             disabled={isSaving}
-                            className="btn-primary border-none rounded-xl font-black uppercase tracking-widest text-[10px]"
+                            className="bg-primary text-primary-foreground border-none rounded-2xl h-14 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
                         >
-                            {isSaving ? 'Guardando...' : 'Confirmar y Guardar'}
+                            {isSaving ? (
+                                <Clock className="size-4 animate-spin" />
+                            ) : (
+                                'Confirmar y Guardar Cambios'
+                            )}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

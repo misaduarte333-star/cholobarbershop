@@ -406,18 +406,18 @@ export default function TabletReportesPage() {
     if (loading) return null
 
     return (
-        <div className="min-h-screen bg-[#06070a] text-white flex flex-col font-sans selection:bg-blue-500/30">
+        <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/30">
             {/* Background elements */}
-            <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 z-[60]" />
+            <div className="fixed top-0 left-0 w-full h-1 bg-gradient-brand z-[60]" />
 
             {/* Header */}
-            <header className="sticky top-0 z-50 bg-[#06070a]/95 border-b border-white/5 px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <header className="sticky top-0 z-50 bg-background/95 border-b border-border/10 px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => router.back()}
-                        className="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 active:scale-95 transition-all"
+                        className="w-10 h-10 rounded-2xl bg-foreground/5 hover:bg-foreground/10 text-foreground/70 border border-border active:scale-95 transition-all"
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </Button>
@@ -426,11 +426,11 @@ export default function TabletReportesPage() {
                             <BarChart3 className="w-5 h-5 text-blue-500" />
                             <h1 className="text-xl md:text-2xl font-black font-display tracking-tight uppercase">Dashboard Pro</h1>
                         </div>
-                        <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] mt-0.5">Métricas de {barbero?.nombre}</p>
+                        <p className="text-[10px] text-foreground/30 font-black uppercase tracking-[0.3em] mt-0.5">Métricas de {barbero?.nombre}</p>
                     </div>
                 </div>
 
-                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
+                <div className="flex bg-muted p-1 rounded-2xl border border-border/10">
                     {(['hoy', 'semana', 'mes', 'año'] as const).map((r) => (
                         <Button
                             key={r}
@@ -439,8 +439,8 @@ export default function TabletReportesPage() {
                             className={cn(
                                 "h-10 px-6 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                                 dateRange === r
-                                    ? "bg-blue-600 text-white"
-                                    : "text-white/40 hover:text-white hover:bg-white/5"
+                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                                    : "text-foreground/40 hover:text-foreground hover:bg-foreground/5"
                             )}
                         >
                             {r}
@@ -449,27 +449,27 @@ export default function TabletReportesPage() {
                 </div>
 
                 <div className="hidden md:flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-2 bg-foreground/5 px-4 py-2 rounded-xl border border-border">
                         <Clock className="w-3.5 h-3.5 text-blue-400" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-white/70">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">
                             {legibleRange}
                         </span>
                     </div>
-                    <span className="text-[8px] font-bold uppercase tracking-tighter text-white/20">
+                    <span className="text-[8px] font-bold uppercase tracking-tighter text-foreground/20">
                         {dateRange !== 'hoy' && "Datos recuperados hasta hoy"}
                     </span>
                 </div>
             </header>
 
             {/* Mobile Range Indicator */}
-            <div className="md:hidden bg-blue-600/10 border-b border-white/5 px-6 py-3 flex flex-col gap-1">
+            <div className="md:hidden bg-primary/10 border-b border-border px-6 py-3 flex flex-col gap-1">
                  <div className="flex items-center gap-2">
                     <Clock className="w-3 h-3 text-blue-400" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-white/50">
-                        Periodo: <span className="text-white/90">{legibleRange}</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-foreground/50">
+                        Periodo: <span className="text-foreground/90">{legibleRange}</span>
                     </span>
                  </div>
-                 <span className="text-[7px] font-bold uppercase tracking-tighter text-white/20">
+                 <span className="text-[7px] font-bold uppercase tracking-tighter text-foreground/20">
                     {dateRange !== 'hoy' && "Información acumulada hasta el día de hoy"}
                  </span>
             </div>
@@ -485,10 +485,10 @@ export default function TabletReportesPage() {
                             className="flex flex-col items-center justify-center py-40"
                         >
                             <div className="relative">
-                                <div className="w-16 h-16 border-4 border-white/5 border-t-blue-500 rounded-full animate-spin" />
+                                <div className="w-16 h-16 border-4 border-foreground/5 border-t-blue-500 rounded-full animate-spin" />
                                 <BarChart3 className="absolute inset-0 m-auto w-6 h-6 text-blue-500/50" />
                             </div>
-                            <p className="mt-6 text-[10px] text-white/20 font-black uppercase tracking-[0.4em] animate-pulse">Sincronizando analítica</p>
+                            <p className="mt-6 text-[10px] text-foreground/20 font-black uppercase tracking-[0.4em] animate-pulse">Sincronizando analítica</p>
                         </motion.div>
                     ) : (
                         <motion.div
@@ -539,12 +539,12 @@ export default function TabletReportesPage() {
 
                             {/* Main Charts Row */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                 <Card className="lg:col-span-2 bg-[#0A0C10] border-white/5 rounded-[2rem] overflow-hidden group flex flex-col">
-                                    <CardHeader className="p-8 border-b border-white/5 bg-white/[0.01]">
+                                 <Card className="lg:col-span-2 bg-card border-border/10 rounded-[2rem] overflow-hidden group flex flex-col">
+                                    <CardHeader className="p-8 border-b border-border/10 bg-foreground/5">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <CardTitle className="text-lg font-black uppercase tracking-widest text-white/90">Análisis de Cortes</CardTitle>
-                                                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-white/20">
+                                                <CardTitle className="text-lg font-black uppercase tracking-widest text-foreground/90">Análisis de Cortes</CardTitle>
+                                                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-foreground/20">
                                                     {dateRange === 'semana' ? 'Desglose diario por cierres confirmados' : dateRange === 'año' ? 'Resumen mensual del año' : 'Desglose semanal de actividad'}
                                                 </CardDescription>
                                             </div>
@@ -556,10 +556,10 @@ export default function TabletReportesPage() {
                                     <CardContent className="p-0 flex-1 overflow-x-auto">
                                         <Table>
                                             <TableHeader>
-                                                <TableRow className="border-white/5 hover:bg-transparent">
-                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 px-8 h-12">{dateRange === 'semana' ? 'Día' : dateRange === 'año' ? 'Mes' : 'Semana'}</TableHead>
-                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 h-12">Estado / Periodo</TableHead>
-                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/20 h-12 text-right px-8">Tu Comisión</TableHead>
+                                                <TableRow className="border-border/5 hover:bg-transparent">
+                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-foreground/20 px-8 h-12">{dateRange === 'semana' ? 'Día' : dateRange === 'año' ? 'Mes' : 'Semana'}</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-foreground/20 h-12">Estado / Periodo</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-foreground/20 h-12 text-right px-8">Tu Comisión</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -573,16 +573,16 @@ export default function TabletReportesPage() {
                                                         </TableCell>
                                                      </TableRow>
                                                 ) : metrics.cortesAnálisis.map((item: any, i: number) => (
-                                                    <TableRow key={i} className={cn("border-white/5 hover:bg-white/[0.01] transition-colors h-16", item.esActual && "bg-blue-500/5 hover:bg-blue-500/10 relative")}>
+                                                    <TableRow key={i} className={cn("border-border/5 hover:bg-foreground/[0.01] transition-colors h-16", item.esActual && "bg-primary/5 hover:bg-primary/10 relative")}>
                                                         <TableCell className="px-8 flex flex-col justify-center h-16 relative">
                                                             {item.esActual && (
-                                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+                                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
                                                             )}
                                                             <div className="flex items-center gap-2">
-                                                                <span className={cn("text-xs font-black uppercase", item.esActual ? "text-blue-400" : "text-white")}>{item.label}</span>
-                                                                {item.esActual && <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase tracking-widest animate-pulse">Actual</span>}
+                                                                <span className={cn("text-xs font-black uppercase", item.esActual ? "text-primary" : "text-foreground")}>{item.label}</span>
+                                                                {item.esActual && <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[8px] font-black uppercase tracking-widest animate-pulse">Actual</span>}
                                                             </div>
-                                                            {item.periodo && <span className="text-[9px] font-bold text-white/20 uppercase tracking-tighter mt-0.5">{item.periodo}</span>}
+                                                            {item.periodo && <span className="text-[9px] font-bold text-foreground/20 uppercase tracking-tighter mt-0.5">{item.periodo}</span>}
                                                         </TableCell>
                                                         <TableCell>
                                                             {item.esFutura ? (
@@ -596,7 +596,7 @@ export default function TabletReportesPage() {
                                                                         "w-1.5 h-1.5 rounded-full",
                                                                         item.completo !== false ? "bg-emerald-500" : "bg-amber-500"
                                                                     )} />
-                                                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", item.completo !== false ? "text-white/60" : "text-amber-400/80")}>
+                                                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", item.completo !== false ? "text-foreground/60" : "text-amber-500/80")}>
                                                                         {item.completo !== false ? 'Corte Finalizado' : 'Corte Parcial/Pendiente'}
                                                                     </span>
                                                                 </div>
@@ -610,7 +610,7 @@ export default function TabletReportesPage() {
                                                         <TableCell className="text-right px-8">
                                                             <span className={cn(
                                                                 "text-sm font-black italic",
-                                                                (item.realizado || item.esActual) && !item.esFutura ? "text-primary" : "text-white/10"
+                                                                (item.realizado || item.esActual) && !item.esFutura ? "text-primary" : "text-foreground/10"
                                                             )}>
                                                                 {(item.realizado || (!item.esFutura && item.monto > 0)) ? `$${(item.monto || 0).toLocaleString()}` : '$0'}
                                                             </span>
@@ -622,9 +622,9 @@ export default function TabletReportesPage() {
                                     </CardContent>
                                 </Card>
 
-                                 <Card className="bg-[#0A0C10] border-white/5 rounded-[2rem] overflow-hidden">
-                                    <CardHeader className="p-8 border-b border-white/5">
-                                        <CardTitle className="text-lg font-black uppercase tracking-widest text-white/90 text-center text-ellipsis">Métodos de Pago</CardTitle>
+                                 <Card className="bg-card border-border/10 rounded-[2rem] overflow-hidden">
+                                    <CardHeader className="p-8 border-b border-border/10">
+                                        <CardTitle className="text-lg font-black uppercase tracking-widest text-foreground/90 text-center text-ellipsis">Métodos de Pago</CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-8 flex flex-col items-center justify-center h-[350px]">
                                         <div className="h-full w-full relative">
@@ -649,15 +649,15 @@ export default function TabletReportesPage() {
                                                 </PieChart>
                                             </ResponsiveContainer>
                                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Total</span>
-                                                <span className="text-3xl font-black font-display text-white">${metrics.total.toLocaleString()}</span>
+                                                <span className="text-[10px] font-black text-foreground/20 uppercase tracking-widest">Total</span>
+                                                <span className="text-3xl font-black font-display text-foreground">${metrics.total.toLocaleString()}</span>
                                             </div>
                                         </div>
                                         <div className="flex gap-6 mt-4">
                                             {metrics.paymentData.map((p, i) => (
                                                 <div key={i} className="flex items-center gap-2">
                                                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-                                                    <span className="text-[10px] font-black uppercase text-white/60">{p.name}</span>
+                                                    <span className="text-[10px] font-black uppercase text-foreground/60">{p.name}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -669,16 +669,16 @@ export default function TabletReportesPage() {
                             {dateRange !== 'año' && <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-4 px-2">
-                                        <div className="h-1 w-8 bg-blue-500 rounded-full" />
-                                        <h2 className="text-sm font-black text-white/50 uppercase tracking-[0.4em] font-display">Análisis Detallado por Servicio</h2>
-                                        <div className="flex-1 h-[1px] bg-white/5" />
+                                        <div className="h-1 w-8 bg-primary rounded-full" />
+                                        <h2 className="text-sm font-black text-foreground/50 uppercase tracking-[0.4em] font-display">Análisis Detallado por Servicio</h2>
+                                        <div className="flex-1 h-[1px] bg-foreground/5" />
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {metrics.serviceStats.length === 0 ? (
-                                            <div className="col-span-full py-20 text-center border border-dashed border-white/10 rounded-[2rem] bg-white/[0.01]">
-                                                <Zap className="w-12 h-12 text-white/5 mx-auto mb-4" />
-                                                <p className="text-white/20 font-black uppercase tracking-[0.2em] text-xs">Aún no hay datos detallados registrados</p>
+                                            <div className="col-span-full py-20 text-center border border-dashed border-border/10 rounded-[2rem] bg-foreground/[0.01]">
+                                                <Zap className="w-12 h-12 text-foreground/5 mx-auto mb-4" />
+                                                <p className="text-foreground/20 font-black uppercase tracking-[0.2em] text-xs">Aún no hay datos detallados registrados</p>
                                             </div>
                                         ) : metrics.serviceStats.map((s, idx) => {
                                             const isOver = s.avgReal > s.avgEst
@@ -690,7 +690,7 @@ export default function TabletReportesPage() {
                                                     initial={{ opacity: 0, scale: 0.95 }}
                                                     animate={{ opacity: 1, scale: 1 }}
                                                     transition={{ delay: idx * 0.1 }}
-                                                    className="bg-white/[0.03] border border-white/5 rounded-[2rem] p-6 hover:bg-white/[0.05] transition-all group overflow-hidden relative"
+                                                     className="bg-foreground/[0.03] border border-border/5 rounded-[2rem] p-6 hover:bg-foreground/[0.05] transition-all group overflow-hidden relative"
                                                 >
                                                     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                                                         <Scissors className="w-20 h-20" />
@@ -698,23 +698,23 @@ export default function TabletReportesPage() {
 
                                                     <div className="flex justify-between items-start mb-6">
                                                         <div className="flex flex-col gap-1">
-                                                            <h3 className="text-base font-black text-white group-hover:text-blue-400 transition-colors uppercase tracking-tight">{s.name}</h3>
-                                                            <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">
+                                                            <h3 className="text-base font-black text-foreground group-hover:text-primary transition-colors uppercase tracking-tight">{s.name}</h3>
+                                                            <p className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">
                                                                 {s.count} total • {s.countWithTime} con tiempo
                                                             </p>
                                                         </div>
-                                                        <div className="bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
-                                                            <span className="text-xs font-black text-white">${s.income.toLocaleString()}</span>
+                                                        <div className="bg-foreground/5 px-3 py-1.5 rounded-xl border border-border">
+                                                            <span className="text-xs font-black text-foreground">${s.income.toLocaleString()}</span>
                                                         </div>
                                                     </div>
 
                                                     <div className="space-y-6">
                                                         <div className="flex justify-between items-end">
                                                             <div className="flex flex-col">
-                                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Target vs Real</span>
+                                                                <span className="text-[9px] font-black text-foreground/20 uppercase tracking-widest mb-1">Target vs Real</span>
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-xl font-black font-display text-white/80">{s.avgEst}m</span>
-                                                                    <div className="w-1 h-1 rounded-full bg-white/10" />
+                                                                    <span className="text-xl font-black font-display text-foreground/80">{s.avgEst}m</span>
+                                                                    <div className="w-1 h-1 rounded-full bg-foreground/10" />
                                                                     <span className={cn(
                                                                         "text-xl font-black font-display",
                                                                         isOver ? "text-orange-400" : "text-emerald-400"
@@ -732,12 +732,12 @@ export default function TabletReportesPage() {
 
                                                         <div className="space-y-2">
                                                             <div className="flex justify-between text-[9px] font-black uppercase tracking-widest">
-                                                                <span className="text-white/20">Eficiencia de tiempo</span>
+                                                                <span className="text-foreground/20">Eficiencia de tiempo</span>
                                                                 <span className={isOver ? "text-orange-400" : "text-emerald-400"}>{s.efficiency}%</span>
                                                             </div>
                                                             <Progress
                                                                 value={Math.min(100, s.efficiency)}
-                                                                className="h-1.5 bg-white/5"
+                                                                className="h-1.5 bg-foreground/5"
                                                                 indicatorClassName={isOver ? "bg-orange-400" : "bg-emerald-400"}
                                                             />
                                                         </div>
@@ -754,30 +754,30 @@ export default function TabletReportesPage() {
                             <div className="mt-12 space-y-6">
                                 <div className="flex items-center gap-4 px-2">
                                     <div className="h-1 w-8 bg-purple-500 rounded-full" />
-                                    <h2 className="text-sm font-black text-white/50 uppercase tracking-[0.4em] font-display">Log Detallado y Notas CRM</h2>
-                                    <div className="flex-1 h-[1px] bg-white/5" />
+                                    <h2 className="text-sm font-black text-foreground/50 uppercase tracking-[0.4em] font-display">Log Detallado y Notas CRM</h2>
+                                    <div className="flex-1 h-[1px] bg-foreground/5" />
                                 </div>
 
-                                <Card className="bg-[#0A0C10] border-white/5 rounded-[2rem] overflow-hidden">
+                                <Card className="bg-card border-border/10 rounded-[2rem] overflow-hidden">
                                     <CardContent className="p-0">
                                         <div className="overflow-x-auto">
                                             <Table>
-                                                <TableHeader className="bg-white/[0.02]">
-                                                    <TableRow className="hover:bg-transparent border-white/5">
-                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/30 h-14 px-6">Cliente / Fecha</TableHead>
-                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/30 h-14">Servicio</TableHead>
-                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/30 h-14 text-right">Monto</TableHead>
-                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/30 h-14">Tiempo Real</TableHead>
-                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-white/30 h-14 px-6">Observaciones CRM</TableHead>
+                                                <TableHeader className="bg-foreground/[0.02]">
+                                                    <TableRow className="hover:bg-transparent border-border/10">
+                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-foreground/30 h-14 px-6">Cliente / Fecha</TableHead>
+                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-foreground/30 h-14">Servicio</TableHead>
+                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-foreground/30 h-14 text-right">Monto</TableHead>
+                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-foreground/30 h-14">Tiempo Real</TableHead>
+                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-foreground/30 h-14 px-6">Observaciones CRM</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {citas.map((cita) => (
-                                                        <TableRow key={cita.id} className="border-white/5 hover:bg-white/[0.02] transition-colors">
+                                                        <TableRow key={cita.id} className="border-border/10 hover:bg-foreground/[0.02] transition-colors">
                                                             <TableCell className="px-6 py-4">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-xs font-black text-white/90 uppercase tracking-tight">{cita.cliente_nombre}</span>
-                                                                    <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
+                                                                    <span className="text-xs font-black text-foreground/90 uppercase tracking-tight">{cita.cliente_nombre}</span>
+                                                                    <span className="text-[9px] font-bold text-foreground/30 uppercase tracking-widest">
                                                                         {new Date(cita.fecha_cita_local + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
                                                                     </span>
                                                                 </div>
@@ -794,11 +794,11 @@ export default function TabletReportesPage() {
                                                                 <div className="flex flex-col">
                                                                     <span className={cn(
                                                                         "text-xs font-black font-display",
-                                                                        cita.duracion_real_minutos ? "text-white/80" : "text-white/10"
+                                                                        cita.duracion_real_minutos ? "text-foreground/80" : "text-foreground/10"
                                                                     )}>
                                                                         {cita.duracion_real_minutos ? `${cita.duracion_real_minutos} min` : '--'}
                                                                     </span>
-                                                                    <span className="text-[9px] font-bold text-white/20 uppercase">Est: {cita.servicio_duracion}m</span>
+                                                                    <span className="text-[9px] font-bold text-foreground/20 uppercase">Est: {cita.servicio_duracion}m</span>
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell className="px-6 py-4">
@@ -806,26 +806,26 @@ export default function TabletReportesPage() {
                                                                     {cita.notas_crm && (
                                                                         <div className="group relative">
                                                                             <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur opacity-25 group-hover:opacity-40 transition" />
-                                                                            <div className="relative bg-[#0a0a0b] border border-blue-500/20 rounded-lg p-3">
+                                                                            <div className="relative bg-muted border border-primary/20 rounded-lg p-3">
                                                                                 <div className="flex items-center gap-2 mb-1">
-                                                                                    <div className="w-1 h-1 rounded-full bg-blue-500" />
-                                                                                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-400">Nota CRM</span>
+                                                                                    <div className="w-1 h-1 rounded-full bg-primary" />
+                                                                                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-primary">Nota CRM</span>
                                                                                 </div>
-                                                                                <p className="text-[11px] text-blue-100/70 font-medium leading-relaxed">{cita.notas_crm}</p>
+                                                                                <p className="text-[11px] text-foreground/70 font-medium leading-relaxed">{cita.notas_crm}</p>
                                                                             </div>
                                                                         </div>
                                                                     )}
                                                                     {cita.notas && (
-                                                                        <div className="bg-white/[0.03] border border-white/5 rounded-lg p-3">
+                                                                        <div className="bg-muted/30 border border-border/10 rounded-lg p-3">
                                                                             <div className="flex items-center gap-2 mb-1">
-                                                                                <div className="w-1 h-1 rounded-full bg-white/20" />
-                                                                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30">Nota Interna</span>
+                                                                                <div className="w-1 h-1 rounded-full bg-foreground/20" />
+                                                                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-foreground/30">Nota Interna</span>
                                                                             </div>
-                                                                            <p className="text-[11px] text-white/40 italic leading-relaxed">"{cita.notas}"</p>
+                                                                            <p className="text-[11px] text-foreground/40 italic leading-relaxed">"{cita.notas}"</p>
                                                                         </div>
                                                                     )}
                                                                     {!cita.notas_crm && !cita.notas && (
-                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-white/10 italic">Sin observaciones</span>
+                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-foreground/10 italic">Sin observaciones</span>
                                                                     )}
                                                                 </div>
                                                             </TableCell>
@@ -878,7 +878,7 @@ function KPICard({ title, value, subtitle, icon, color, status, trend }: KPICard
     const colorStyles = variants[color] || ""
 
     return (
-        <Card className="bg-[#0A0C10] border-white/5 rounded-2xl overflow-hidden group hover:bg-white/[0.04] transition-all duration-500">
+        <Card className="bg-card border-border/10 rounded-2xl overflow-hidden group hover:bg-foreground/5 transition-all duration-500">
             <CardContent className="p-3 md:p-4">
                 <div className="flex justify-between items-start mb-2">
                     <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center border", colorStyles)}>
@@ -892,12 +892,12 @@ function KPICard({ title, value, subtitle, icon, color, status, trend }: KPICard
                     )}
                 </div>
                 <div className="space-y-0.5">
-                    <p className="text-[8px] font-black text-white/30 uppercase tracking-[.15em] leading-tight">{title}</p>
+                    <p className="text-[8px] font-black text-foreground/30 uppercase tracking-[.15em] leading-tight">{title}</p>
                     <div className="flex items-baseline gap-1.5">
-                        <span className="text-xl md:text-2xl font-black font-display text-white tracking-tight">{value}</span>
+                        <span className="text-xl md:text-2xl font-black font-display text-foreground tracking-tight">{value}</span>
                         {status === 'warning' && <AlertCircle className="w-3 h-3 text-orange-400" />}
                     </div>
-                    <p className="text-[8px] font-bold text-white/15 uppercase tracking-wider truncate">{subtitle}</p>
+                    <p className="text-[8px] font-bold text-foreground/15 uppercase tracking-wider truncate">{subtitle}</p>
                 </div>
             </CardContent>
         </Card>

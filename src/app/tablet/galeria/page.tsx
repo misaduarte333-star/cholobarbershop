@@ -70,8 +70,24 @@ export default function GalleryPage() {
             return
         }
         const session = JSON.parse(sessionStr)
-        setBarbero(session)
-        loadData(session.id)
+
+        // Verify the barbero still exists in DB (avoids FK errors from stale sessions)
+        supabase
+            .from('barberos')
+            .select('id, nombre')
+            .eq('id', session.id)
+            .single()
+            .then(({ data, error }) => {
+                const barberoData = data as { id: string; nombre: string } | null
+                if (error || !barberoData) {
+                    console.warn('[Galeria] Sesión inválida, redirigiendo a login')
+                    localStorage.removeItem('barbero_session')
+                    router.push('/tablet/login')
+                    return
+                }
+                setBarbero(barberoData)
+                loadData(barberoData.id)
+            })
     }, [router])
 
     const loadData = async (barberoId: string) => {
@@ -108,18 +124,25 @@ export default function GalleryPage() {
 
         try {
             const fileExt = file.name.split('.').pop()
-            const fileName = `${barbero.id}/${servicioId}.${fileExt}`
-            const filePath = `cortes/${fileName}`
+            const filePath = `${barbero.id}/${servicioId}.${fileExt}`
+
+            console.log('[Galeria] Uploading to bucket=cortes path=', filePath)
 
             const { error: uploadError } = await supabase.storage
                 .from('cortes')
                 .upload(filePath, file, { upsert: true })
 
-            if (uploadError) throw uploadError
+            if (uploadError) {
+                console.error('[Galeria] Storage error:', uploadError.message, '| status:', (uploadError as any).statusCode, '| cause:', (uploadError as any).error)
+                toast.error(`Error al subir: ${uploadError.message}`)
+                return
+            }
 
             const { data: { publicUrl } } = supabase.storage
                 .from('cortes')
                 .getPublicUrl(filePath)
+
+            console.log('[Galeria] Uploaded OK, publicUrl=', publicUrl)
 
             const { error: dbError } = await (supabase
                 .from('fotos_cortes') as any)
@@ -129,15 +152,19 @@ export default function GalleryPage() {
                     url: publicUrl
                 }, { onConflict: 'barbero_id,servicio_id' })
 
-            if (dbError) throw dbError
+            if (dbError) {
+                console.error('[Galeria] DB error:', dbError.message, '| code:', dbError.code)
+                toast.error(`Error al guardar en BD: ${dbError.message}`)
+                return
+            }
 
             setFotosMap(prev => ({ ...prev, [servicioId]: publicUrl }))
             toast.success('¡Foto actualizada con éxito!', {
                 icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             })
         } catch (err: any) {
-            console.error('Upload error:', err)
-            toast.error('Error al subir imagen')
+            console.error('[Galeria] Unexpected error:', err?.message ?? err)
+            toast.error('Error inesperado al subir imagen')
         } finally {
             setUploading(null)
         }
@@ -184,7 +211,7 @@ export default function GalleryPage() {
     }
 
     return (
-        <main className="relative min-h-screen bg-[#0f0c08] text-white overflow-x-hidden selection:bg-primary selection:text-black antialiased">
+        <main className="relative min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary selection:text-black antialiased">
 
             {/* ── Ambient Background ─────────────────── */}
             <div className="fixed inset-0 z-0 pointer-events-none">
@@ -227,7 +254,7 @@ export default function GalleryPage() {
                             <h1 className="text-4xl md:text-5xl font-black font-display tracking-tight leading-none uppercase">
                                 Mi <span className="gradient-text-gold">Galería</span>
                             </h1>
-                            <p className="text-white/40 mt-3 font-bold text-[11px] uppercase tracking-[0.35em] max-w-md leading-relaxed">
+                            <p className="text-muted-foreground mt-3 font-bold text-[11px] uppercase tracking-[0.35em] max-w-md leading-relaxed">
                                 Gestiona la exhibición de tus cortes por categoría
                             </p>
                         </div>
@@ -246,11 +273,11 @@ export default function GalleryPage() {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {[1, 2, 3, 4, 5, 6].map(i => (
-                            <Card key={i} className="bg-[#14100b]/40 border-primary/10 animate-pulse h-[340px]">
-                                <div className="aspect-[4/3] bg-white/5" />
+                            <Card key={i} className="bg-card/40 border-primary/10 animate-pulse h-[340px]">
+                                <div className="aspect-[4/3] bg-foreground/5" />
                                 <div className="p-6 space-y-3">
-                                    <div className="h-4 w-2/3 bg-white/10 rounded" />
-                                    <div className="h-3 w-full bg-white/5 rounded" />
+                                    <div className="h-4 w-2/3 bg-foreground/10 rounded" />
+                                    <div className="h-3 w-full bg-foreground/5 rounded" />
                                 </div>
                             </Card>
                         ))}
@@ -260,10 +287,10 @@ export default function GalleryPage() {
                         {servicios.map((servicio) => (
                             <Card
                                 key={servicio.id}
-                                className="group relative bg-[#14100b]/60 border-primary/10 backdrop-blur-xl hover:border-primary/40 transition-all duration-300 overflow-hidden shadow-2xl rounded-3xl"
+                                className="group relative bg-card border-primary/10 backdrop-blur-xl hover:border-primary/40 transition-all duration-300 overflow-hidden shadow-2xl rounded-3xl"
                             >
                                 <CardHeader className="p-0 border-b border-primary/5">
-                                    <div className="aspect-[4/3] relative bg-black/40 overflow-hidden">
+                                    <div className="aspect-[4/3] relative bg-muted dark:bg-black/40 overflow-hidden">
                                         {fotosMap[servicio.id] ? (
                                             <img
                                                 src={fotosMap[servicio.id]}
@@ -271,7 +298,7 @@ export default function GalleryPage() {
                                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex flex-col items-center justify-center text-white/10 group-hover:text-primary/20 transition-colors">
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/30 group-hover:text-primary/40 transition-colors">
                                                 <ImagePlus className="w-16 h-16 mb-4 stroke-[1px]" />
                                                 <p className="text-[9px] font-black uppercase tracking-[0.3em]">Esperando Trabajo</p>
                                             </div>
@@ -313,7 +340,7 @@ export default function GalleryPage() {
                                                     onChange={(e) => e.target.files?.[0] && handleUpload(servicio.id, e.target.files[0])}
                                                     disabled={!!uploading}
                                                 />
-                                                <div className="inline-flex items-center justify-center bg-black/80 border border-primary/30 backdrop-blur-md text-primary font-black uppercase tracking-[0.2em] text-[10px] h-11 px-6 rounded-2xl hover:bg-primary hover:text-black transition-all shadow-2xl">
+                                                <div className="inline-flex items-center justify-center bg-background/90 dark:bg-black/80 border border-primary/30 backdrop-blur-md text-primary font-black uppercase tracking-[0.2em] text-[10px] h-11 px-6 rounded-2xl hover:bg-primary hover:text-black transition-all shadow-2xl">
                                                     <Upload className="w-4 h-4 mr-2" />
                                                     {fotosMap[servicio.id] ? 'Actualizar' : 'Subir Foto'}
                                                 </div>
@@ -323,16 +350,16 @@ export default function GalleryPage() {
                                 </CardHeader>
                                 <CardContent className="p-6 relative">
                                     <div className="absolute top-0 right-6 -translate-y-1/2">
-                                        <div className="p-3 rounded-2xl bg-[#0f0c08] border border-primary/20 shadow-xl group-hover:border-primary/50 transition-colors">
+                                        <div className="p-3 rounded-2xl bg-background border border-primary/20 shadow-xl group-hover:border-primary/50 transition-colors">
                                             <Scissors className="w-4 h-4 text-primary" />
                                         </div>
                                     </div>
-                                    <CardTitle className="font-display font-black text-xl uppercase tracking-tighter text-white mb-2 group-hover:text-primary transition-colors">
+                                    <CardTitle className="font-display font-black text-xl uppercase tracking-tighter text-foreground mb-2 group-hover:text-primary transition-colors">
                                         {servicio.nombre}
                                     </CardTitle>
                                     <div className="flex items-center gap-2">
                                         <div className="w-1 h-1 rounded-full bg-primary/40" />
-                                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
                                             Sube tu mejor corte
                                         </p>
                                     </div>
@@ -343,7 +370,7 @@ export default function GalleryPage() {
                 )}
 
                 {/* ── Tip Card ──────────────────────── */}
-                <footer className="mt-20 p-8 rounded-[2rem] border border-primary/10 bg-[#14100b]/40 backdrop-blur-3xl relative overflow-hidden group">
+                <footer className="mt-20 p-8 rounded-[2rem] border border-primary/10 bg-card/40 backdrop-blur-3xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-8 opacity-[0.05] group-hover:opacity-10 transition-opacity">
                         <Sparkles className="w-32 h-32 text-primary rotate-12" />
                     </div>
@@ -352,10 +379,10 @@ export default function GalleryPage() {
                             <Box className="w-8 h-8 text-primary" />
                         </div>
                         <div className="text-center md:text-left flex-1">
-                            <h4 className="font-display font-black text-lg uppercase tracking-tight text-white mb-2">
+                            <h4 className="font-display font-black text-lg uppercase tracking-tight text-foreground mb-2">
                                 Optimización de <span className="text-primary italic">Ventas Automáticas</span>
                             </h4>
-                            <p className="text-[11px] text-white/50 leading-relaxed font-medium max-w-2xl">
+                            <p className="text-[11px] text-muted-foreground leading-relaxed font-medium max-w-2xl">
                                 Estas imágenes son procesadas en tiempo real por el agente inteligente de WhatsApp.
                                 <span className="text-primary/70 ml-1">Un portafolio actualizado incrementa la tasa de reserva en un 40%.</span> Asegúrate de capturar cada ángulo con buena iluminación.
                             </p>

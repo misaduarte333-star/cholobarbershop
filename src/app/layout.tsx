@@ -4,6 +4,7 @@ import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import { cn } from "@/lib/utils";
 import { MotionConfig } from 'framer-motion';
+import { ThemeProvider } from "@/components/ThemeProvider"
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -36,18 +37,25 @@ export default function RootLayout({
     children: React.ReactNode
 }>) {
     return (
-        <html lang="es" className={cn(inter.variable, montserrat.variable, "font-sans", geist.variable, "dark")}>
+        <html lang="es" className={cn(inter.variable, montserrat.variable, "font-sans", geist.variable)} suppressHydrationWarning>
             <head>
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap" rel="stylesheet" />
             </head>
-            <body className="bg-background-dark text-slate-100 dark:bg-background-dark dark:text-slate-100 min-h-screen font-display antialiased">
+            <body className="min-h-screen font-display antialiased transition-colors duration-300">
                 <MotionConfig reducedMotion="user">
-                    <AuthProvider>
-                        {children}
-                        <Toaster position="top-right" richColors closeButton />
-                    </AuthProvider>
+                    <ThemeProvider
+                        attribute="class"
+                        defaultTheme="dark"
+                        enableSystem
+                        disableTransitionOnChange
+                    >
+                        <AuthProvider>
+                            {children}
+                            <Toaster position="top-right" richColors closeButton />
+                        </AuthProvider>
+                    </ThemeProvider>
                 </MotionConfig>
             </body>
         </html>

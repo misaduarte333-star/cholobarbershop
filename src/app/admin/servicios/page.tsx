@@ -123,19 +123,19 @@ export default function ServiciosPage() {
     }
 
     return (
-        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
+        <div className="relative min-h-full bg-background selection:bg-primary selection:text-black transition-colors duration-300">
             <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
                 {/* Header (Desktop Only) - Compact Elite Style */}
-                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border mb-4 font-display">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] flex items-center justify-center shadow-[0_0_20px_rgba(212,175,55,0.2)]">
                             <Layers className="w-7 h-7 text-black" strokeWidth={2.5} />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">
+                            <h1 className="text-3xl font-black uppercase tracking-tighter text-foreground leading-none">
                                 Panel de <span className="text-gradient-gold italic">Servicios</span>
                             </h1>
-                            <p className="text-slate-400 mt-1 text-xs font-bold uppercase tracking-widest opacity-70">
+                            <p className="text-muted-foreground mt-1 text-xs font-bold uppercase tracking-widest opacity-70">
                                 Catálogo y precios de barbería
                             </p>
                         </div>
@@ -144,10 +144,10 @@ export default function ServiciosPage() {
                     <div className="flex items-center gap-3">
                         {/* Live Clock & Date */}
                         <div className="hidden lg:flex flex-col items-end mr-4">
-                            <span className="text-white font-black text-xl tracking-tighter leading-none uppercase">
+                            <span className="text-foreground font-black text-xl tracking-tighter leading-none uppercase">
                                 {formattedTime}
                             </span>
-                            <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-[0.2em]">
+                            <span className="text-primary text-[10px] font-bold uppercase tracking-[0.2em]">
                                 {formattedDate}
                             </span>
                         </div>
@@ -165,17 +165,17 @@ export default function ServiciosPage() {
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="bg-white/5 h-64 animate-pulse rounded-2xl border border-white/5" />
+                        <div key={i} className="bg-muted h-64 animate-pulse rounded-2xl border border-border" />
                     ))}
                 </div>
             ) : servicios.length === 0 ? (
-                <Card className="glass-card border-dashed border-white/10 bg-transparent py-20">
+                <Card className="glass-card border-dashed border-border bg-transparent py-20">
                     <CardContent className="flex flex-col items-center text-center">
-                        <div className="size-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
-                            <Scissors className="size-8 text-white/20" />
+                        <div className="size-16 rounded-full bg-muted flex items-center justify-center mb-6">
+                            <Scissors className="size-8 text-muted-foreground/20" />
                         </div>
-                        <h3 className="text-xl font-black text-white uppercase tracking-tight">No hay servicios</h3>
-                        <p className="text-white/40 text-sm mt-2 max-w-xs">Comienza agregando los servicios que ofreces en tu barbería.</p>
+                        <h3 className="text-xl font-black text-foreground uppercase tracking-tight">No hay servicios</h3>
+                        <p className="text-muted-foreground text-sm mt-2 max-w-xs">Comienza agregando los servicios que ofreces en tu barbería.</p>
                         <Button onClick={handleNew} variant="outline" className="mt-8 border-primary/50 text-primary hover:bg-primary/10 rounded-xl uppercase tracking-widest text-[10px] font-black">
                             Crear primer servicio
                         </Button>
@@ -187,7 +187,7 @@ export default function ServiciosPage() {
                         <Card 
                             key={servicio.id}
                             className={cn(
-                                "glass-card border-white/5 transition-all duration-300 hover:scale-[1.02] hover:border-primary/20 group relative overflow-hidden",
+                                "glass-card border-border transition-all duration-300 hover:scale-[1.02] hover:border-primary/20 group relative overflow-hidden",
                                 !servicio.activo && "opacity-60 grayscale"
                             )}
                         >
@@ -206,30 +206,30 @@ export default function ServiciosPage() {
                             
                             <CardContent className="space-y-4">
                                 <div>
-                                    <h3 className="text-xl font-black text-white uppercase tracking-tighter group-hover:text-primary transition-colors">
+                                    <h3 className="text-xl font-black text-foreground uppercase tracking-tighter group-hover:text-primary transition-colors">
                                         {servicio.nombre}
                                     </h3>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <Clock className="size-3 text-white/40" />
-                                        <p className="text-xs font-bold text-white/40 uppercase tracking-widest">
+                                        <Clock className="size-3 text-muted-foreground" />
+                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                                             {servicio.duracion_minutos} MINUTOS
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-end justify-between pt-4 border-t border-white/5">
+                                <div className="flex items-end justify-between pt-4 border-t border-border">
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-3xl font-black text-white font-display">
+                                        <span className="text-3xl font-black text-foreground font-display">
                                             ${Math.round(servicio.precio)}
                                         </span>
-                                        <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">MXN</span>
+                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">MXN</span>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleEdit(servicio)}
-                                            className="size-9 rounded-xl hover:bg-white/5 text-white/40 hover:text-white"
+                                            className="size-9 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground"
                                         >
                                             <Edit2 className="size-4" />
                                         </Button>
@@ -237,7 +237,7 @@ export default function ServiciosPage() {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleDelete(servicio.id)}
-                                            className="size-9 rounded-xl hover:bg-red-500/10 text-white/40 hover:text-red-500"
+                                            className="size-9 rounded-xl hover:bg-red-500/10 text-muted-foreground hover:text-red-500"
                                         >
                                             <Trash2 className="size-4" />
                                         </Button>
@@ -353,13 +353,13 @@ function ServicioModal({
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="glass-card border-white/10 bg-black/95 text-white max-w-md rounded-[2rem] p-0 overflow-hidden">
-                <div className="bg-gradient-to-br from-[#D4AF37]/20 to-transparent p-6 border-b border-white/5">
+            <DialogContent className="glass-card border-border bg-card/95 text-foreground max-w-md rounded-[2rem] p-0 overflow-hidden">
+                <div className="bg-gradient-to-br from-primary/20 to-transparent p-6 border-b border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-black font-display text-gradient-gold tracking-tight uppercase">
+                        <DialogTitle className="text-2xl font-black font-display text-primary tracking-tight uppercase">
                             {servicio ? 'Editar Servicio' : 'Nuevo Servicio'}
                         </DialogTitle>
-                        <DialogDescription className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
+                        <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-[0.2em]">
                             {servicio ? 'Modifica los parámetros del servicio' : 'Agrega un nuevo servicio al catálogo'}
                         </DialogDescription>
                     </DialogHeader>
@@ -367,13 +367,13 @@ function ServicioModal({
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     <div className="space-y-2">
-                        <Label htmlFor="nombre" className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Nombre del Servicio</Label>
+                        <Label htmlFor="nombre" className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Nombre del Servicio</Label>
                         <Input
                             id="nombre"
                             type="text"
                             value={formData.nombre}
                             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                            className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl h-11"
+                            className="bg-muted border-border focus:border-primary/50 text-foreground rounded-xl h-11"
                             placeholder="Ej: Corte Degradado"
                             required
                         />
@@ -381,23 +381,23 @@ function ServicioModal({
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Duración</Label>
+                            <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Duración</Label>
                             <select
                                 value={formData.duracion_minutos}
                                 onChange={(e) => setFormData({ ...formData, duracion_minutos: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 focus:border-primary/50 text-white rounded-xl h-11 px-3 outline-none transition-all text-sm appearance-none"
+                                className="w-full bg-muted border border-border focus:border-primary/50 text-foreground rounded-xl h-11 px-3 outline-none transition-all text-sm appearance-none"
                             >
-                                <option value="15" className="bg-black">15 min</option>
-                                <option value="30" className="bg-black">30 min</option>
-                                <option value="40" className="bg-black">40 min</option>
-                                <option value="45" className="bg-black">45 min</option>
-                                <option value="60" className="bg-black">60 min</option>
-                                <option value="90" className="bg-black">90 min</option>
-                                <option value="120" className="bg-black">120 min</option>
+                                <option value="15" className="bg-card">15 min</option>
+                                <option value="30" className="bg-card">30 min</option>
+                                <option value="40" className="bg-card">40 min</option>
+                                <option value="45" className="bg-card">45 min</option>
+                                <option value="60" className="bg-card">60 min</option>
+                                <option value="90" className="bg-card">90 min</option>
+                                <option value="120" className="bg-card">120 min</option>
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="precio" className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Precio (MXN)</Label>
+                            <Label htmlFor="precio" className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Precio (MXN)</Label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-bold">$</span>
                                 <Input
@@ -407,7 +407,7 @@ function ServicioModal({
                                     step="0.01"
                                     value={formData.precio}
                                     onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
-                                    className="bg-white/5 border-white/10 focus:border-primary/50 text-white rounded-xl h-11 pl-8 font-display font-bold"
+                                    className="bg-muted border-border focus:border-primary/50 text-foreground rounded-xl h-11 pl-8 font-display font-bold"
                                     placeholder="250"
                                     required
                                 />
@@ -415,10 +415,10 @@ function ServicioModal({
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-muted border border-border">
                         <div className="space-y-0.5">
-                            <Label htmlFor="activo-modal" className="text-[10px] font-black text-white/60 uppercase tracking-widest cursor-pointer">Estado del Servicio</Label>
-                            <p className="text-[9px] text-white/30 uppercase font-bold tracking-tight">Disponible para los clientes</p>
+                            <Label htmlFor="activo-modal" className="text-[10px] font-black text-muted-foreground uppercase tracking-widest cursor-pointer">Estado del Servicio</Label>
+                            <p className="text-[9px] text-muted-foreground/60 uppercase font-bold tracking-tight">Disponible para los clientes</p>
                         </div>
                         <Switch 
                             id="activo-modal"
@@ -433,7 +433,7 @@ function ServicioModal({
                             type="button" 
                             variant="ghost" 
                             onClick={onClose}
-                            className="rounded-xl text-white/30 hover:text-white hover:bg-white/5 font-black uppercase tracking-widest text-[10px]"
+                            className="rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted font-black uppercase tracking-widest text-[10px]"
                         >
                             Cancelar
                         </Button>

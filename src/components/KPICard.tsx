@@ -1,63 +1,110 @@
-import { Card, CardContent } from "@/components/ui/card"
-import { LucideIcon } from "lucide-react"
+'use client'
+
+import React from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
+import { LucideIcon, ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react'
 
 interface KPICardProps {
-    title: string
-    value: string | number
-    icon: LucideIcon
-    trend?: {
-        value: number
-        isPositive: boolean
-    }
-    subtitle?: string
-    color?: "primary" | "purple" | "green" | "blue" | "red" | "amber"
+  title: string
+  value: string | number
+  subtitle?: string
+  icon: LucideIcon | React.ReactNode
+  color?: 'amber' | 'green' | 'red' | 'blue' | 'purple' | 'emerald'
+  trend?: {
+    value: number
+    isPositive: boolean
+  } | string
+  status?: 'success' | 'warning'
+  className?: string
 }
 
-export function KPICard({ title, value, icon: Icon, trend, subtitle, color = "primary" }: KPICardProps) {
-    const colorClass = color === "primary" ? "text-[#D4AF37]" : 
-                      color === "amber" ? "text-amber-500" :
-                      `text-${color}-400`
-    
-    const bgClass = color === "primary" ? "bg-[#D4AF37]/10" : 
-                   color === "amber" ? "bg-amber-500/10" :
-                   `bg-${color}-500/10`
-    
-    const borderClass = color === "primary" ? "border-[#D4AF37]/20" : 
-                       color === "amber" ? "border-amber-500/20" :
-                       `border-${color}-500/20`
+export function KPICard({
+  title,
+  value,
+  subtitle,
+  icon,
+  color = 'blue',
+  trend,
+  status,
+  className
+}: KPICardProps) {
+  const variants = {
+    amber: "bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/20 dark:border-amber-500/30",
+    green: "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 dark:border-emerald-500/30",
+    emerald: "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 dark:border-emerald-500/30",
+    red: "bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/20 dark:border-rose-500/30",
+    blue: "bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/20 dark:border-blue-500/30",
+    purple: "bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/20 dark:border-purple-500/30",
+  }
 
-    return (
-        <Card className="bg-[#141414]/80 backdrop-blur-xl border-white/5 overflow-hidden group hover:border-[#D4AF37]/30 transition-all duration-300 relative">
-            <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
-                            {title}
-                        </p>
-                        <div className="flex items-baseline gap-2">
-                            <h3 className="text-2xl font-black text-white tracking-tighter">
-                                {value}
-                            </h3>
-                            {trend && (
-                                <span className={`text-[10px] font-bold ${trend.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                                    {trend.isPositive ? '↑' : '↓'}{Math.abs(trend.value)}%
-                                </span>
-                            )}
-                        </div>
-                        {subtitle && (
-                            <p className="text-[10px] text-white/30 font-medium">
-                                {subtitle}
-                            </p>
-                        )}
-                    </div>
-                    <div className={`w-10 h-10 rounded-xl ${bgClass} ${colorClass} flex items-center justify-center border ${borderClass} group-hover:scale-110 transition-transform duration-300`}>
-                        <Icon className="w-5 h-5" />
-                    </div>
-                </div>
-                
-                {/* Subtle progress line or accent */}
-                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </CardContent>
-        </Card>
-    )
+  const colorStyles = variants[color] || variants.blue
+
+  // Handle both LucideIcon component and passed-in React node
+  const renderIcon = () => {
+    if (!icon) return null
+    if (typeof icon === 'function') {
+      const IconComp = icon as LucideIcon
+      return <IconComp className="w-4 h-4" />
+    }
+    if (React.isValidElement(icon)) {
+      return React.cloneElement(icon as React.ReactElement<any>, {
+        className: cn("w-4 h-4", (icon.props as any)?.className)
+      })
+    }
+    return icon as React.ReactNode
+  }
+
+  return (
+    <Card className={cn(
+      "glass-card border-border/10 rounded-2xl overflow-hidden group hover:bg-foreground/[0.02] transition-all duration-500",
+      className
+    )}>
+      <CardContent className="p-4 md:p-5">
+        <div className="flex justify-between items-start mb-3">
+          <div className={cn(
+            "w-9 h-9 rounded-xl flex items-center justify-center border transition-all duration-500 group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]",
+            colorStyles
+          )}>
+            {renderIcon()}
+          </div>
+          
+          {trend && (
+            <div className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black tracking-tight",
+              typeof trend === 'string' 
+                ? "bg-emerald-500/10 text-emerald-500"
+                : trend.isPositive 
+                  ? "bg-emerald-500/10 text-emerald-500" 
+                  : "bg-rose-500/10 text-rose-500"
+            )}>
+              {typeof trend === 'object' && (
+                trend.isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />
+              )}
+              {typeof trend === 'string' ? trend : `${trend.value}%`}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] leading-tight">
+            {title}
+          </p>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-black font-display text-foreground tracking-tight">
+              {value}
+            </h3>
+            {status === 'warning' && (
+              <AlertCircle className="w-4 h-4 text-amber-500 animate-pulse" />
+            )}
+          </div>
+          {subtitle && (
+            <p className="text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider truncate">
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
 }

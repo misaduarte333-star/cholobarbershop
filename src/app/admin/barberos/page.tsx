@@ -127,19 +127,19 @@ export default function BarberosPage() {
     )
 
     return (
-        <div className="relative min-h-full bg-[#0A0A0A] selection:bg-primary selection:text-black">
+        <div className="relative min-h-full bg-background selection:bg-primary selection:text-black transition-colors duration-300">
             <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
                 {/* Header (Desktop Only) - Compact Elite Style */}
-                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-20 border-b border-white/5 mb-4 font-display">
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border mb-4 font-display">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] flex items-center justify-center shadow-[0_0_20px_rgba(212,175,55,0.2)]">
                             <Scissors className="w-7 h-7 text-black" strokeWidth={2.5} />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">
+                            <h1 className="text-3xl font-black uppercase tracking-tighter text-foreground leading-none">
                                 Staff <span className="text-gradient-gold italic">Barberos</span>
                             </h1>
-                            <p className="text-slate-400 mt-1 text-xs font-bold uppercase tracking-widest opacity-70">
+                            <p className="text-muted-foreground mt-1 text-xs font-bold uppercase tracking-widest opacity-70">
                                 Gestión de equipo y disponibilidad
                             </p>
                         </div>
@@ -148,10 +148,10 @@ export default function BarberosPage() {
                     <div className="flex items-center gap-3">
                         {/* Live Clock & Date */}
                         <div className="hidden lg:flex flex-col items-end mr-4">
-                            <span className="text-white font-black text-xl tracking-tighter leading-none uppercase">
+                            <span className="text-foreground font-black text-xl tracking-tighter leading-none uppercase">
                                 {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })}
                             </span>
-                            <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-[0.2em]">
+                            <span className="text-primary text-[10px] font-bold uppercase tracking-[0.2em]">
                                 {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, (c) => c.toUpperCase())}
                             </span>
                         </div>
@@ -170,9 +170,9 @@ export default function BarberosPage() {
                     <Button 
                         variant="ghost" 
                         onClick={() => setShowGanttModal(true)}
-                        className="flex-1 sm:flex-none bg-white/5 border-white/10 hover:bg-white/10 text-slate-300 font-bold text-[10px] uppercase tracking-widest h-9"
+                        className="flex-1 sm:flex-none bg-muted border-border hover:bg-muted/80 text-muted-foreground font-bold text-[10px] uppercase tracking-widest h-9"
                     >
-                        <LayoutGrid className="w-3 h-3 mr-2 text-blue-400" />
+                        <LayoutGrid className="w-3 h-3 mr-2 text-primary" />
                         Diagrama
                     </Button>
                     <Button 
@@ -192,93 +192,93 @@ export default function BarberosPage() {
             />
 
             {/* Search & Filters */}
-            <Card className="bg-white/5 border-white/10 mb-6">
+            <Card className="glass-card border-border mb-6">
                 <CardContent className="p-4">
                     <div className="flex flex-col sm:flex-row items-center gap-4">
                         <div className="w-full flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                                 placeholder="Buscar por nombre o usuario..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-[#D4AF37]/50"
+                                className="pl-10 bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
                             />
                         </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-                            <Users className="w-3.5 h-3.5 text-[#D4AF37]" />
-                            <span className="text-slate-400 text-xs font-bold">{filteredBarberos.length} BARBEROS</span>
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border">
+                            <Users className="w-3.5 h-3.5 text-primary" />
+                            <span className="text-muted-foreground text-xs font-bold">{filteredBarberos.length} BARBEROS</span>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
             {/* Table */}
-            <Card className="bg-[#0A0A0A] border-white/10 overflow-hidden">
+            <Card className="glass-card border-border overflow-hidden">
                 {loading ? (
                     <div className="p-20 flex flex-col items-center justify-center gap-4">
-                        <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
-                        <p className="text-slate-400 text-sm animate-pulse">Cargando equipo...</p>
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                        <p className="text-muted-foreground text-sm animate-pulse">Cargando equipo...</p>
                     </div>
                 ) : filteredBarberos.length === 0 ? (
                     <div className="p-20 text-center">
-                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
-                            <Users className="w-8 h-8 text-slate-600" />
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4 border border-border">
+                            <Users className="w-8 h-8 text-muted-foreground/30" />
                         </div>
-                        <p className="text-slate-500 font-medium">No se encontraron barberos</p>
+                        <p className="text-muted-foreground font-medium">No se encontraron barberos</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <Table>
-                            <TableHeader className="bg-white/5">
-                                <TableRow className="border-white/5 hover:bg-transparent">
-                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Estación</TableHead>
-                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Barbero</TableHead>
-                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12 hidden sm:table-cell">Identificación</TableHead>
-                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Horario Laboral</TableHead>
-                                    <TableHead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Estado</TableHead>
-                                    <TableHead className="text-right text-slate-400 text-[10px] uppercase tracking-wider font-bold h-12">Acciones</TableHead>
+                            <TableHeader className="bg-muted">
+                                <TableRow className="border-border hover:bg-transparent">
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold h-12">Estación</TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold h-12">Barbero</TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold h-12 hidden sm:table-cell">Identificación</TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold h-12">Horario Laboral</TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold h-12">Estado</TableHead>
+                                    <TableHead className="text-right text-muted-foreground text-[10px] uppercase tracking-wider font-bold h-12">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredBarberos.map((barbero) => (
-                                    <TableRow key={barbero.id} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
+                                    <TableRow key={barbero.id} className="border-border hover:bg-foreground/[0.02] transition-colors group">
                                         <TableCell>
-                                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#D4AF37]/20 to-transparent border border-[#D4AF37]/30 flex items-center justify-center font-black text-[#D4AF37] text-sm">
+                                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-transparent border border-primary/30 flex items-center justify-center font-black text-primary text-sm">
                                                 {barbero.estacion_id}
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-lg font-bold text-white shadow-inner">
+                                                <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-lg font-bold text-foreground shadow-inner">
                                                     {barbero.nombre.charAt(0)}
                                                 </div>
                                                 <div className="space-y-0.5">
-                                                    <p className="font-bold text-white text-sm tracking-tight">{barbero.nombre}</p>
+                                                    <p className="font-bold text-foreground text-sm tracking-tight">{barbero.nombre}</p>
                                                     <div className="flex items-center gap-1.5">
-                                                        <LayoutGrid className="w-3 h-3 text-slate-500" />
-                                                        <span className="text-[10px] text-slate-500 font-medium uppercase">Estación {barbero.estacion_id}</span>
+                                                        <LayoutGrid className="w-3 h-3 text-muted-foreground" />
+                                                        <span className="text-[10px] text-muted-foreground font-medium uppercase">Estación {barbero.estacion_id}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </TableCell>
                                         <TableCell className="hidden sm:table-cell">
                                             <div className="flex items-center gap-2">
-                                                <Shield className="w-3.5 h-3.5 text-blue-400/50" />
-                                                <code className="text-xs text-slate-400 font-mono">
+                                                <Shield className="w-3.5 h-3.5 text-blue-500/50" />
+                                                <code className="text-xs text-muted-foreground font-mono">
                                                     {barbero.usuario_tablet}
                                                 </code>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="space-y-1">
-                                                <div className="flex items-center gap-1.5 text-slate-300">
-                                                    <Clock className="w-3.5 h-3.5 text-[#D4AF37]/70" />
+                                                <div className="flex items-center gap-1.5 text-foreground">
+                                                    <Clock className="w-3.5 h-3.5 text-primary/70" />
                                                     <span className="text-xs font-medium">
                                                         {getHorarioResumen(barbero.horario_laboral)}
                                                     </span>
                                                 </div>
                                                 {barbero.bloqueo_almuerzo && (
-                                                    <div className="flex items-center gap-1.5 text-slate-500">
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
                                                         <span className="text-[10px]">🍽️</span>
                                                         <span className="text-[10px] font-medium tracking-tight">
                                                             ALMUERZO: {barbero.bloqueo_almuerzo.inicio} - {barbero.bloqueo_almuerzo.fin}
@@ -309,7 +309,7 @@ export default function BarberosPage() {
                                                     size="icon"
                                                     variant="ghost"
                                                     onClick={() => handleEdit(barbero)}
-                                                    className="h-8 w-8 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
+                                                    className="h-8 w-8 rounded-full bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                                                     title="Editar"
                                                 >
                                                     <Edit className="w-3.5 h-3.5" />
@@ -321,7 +321,7 @@ export default function BarberosPage() {
                                                         setEditingBarbero(barbero)
                                                         setShowScheduleModal(true)
                                                     }}
-                                                    className="h-8 w-8 rounded-full bg-[#D4AF37]/10 text-[#D4AF37] hover:bg-[#D4AF37]/20"
+                                                    className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20"
                                                     title="Configurar Horario"
                                                 >
                                                     <Clock className="w-3.5 h-3.5" />
@@ -532,14 +532,14 @@ function BarberoModal({
 
     return (
         <Dialog open onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[500px] bg-[#0A0A0A] border-white/10 text-white p-0 overflow-hidden">
-                <div className="bg-gradient-to-b from-[#D4AF37]/10 to-transparent p-6 border-b border-white/5">
+            <DialogContent className="sm:max-w-[500px] glass-card border-border bg-card/95 text-foreground p-0 overflow-hidden rounded-[2rem]">
+                <div className="bg-gradient-to-b from-primary/10 to-transparent p-6 border-b border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-black italic tracking-tighter flex items-center gap-2">
-                            <Users className="w-6 h-6 text-[#D4AF37]" />
+                        <DialogTitle className="text-2xl font-black italic tracking-tighter flex items-center gap-2 text-primary">
+                            <Users className="w-6 h-6" />
                             {barbero ? 'EDITAR BARBERO' : 'NUEVO BARBERO'}
                         </DialogTitle>
-                        <p className="text-slate-400 text-xs font-medium uppercase tracking-widest mt-1">
+                        <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest mt-1">
                             {barbero ? 'Modifica los perfiles del equipo' : 'Añade un nuevo experto al equipo'}
                         </p>
                     </DialogHeader>
@@ -548,22 +548,22 @@ function BarberoModal({
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nombre Completo</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nombre Completo</Label>
                             <Input
                                 value={formData.nombre}
                                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-[#D4AF37]/50"
+                                className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 rounded-xl"
                                 placeholder="Ej. Carlos Hernández"
                                 required
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Número de Estación</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Número de Estación</Label>
                             <Input
                                 type="number"
                                 value={formData.estacion_id}
                                 onChange={(e) => setFormData({ ...formData, estacion_id: e.target.value })}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-[#D4AF37]/50"
+                                className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 rounded-xl"
                                 placeholder="1-20"
                                 required
                             />
@@ -572,42 +572,42 @@ function BarberoModal({
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Usuario Tablet</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Usuario Tablet</Label>
                             <div className="relative">
-                                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                                 <Input
                                     value={formData.usuario_tablet}
                                     onChange={(e) => setFormData({ ...formData, usuario_tablet: e.target.value })}
-                                    className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-[#D4AF37]/50"
+                                    className="pl-9 bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 rounded-xl"
                                     placeholder="carlos01"
                                     required
                                 />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Contraseña Access</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contraseña Access</Label>
                             <Input
                                 type="password"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-[#D4AF37]/50"
+                                className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 rounded-xl"
                                 placeholder="••••••••"
                                 required={!barbero}
                             />
                         </div>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-gradient-to-br from-[#D4AF37]/10 to-transparent border border-[#D4AF37]/20 space-y-4">
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 space-y-4">
                         <div className="flex items-center justify-between">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-[#D4AF37]">Configuración de Ventas</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-primary">Configuración de Ventas</Label>
                             <div className="flex items-center gap-2">
                                 <Switch
                                     id="activo"
                                     checked={formData.activo}
                                     onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
-                                    className="data-[state=checked]:bg-[#D4AF37]"
+                                    className="data-[state=checked]:bg-primary"
                                 />
-                                <Label htmlFor="activo" className="text-[10px] font-bold uppercase text-slate-300">Activo</Label>
+                                <Label htmlFor="activo" className="text-[10px] font-bold uppercase text-muted-foreground">Activo</Label>
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -616,23 +616,23 @@ function BarberoModal({
                                     type="number"
                                     value={formData.comision_porcentaje}
                                     onChange={(e) => setFormData({ ...formData, comision_porcentaje: e.target.value })}
-                                    className="bg-black/40 border-white/10 text-white pr-8 focus:border-[#D4AF37]/50"
+                                    className="bg-card border-border text-foreground pr-8 focus:border-primary/50 font-bold"
                                     required
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">%</span>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-primary font-bold text-xs">%</span>
                             </div>
-                            <p className="text-[10px] text-slate-400 leading-tight">
+                            <p className="text-[10px] text-muted-foreground leading-tight">
                                 Porcentaje de comisión asignado por cada servicio realizado.
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={onClose}
-                            className="text-slate-400 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-[10px]"
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted font-bold uppercase tracking-widest text-[10px]"
                         >
                             CANCELAR
                         </Button>
@@ -731,57 +731,57 @@ function HorarioModal({
 
     return (
         <Dialog open onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[600px] bg-[#0A0A0A] border-white/10 text-white p-0 overflow-hidden max-h-[90vh] flex flex-col">
-                <div className="bg-gradient-to-b from-[#D4AF37]/10 to-transparent p-6 border-b border-white/5 shrink-0">
+            <DialogContent className="sm:max-w-[600px] glass-card border-border bg-card/95 text-foreground p-0 overflow-hidden max-h-[90vh] flex flex-col rounded-[2rem]">
+                <div className="bg-gradient-to-b from-primary/10 to-transparent p-6 border-b border-border shrink-0">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-black italic tracking-tighter flex items-center gap-2">
-                            <Clock className="w-6 h-6 text-[#D4AF37]" />
+                        <DialogTitle className="text-2xl font-black italic tracking-tighter flex items-center gap-2 text-primary">
+                            <Clock className="w-6 h-6" />
                             HORARIO LABORAL
                         </DialogTitle>
-                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">
-                            CONFIGURACIÓN PARA: <span className="text-white">{barbero.nombre.toUpperCase()}</span>
+                        <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-1">
+                            CONFIGURACIÓN PARA: <span className="text-foreground">{barbero.nombre.toUpperCase()}</span>
                         </p>
                     </DialogHeader>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                     {/* Lunch Break Section */}
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-4">
+                    <div className="p-4 rounded-xl bg-muted border border-border space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center text-xl">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
                                     🍽️
                                 </div>
                                 <div>
-                                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Bloqueo de Almuerzo</h3>
-                                    <p className="text-[10px] text-slate-500 uppercase font-medium">Intervalo diario de descanso</p>
+                                    <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Bloqueo de Almuerzo</h3>
+                                    <p className="text-[10px] text-muted-foreground uppercase font-medium">Intervalo diario de descanso</p>
                                 </div>
                             </div>
                             <Switch
                                 checked={almuerzo.activo}
                                 onCheckedChange={(checked) => setAlmuerzo(prev => ({ ...prev, activo: checked }))}
-                                className="data-[state=checked]:bg-[#D4AF37]"
+                                className="data-[state=checked]:bg-primary"
                             />
                         </div>
 
                         {almuerzo.activo && (
                             <div className="grid grid-cols-2 gap-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Inicio</Label>
+                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase">Inicio</Label>
                                     <Input
                                         type="time"
                                         value={almuerzo.inicio}
                                         onChange={(e) => setAlmuerzo(prev => ({ ...prev, inicio: e.target.value }))}
-                                        className="bg-black/40 border-white/10 text-white h-9"
+                                        className="bg-card border-border text-foreground h-9"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Fin</Label>
+                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase">Fin</Label>
                                     <Input
                                         type="time"
                                         value={almuerzo.fin}
                                         onChange={(e) => setAlmuerzo(prev => ({ ...prev, fin: e.target.value }))}
-                                        className="bg-black/40 border-white/10 text-white h-9"
+                                        className="bg-card border-border text-foreground h-9"
                                     />
                                 </div>
                             </div>
@@ -789,14 +789,14 @@ function HorarioModal({
                     </div>
 
                     <div className="space-y-3">
-                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Días Laborales</h3>
+                        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Días Laborales</h3>
                         <div className="space-y-2">
                             {diasSemana.map(dia => {
                                 const isActive = !!horario[dia]
                                 return (
                                     <div key={dia} className={cn(
                                         "flex items-center gap-4 p-3 rounded-xl transition-all duration-200 border",
-                                        isActive ? "bg-white/5 border-white/10" : "bg-transparent border-transparent opacity-40"
+                                        isActive ? "bg-muted border-border" : "bg-transparent border-transparent opacity-40"
                                     )}>
                                         <div className="w-24 flex items-center gap-3">
                                             <Switch
@@ -804,7 +804,7 @@ function HorarioModal({
                                                 onCheckedChange={(checked) => handleDayToggle(dia, checked)}
                                                 className="scale-90 data-[state=checked]:bg-[#D4AF37]"
                                             />
-                                            <span className="capitalize text-xs font-bold text-slate-200">{dia}</span>
+                                            <span className="capitalize text-xs font-bold text-foreground">{dia}</span>
                                         </div>
 
                                         {isActive ? (
@@ -813,18 +813,18 @@ function HorarioModal({
                                                     type="time"
                                                     value={horario[dia]?.inicio}
                                                     onChange={(e) => handleTimeChange(dia, 'inicio', e.target.value)}
-                                                    className="bg-black/40 border-white/5 text-white h-8 text-xs py-0"
+                                                    className="bg-muted border-border text-foreground h-8 text-xs py-0"
                                                 />
-                                                <span className="text-slate-600 font-bold">-</span>
+                                                <span className="text-muted-foreground font-bold">-</span>
                                                 <Input
                                                     type="time"
                                                     value={horario[dia]?.fin}
                                                     onChange={(e) => handleTimeChange(dia, 'fin', e.target.value)}
-                                                    className="bg-black/40 border-white/5 text-white h-8 text-xs py-0"
+                                                    className="bg-muted border-border text-foreground h-8 text-xs py-0"
                                                 />
                                             </div>
                                         ) : (
-                                            <div className="flex-1 text-[10px] text-slate-600 font-bold uppercase tracking-widest text-right pr-4">
+                                            <div className="flex-1 text-[10px] text-muted-foreground font-bold uppercase tracking-widest text-right pr-4">
                                                 No Laboral
                                             </div>
                                         )}
@@ -835,11 +835,11 @@ function HorarioModal({
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-3 p-6 border-t border-white/5 shrink-0 bg-black/20">
+                <div className="flex justify-end gap-3 p-6 border-t border-border shrink-0 bg-muted/20">
                     <Button
                         variant="ghost"
                         onClick={onClose}
-                        className="text-slate-400 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-[10px]"
+                        className="text-muted-foreground hover:text-foreground hover:bg-muted font-bold uppercase tracking-widest text-[10px]"
                     >
                         CANCELAR
                     </Button>

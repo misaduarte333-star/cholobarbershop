@@ -89,11 +89,11 @@ export default function TabletLoginPage() {
     }
 
     return (
-        <main className="fixed inset-0 flex items-center justify-center overflow-hidden bg-bg-dark selection:bg-primary selection:text-black">
+        <main className="fixed inset-0 flex items-center justify-center overflow-hidden bg-background selection:bg-primary selection:text-black">
             {/* Watermark Background Pattern */}
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 {/* Radial gradient overlay */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_50%,transparent_0%,rgba(15,12,8,0.95)_70%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_50%,transparent_0%,hsl(var(--background)/0.95)_70%)]" />
                 
                 {/* Pattern de iconos de barberia */}
                 <div className="absolute inset-0 opacity-[0.04]">
@@ -154,7 +154,7 @@ export default function TabletLoginPage() {
                     </div>
 
                     <h1 className="text-center font-display font-black text-3xl mb-2 leading-tight">
-                        <span className="text-white tracking-tight">Acceso </span>
+                        <span className="text-foreground tracking-tight">Acceso </span>
                         <span className="gradient-text-gold tracking-tight">Barberos</span>
                     </h1>
 
@@ -172,18 +172,18 @@ export default function TabletLoginPage() {
                             <label 
                                 htmlFor="usuario" 
                                 className={`text-[10px] font-bold uppercase tracking-wider transition-colors duration-200 ${
-                                    focusedField === 'usuario' ? 'text-primary' : 'text-white/50'
+                                    focusedField === 'usuario' ? 'text-primary' : 'text-foreground/50'
                                 }`}
                             >
                                 Usuario
                             </label>
                             <div className={`relative flex items-center gap-2 rounded-lg transition-all duration-300 ${
                                 focusedField === 'usuario' 
-                                    ? 'bg-black/80 ring-2 ring-primary/50 shadow-lg shadow-primary/10' 
-                                    : 'bg-black/50 ring-1 ring-white/10 hover:ring-white/20'
+                                    ? 'bg-card/80 ring-2 ring-primary/50 shadow-lg shadow-primary/10' 
+                                    : 'bg-card/50 ring-1 ring-foreground/10 hover:ring-foreground/20'
                             }`}>
                                 <span className={`material-icons-round text-lg pl-3 transition-colors duration-200 ${
-                                    focusedField === 'usuario' ? 'text-primary' : 'text-white/30'
+                                    focusedField === 'usuario' ? 'text-primary' : 'text-foreground/30'
                                 }`}>
                                     person
                                 </span>
@@ -194,7 +194,7 @@ export default function TabletLoginPage() {
                                     onChange={(e) => setUsuario(e.target.value)}
                                     onFocus={() => setFocusedField('usuario')}
                                     onBlur={() => setFocusedField(null)}
-                                    className="flex-1 bg-transparent border-none outline-none py-3 pr-3 text-white placeholder:text-white/25 font-medium text-sm"
+                                    className="flex-1 bg-transparent border-none outline-none py-3 pr-3 text-foreground placeholder:text-foreground/25 font-medium text-sm"
                                     placeholder="Ingresa tu usuario"
                                     autoComplete="username"
                                     required
@@ -207,18 +207,18 @@ export default function TabletLoginPage() {
                             <label 
                                 htmlFor="password" 
                                 className={`text-[10px] font-bold uppercase tracking-wider transition-colors duration-200 ${
-                                    focusedField === 'password' ? 'text-primary' : 'text-white/50'
+                                    focusedField === 'password' ? 'text-primary' : 'text-foreground/50'
                                 }`}
                             >
                                 Clave
                             </label>
                             <div className={`relative flex items-center gap-2 rounded-lg transition-all duration-300 ${
                                 focusedField === 'password' 
-                                    ? 'bg-black/80 ring-2 ring-primary/50 shadow-lg shadow-primary/10' 
-                                    : 'bg-black/50 ring-1 ring-white/10 hover:ring-white/20'
+                                    ? 'bg-card/80 ring-2 ring-primary/50 shadow-lg shadow-primary/10' 
+                                    : 'bg-card/50 ring-1 ring-foreground/10 hover:ring-foreground/20'
                             }`}>
                                 <span className={`material-icons-round text-lg pl-3 transition-colors duration-200 ${
-                                    focusedField === 'password' ? 'text-primary' : 'text-white/30'
+                                    focusedField === 'password' ? 'text-primary' : 'text-foreground/30'
                                 }`}>
                                     lock
                                 </span>
@@ -229,7 +229,7 @@ export default function TabletLoginPage() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     onFocus={() => setFocusedField('password')}
                                     onBlur={() => setFocusedField(null)}
-                                    className="flex-1 bg-transparent border-none outline-none py-3 pr-3 text-white placeholder:text-white/25 font-medium text-sm"
+                                    className="flex-1 bg-transparent border-none outline-none py-3 pr-3 text-foreground placeholder:text-foreground/25 font-medium text-sm"
                                     placeholder="Ingresa tu clave"
                                     autoComplete="current-password"
                                     required
@@ -269,14 +269,14 @@ export default function TabletLoginPage() {
 
                 {/* Footer - Compacto */}
                 <footer className="flex items-center justify-between mt-5">
-                    <div className="flex items-center gap-1.5 text-white/25">
+                    <div className="flex items-center gap-1.5 text-foreground/25">
                         <span className="material-icons-round text-xs">verified_user</span>
                         <span className="text-[10px] font-medium">Seguro</span>
                     </div>
                     
                     <Link 
                         href="/" 
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-xs font-medium text-white/50 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-200 active:scale-95"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-foreground/10 bg-foreground/5 text-xs font-medium text-foreground/50 hover:bg-foreground/10 hover:text-foreground hover:border-foreground/20 transition-all duration-200 active:scale-95"
                     >
                         <span className="material-icons-round text-sm">arrow_back</span>
                         Inicio

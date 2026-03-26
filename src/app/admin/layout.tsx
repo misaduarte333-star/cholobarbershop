@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ConnectionStatus } from '@/components/ConnectionStatus'
 import { cn } from '@/lib/utils'
 import { isLowEndDevice } from '@/lib/performance'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [isCheckingAuth, setIsCheckingAuth] = useState(true)
@@ -42,7 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     if (isCheckingAuth) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background-dark text-white">
+            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary shadow-glow-gold"></div>
             </div>
         )
@@ -54,22 +55,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     return (
         <div className={cn(
-            "dark bg-[#0A0A0A] text-slate-100 min-h-screen flex flex-col lg:flex-row font-display relative selection:bg-primary selection:text-black antialiased",
+            "bg-background text-foreground min-h-screen flex flex-col lg:flex-row font-display relative selection:bg-primary selection:text-black antialiased transition-colors duration-300",
             isLowPerformance && "efficiency-mode"
         )}>
             {/* Material Symbols Outlined stylesheet */}
             <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 
             {/* Mobile Header (Elite Style) */}
-            <header className="lg:hidden h-14 px-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#0A0A0A]/90 backdrop-blur-xl z-30">
+            <header className="lg:hidden h-14 px-4 border-b border-border flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-xl z-30">
                 <div className="flex items-center gap-2.5">
-                    <div className="size-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 border border-primary/20 bg-black">
+                    <div className="size-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 border border-primary/20 bg-background">
                         <img src="/logo-cholo.jpg" alt="Logo" className="w-full h-full object-cover transform scale-110" />
                     </div>
-                    <h1 className="text-sm font-black tracking-[0.2em] text-white uppercase italic">CHOLO<span className="text-primary">BARBER</span></h1>
+                    <h1 className="text-sm font-black tracking-[0.2em] text-foreground uppercase italic">CHOLO<span className="text-primary">BARBER</span></h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="size-8 rounded-lg overflow-hidden border border-white/10">
+                    <div className="size-8 rounded-lg overflow-hidden border border-border">
                         <Image 
                             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAupJ0NN2FAFZ6tI6RCShLVEdmHhuGCITlUKRL6_nXpmUHJwgFD5gdYKHv4rgGoTTyZjfhMPhOizJfi_Wr0I8ScGatKToDD6OoSBPCK216hMjcwbbVW8ECH4_42v7X7UxdAc0iJnJ3ZYaVfVubqC5ggr2alR3AGRmXpmgpnox1TvJ_LjpECls_bxd51pd4_A9JwUKRWndND9sgtx_KrQo6V3Ish93C9evXJpme6TaCkAOstX_qONuWfqoJ4uYZWK8CxXjC5OmTd8Wg" 
                             alt="Avatar"
@@ -82,16 +83,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </header>
 
             <aside className={`
-                w-72 bg-card-dark border-r border-primary/20 flex-col h-screen sticky top-0 z-50 overflow-hidden
+                w-72 bg-card border-r border-border flex-col h-screen sticky top-0 z-50 overflow-hidden
                 hidden lg:flex transition-transform duration-500
             `}>
                 <div className="p-6 flex items-center gap-3.5">
-                    <div className="size-12 rounded-xl overflow-hidden shadow-lg shadow-primary/20 border border-primary/20 bg-black transition-transform hover:scale-110">
+                    <div className="size-12 rounded-xl overflow-hidden shadow-lg shadow-primary/20 border border-primary/20 bg-card transition-transform hover:scale-110">
                         <img src="/logo-cholo.jpg" alt="Logo" className="w-full h-full object-cover transform scale-110" />
                     </div>
                     <div>
-                        <h1 className="text-lg font-black tracking-[0.2em] text-white leading-none">CHOLO<span className="text-primary italic">BARBER</span></h1>
-                        <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black mt-1">Panel Elite v2.0</p>
+                        <h1 className="text-lg font-black tracking-[0.2em] text-foreground leading-none">CHOLO<span className="text-primary italic">BARBER</span></h1>
+                        <p className="text-[9px] uppercase tracking-[0.3em] text-foreground/40 font-black mt-1">Panel Elite v2.0</p>
                     </div>
                 </div>
 
@@ -106,8 +107,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <NavItem href="/admin/configuracion" icon="settings" label="Ajustes" active={isLinkActive('/admin/configuracion')} />
                 </nav>
 
-                <div className="p-4 mt-auto border-t border-white/5 bg-black/20">
-                    <div className="bg-[#141414]/50 rounded-2xl p-3 border border-white/5 hover:border-primary/20 transition-all group">
+                <div className="p-4 mt-auto border-t border-border bg-background/20 space-y-4">
+                    <div className="flex justify-center py-2 px-4 bg-muted/30 rounded-2xl border border-border">
+                        <ThemeToggle />
+                    </div>
+                    
+                    <div className="bg-muted/50 rounded-2xl p-3 border border-border hover:border-primary/20 transition-all group">
                         <div className="flex items-center gap-3">
                             <div className="size-9 rounded-xl overflow-hidden border border-primary/20 group-hover:scale-105 transition-transform">
                                 <img 
@@ -117,7 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-[11px] font-black text-white leading-none uppercase tracking-wider truncate">Administrador</p>
+                                <p className="text-[11px] font-black text-foreground leading-none uppercase tracking-wider truncate">Administrador</p>
                                 <div className="flex items-center gap-1.5 mt-1">
                                     <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     <p className="text-[9px] text-primary font-bold uppercase tracking-widest">Master Access</p>
@@ -126,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
                         <button
                             onClick={() => { localStorage.removeItem('admin_session'); router.push('/admin/login'); }}
-                            className="w-full mt-3 py-2 text-[10px] font-black text-slate-500 hover:text-red-400 hover:bg-red-500/5 rounded-lg transition-all uppercase tracking-widest border border-white/5"
+                            className="w-full mt-3 py-2 text-[10px] font-black text-muted-foreground hover:text-red-400 hover:bg-red-500/5 rounded-lg transition-all uppercase tracking-widest border border-border"
                         >
                             Cerrar Sesión
                         </button>
@@ -135,55 +140,55 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/90 border-t border-white/5 py-2 z-40 backdrop-blur-xl">
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/90 border-t border-border py-2 z-40 backdrop-blur-xl transition-colors duration-300">
                 <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-6 relative">
                     {/* Shadow indicators for scrolling */}
-                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#0A0A0A] to-transparent z-10 pointer-events-none" />
-                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#0A0A0A] to-transparent z-10 pointer-events-none" />
+                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
                     
-                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin') ? 'text-primary' : 'text-slate-500'}`} href="/admin">
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin') ? 'text-primary' : 'text-muted-foreground'}`} href="/admin">
                         <span className="material-symbols-outlined text-xl leading-none">dashboard</span>
                         <span className="text-[9px] font-black tracking-widest uppercase">Inicio</span>
                         {isLinkActive('/admin') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
                     </Link>
                     
-                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/citas') ? 'text-primary' : 'text-slate-500'}`} href="/admin/citas">
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/citas') ? 'text-primary' : 'text-muted-foreground'}`} href="/admin/citas">
                         <span className="material-symbols-outlined text-xl leading-none">calendar_month</span>
                         <span className="text-[9px] font-black tracking-widest uppercase">Agenda</span>
                         {isLinkActive('/admin/citas') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
                     </Link>
 
-                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/clientes') ? 'text-primary' : 'text-slate-500'}`} href="/admin/clientes">
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/clientes') ? 'text-primary' : 'text-muted-foreground'}`} href="/admin/clientes">
                         <span className="material-symbols-outlined text-xl leading-none">badge</span>
                         <span className="text-[9px] font-black tracking-widest uppercase">Clientes</span>
                         {isLinkActive('/admin/clientes') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
                     </Link>
 
-                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/barberos') ? 'text-primary' : 'text-slate-500'}`} href="/admin/barberos">
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/barberos') ? 'text-primary' : 'text-muted-foreground'}`} href="/admin/barberos">
                         <span className="material-symbols-outlined text-xl leading-none">engineering</span>
                         <span className="text-[9px] font-black tracking-widest uppercase">Staff</span>
                         {isLinkActive('/admin/barberos') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
                     </Link>
 
-                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/servicios') ? 'text-primary' : 'text-slate-500'}`} href="/admin/servicios">
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/servicios') ? 'text-primary' : 'text-muted-foreground'}`} href="/admin/servicios">
                         <span className="material-symbols-outlined text-xl leading-none">brush</span>
                         <span className="text-[9px] font-black tracking-widest uppercase">Servicios</span>
                         {isLinkActive('/admin/servicios') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
                     </Link>
 
-                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/reportes') ? 'text-primary' : 'text-slate-500'}`} href="/admin/reportes">
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/reportes') ? 'text-primary' : 'text-muted-foreground'}`} href="/admin/reportes">
                         <span className="material-symbols-outlined text-xl leading-none">monitoring</span>
                         <span className="text-[9px] font-black tracking-widest uppercase">Reportes</span>
                         {isLinkActive('/admin/reportes') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
                     </Link>
 
-                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/finanzas') ? 'text-primary' : 'text-slate-500'}`} href="/admin/finanzas">
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/finanzas') ? 'text-primary' : 'text-muted-foreground'}`} href="/admin/finanzas">
                         <span className="material-symbols-outlined text-xl leading-none">account_balance_wallet</span>
                         <span className="text-[9px] font-black tracking-widest uppercase">Finanzas</span>
                         {isLinkActive('/admin/finanzas') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
                     </Link>
 
-                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/configuracion') ? 'text-primary' : 'text-slate-500'}`} href="/admin/configuracion">
+                    <Link className={`flex flex-col items-center gap-1 min-w-[72px] py-1 transition-all ${isLinkActive('/admin/configuracion') ? 'text-primary' : 'text-muted-foreground'}`} href="/admin/configuracion">
                         <span className="material-symbols-outlined text-xl leading-none">settings</span>
                         <span className="text-[9px] font-black tracking-widest uppercase">Ajustes</span>
                         {isLinkActive('/admin/configuracion') && <div className="absolute bottom-0 w-6 h-0.5 bg-primary rounded-full shadow-glow-gold" />}
@@ -210,7 +215,7 @@ function NavItem({ href, icon, label, active }: { href: string; icon: string; la
                 flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 group relative overflow-hidden
                 ${active
                     ? 'bg-primary text-black font-black shadow-[0_0_20px_-5px_rgba(212,175,55,0.4)]'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent hover:border-border'
                 }
             `}
         >
