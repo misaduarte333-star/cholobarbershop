@@ -40,13 +40,18 @@ export function KPICard({
 
   const colorStyles = variants[color] || variants.blue
 
-  // Handle both LucideIcon component and passed-in React node
+  // Handle both LucideIcon component (function or forwardRef object) and passed-in React node
   const renderIcon = () => {
     if (!icon) return null
-    if (typeof icon === 'function') {
-      const IconComp = icon as LucideIcon
+    
+    // Check if icon is a component (function or forwardRef object)
+    const isComponent = typeof icon === 'function' || (typeof icon === 'object' && icon !== null && '$$typeof' in (icon as any))
+    
+    if (isComponent) {
+      const IconComp = icon as any
       return <IconComp className="w-4 h-4" />
     }
+    
     if (React.isValidElement(icon)) {
       return React.cloneElement(icon as React.ReactElement<any>, {
         className: cn("w-4 h-4", (icon.props as any)?.className)
