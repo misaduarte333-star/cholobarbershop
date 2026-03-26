@@ -44,7 +44,14 @@ export function KPICard({
   const renderIcon = () => {
     if (!icon) return null
     
-    // Check if icon is a component (function or forwardRef object)
+    // 1. If it's already a React element (e.g., <CalendarIcon />)
+    if (React.isValidElement(icon)) {
+      return React.cloneElement(icon as React.ReactElement<any>, {
+        className: cn("w-4 h-4", (icon.props as any)?.className)
+      })
+    }
+    
+    // 2. If it's a component type (e.g., CalendarIcon)
     const isComponent = typeof icon === 'function' || (typeof icon === 'object' && icon !== null && '$$typeof' in (icon as any))
     
     if (isComponent) {
@@ -52,11 +59,6 @@ export function KPICard({
       return <IconComp className="w-4 h-4" />
     }
     
-    if (React.isValidElement(icon)) {
-      return React.cloneElement(icon as React.ReactElement<any>, {
-        className: cn("w-4 h-4", (icon.props as any)?.className)
-      })
-    }
     return icon as React.ReactNode
   }
 
