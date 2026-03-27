@@ -407,13 +407,15 @@ export default function TabletDashboard() {
                 year: 'numeric', month: '2-digit', day: '2-digit'
             }).format(new Date())
             
-            // FIX: PostgREST `in` filter with arrays is safer and correct for Supabase
+            // Using multiple .neq is safer than .not('in') as some client versions omit parentheses
             const { count, error } = await supabase
-                .from('citas')
+                .from('vista_citas_app')
                 .select('*', { count: 'exact', head: true })
                 .eq('barbero_id', barberoId)
                 .lt('fecha_cita_local', hoy)
-                .not('estado', 'in', ['finalizada', 'cancelada', 'no_show'])
+                .neq('estado', 'finalizada')
+                .neq('estado', 'cancelada')
+                .neq('estado', 'no_show')
                 
             if (error) throw error;
             if (count !== null) {
