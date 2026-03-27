@@ -19,7 +19,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { cn } from '@/lib/utils'
+import { cn, parseLocalTimestamp } from '@/lib/utils'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { KPICard } from '@/components/KPICard'
@@ -89,7 +89,7 @@ export default function ReportesPage() {
 
                 const ingresosMap = new Map<string, number>()
                 finalizadas.forEach(c => {
-                    const dia = new Date(c.timestamp_inicio_local).toLocaleDateString('es-MX', { weekday: 'short' })
+                    const dia = parseLocalTimestamp(c.timestamp_inicio_local).toLocaleDateString('es-MX', { weekday: 'short' })
                     const precio = c.servicio_precio || 0
                     ingresosMap.set(dia, (ingresosMap.get(dia) || 0) + precio)
                 })

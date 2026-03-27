@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { Badge } from '@/components/ui/badge'
-import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO, parse12hToMins, formato12h } from '@/lib/utils'
+import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO, parse12hToMins, formato12h, parseLocalTimestamp } from '@/lib/utils'
 
 import { ClientAutocomplete } from './ClientAutocomplete'
 import {
@@ -296,7 +296,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
 
-                const cStart = new Date(c.timestamp_inicio_local).getTime()
+                const cStart = parseLocalTimestamp(c.timestamp_inicio_local).getTime()
                 // Bloquear solo si tienen exactamente la misma hora de inicio
                 return nStartMs === cStart
             })
@@ -435,7 +435,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
 
-                const cStart = new Date(c.timestamp_inicio_local).getTime()
+                const cStart = parseLocalTimestamp(c.timestamp_inicio_local).getTime()
                 // Validar solo por coincidencia de inicio del slot (independiente de duración)
                 return nStartMs === cStart
             })

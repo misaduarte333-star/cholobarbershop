@@ -5,7 +5,7 @@ import type { CitaDesdeVista } from '@/lib/types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Ban, Utensils, BarChart3, CheckCircle2, Wallet, AlertCircle, CircleDollarSign, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn, parseLocalTimestamp } from '@/lib/utils'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 import {
@@ -139,8 +139,8 @@ function VistaSemanal({ citas, bloqueos, almuerzoBarbero, days }: { citas: CitaD
                                     <div key={day.dateStr} className="relative border-r border-white/5 last:border-r-0 p-0.5">
                                         {/* Citas */}
                                         {citasDelDia.map(cita => {
-                                            const start = new Date(cita.timestamp_inicio_local)
-                                            const end = new Date(cita.timestamp_fin_local)
+                                            const start = parseLocalTimestamp(cita.timestamp_inicio_local)
+                                            const end = parseLocalTimestamp(cita.timestamp_fin_local)
                                             const style = calculateStyles(start, end)
                                             return (
                                                 <div key={cita.id} className={`absolute left-0.5 right-0.5 rounded-lg border p-1 px-1.5 overflow-hidden backdrop-blur-md flex flex-col ${getStatusColor(cita.estado)} hover:brightness-110 transition-all z-10 shadow-md`} style={style} title={`${cita.cliente_nombre} - ${cita.servicio_nombre}`}>
@@ -260,7 +260,7 @@ function VistaMensual({ citas, bloqueos, days, fecha }: { citas: CitaDesdeVista[
                                     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 px-0.5">
                                         {citasDelDia.map(cita => (
                                             <div key={cita.id} className={`text-[8px] md:text-[9px] font-black uppercase tracking-tight truncate px-1.5 py-0.5 rounded border ${getStatusColor(cita.estado)}`} title={`${cita.cliente_nombre}`}>
-                                                {new Date(cita.timestamp_inicio_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '')} {cita.cliente_nombre.split(' ')[0]}
+                                                {parseLocalTimestamp(cita.timestamp_inicio_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '')} {cita.cliente_nombre.split(' ')[0]}
                                             </div>
                                         ))}
                                         {bloqueosDelDia.map(bloqueo => (

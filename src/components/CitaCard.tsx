@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import type { CitaDesdeVista, EstadoCita } from '@/lib/types'
-import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO, parse12hToMins, formato12h } from '@/lib/utils'
+import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO, parse12hToMins, formato12h, parseLocalTimestamp } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -210,11 +210,11 @@ export const CitaCard = memo(function CitaCard({
                 payload.timestamp_fin_servicio = now.toISOString()
 
                 if (cita.timestamp_inicio_servicio) {
-                    const start = new Date(cita.timestamp_inicio_servicio)
+                    const start = parseLocalTimestamp(cita.timestamp_inicio_servicio!)
                     const diffMs = now.getTime() - start.getTime()
                     payload.duracion_real_minutos = Math.round(diffMs / 60000)
                 } else {
-                    const scheduledStart = new Date(cita.timestamp_inicio_local)
+                    const scheduledStart = parseLocalTimestamp(cita.timestamp_inicio_local)
                     const diffMs = now.getTime() - scheduledStart.getTime()
                     payload.duracion_real_minutos = Math.max(0, Math.round(diffMs / 60000))
                 }
@@ -261,8 +261,8 @@ export const CitaCard = memo(function CitaCard({
         setLoading(true)
         try {
             const [hours, minutes] = newHour.split(':').map(Number)
-            const oldInicio = new Date(cita.timestamp_inicio_local)
-            const oldFin = new Date(cita.timestamp_fin_local)
+            const oldInicio = parseLocalTimestamp(cita.timestamp_inicio_local)
+            const oldFin = parseLocalTimestamp(cita.timestamp_fin_local)
             const duration = oldFin.getTime() - oldInicio.getTime()
 
             // Asignar la hora sobre el día de la cita usando Hermosillo TZ
@@ -286,8 +286,8 @@ export const CitaCard = memo(function CitaCard({
                 const cancelados = ['cancelada', 'no_show']
                 if (cancelados.includes(c.estado)) return false
 
-                const cStart = new Date(c.timestamp_inicio_local).getTime()
-                const cEndOriginal = new Date(c.timestamp_fin_local).getTime()
+                const cStart = parseLocalTimestamp(c.timestamp_inicio_local).getTime()
+                const cEndOriginal = parseLocalTimestamp(c.timestamp_fin_local).getTime()
                 const cDur = Math.round((cEndOriginal - cStart) / 60000)
                 const cDurBlocks = Math.max(1, Math.floor(cDur / 30))
                 const cEndEffective = cStart + (cDurBlocks * 30 * 60000)
@@ -359,7 +359,7 @@ export const CitaCard = memo(function CitaCard({
             const selectedService = allServicios.find(s => s.id === servicioEdit)
             const durationMin = selectedService?.duracion_minutos || 30 // Duración por defecto si no se encuentra
             
-            const start = new Date(cita.timestamp_inicio_local)
+            const start = parseLocalTimestamp(cita.timestamp_inicio_local)
             const newFin = new Date(start.getTime() + durationMin * 60000)
 
             const res = await fetch(`/api/citas/${cita.id}`, {
@@ -405,7 +405,7 @@ export const CitaCard = memo(function CitaCard({
         no_show: { bg: 'bg-card', border: 'border-border', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'No Show', badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30' }
     }[cita.estado] || { bg: 'bg-card', border: 'border-border', accent: 'border-l-slate-500', badgeVariant: 'outline' as const, label: cita.estado, badgeClass: 'bg-slate-500/10 text-slate-500 dark:text-slate-400' }
 
-    const citaStartTime = new Date(cita.timestamp_inicio_local)
+    const citaStartTime = parseLocalTimestamp(cita.timestamp_inicio_local)
     const minutosDiferencia = Math.floor((currentTime.getTime() - citaStartTime.getTime()) / 60000)
     const minHastaCita = -minutosDiferencia
     const esNoShow = minutosDiferencia > 15
@@ -418,17 +418,17 @@ export const CitaCard = memo(function CitaCard({
 
     const hasNextSoon = allCitas.some(c => {
         if (c.id === cita.id || c.estado === 'cancelada' || c.estado === 'finalizada') return false
-        const start = new Date(c.timestamp_inicio_local)
+        const start = parseLocalTimestamp(c.timestamp_inicio_local)
         return start > citaStartTime && (start.getTime() - currentTime.getTime()) < 30 * 60 * 1000
     })
 
     const horaInicio = citaStartTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
-    const horaFin = new Date(cita.timestamp_fin_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
+    const horaFin = parseLocalTimestamp(cita.timestamp_fin_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
 
     // Horarios para generar botones (ajustado al horario de la sucursal) - MEMOIZED for parity with Nueva Cita
     const slotsParaCita = useMemo(() => {
         const slots = []
-        const fechaCita = new Date(cita.timestamp_inicio_local).toLocaleDateString('en-CA')
+        const fechaCita = parseLocalTimestamp(cita.timestamp_inicio_local).toLocaleDateString('en-CA')
 
         // Determinar día de la semana para el horario de sucursal
         const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
@@ -454,7 +454,7 @@ export const CitaCard = memo(function CitaCard({
         }
 
         const duracionSlotMin = 30
-        const duracionCitaActual = Math.round((new Date(cita.timestamp_fin_local).getTime() - new Date(cita.timestamp_inicio_local).getTime()) / 60000)
+        const duracionCitaActual = Math.round((parseLocalTimestamp(cita.timestamp_fin_local).getTime() - parseLocalTimestamp(cita.timestamp_inicio_local).getTime()) / 60000)
 
         const getSlotStatus = (start: Date, end: Date) => {
             const ahora = new Date()
@@ -462,8 +462,8 @@ export const CitaCard = memo(function CitaCard({
             const nEndMs = end.getTime()
 
             // 1. Identificar si este slot pertenece a la CITA ACTUAL (la que estamos moviendo)
-            const nCStart = new Date(cita.timestamp_inicio_local).getTime()
-            const nCEndOriginal = new Date(cita.timestamp_fin_local).getTime()
+            const nCStart = parseLocalTimestamp(cita.timestamp_inicio_local).getTime()
+            const nCEndOriginal = parseLocalTimestamp(cita.timestamp_fin_local).getTime()
             const nCDur = Math.round((nCEndOriginal - nCStart) / 60000)
             const nCDurBlocks = Math.max(1, Math.floor(nCDur / 30))
             const nCEndEffective = nCStart + (nCDurBlocks * 30 * 60000)
@@ -482,8 +482,8 @@ export const CitaCard = memo(function CitaCard({
 
                 if (['cancelada', 'no_show'].includes(c.estado)) return false
 
-                const cStart = new Date(c.timestamp_inicio_local).getTime()
-                const cEndOriginal = new Date(c.timestamp_fin_local).getTime()
+                const cStart = parseLocalTimestamp(c.timestamp_inicio_local).getTime()
+                const cEndOriginal = parseLocalTimestamp(c.timestamp_fin_local).getTime()
                 const cDur = Math.round((cEndOriginal - cStart) / 60000)
                 const cDurBlocks = Math.max(1, Math.floor(cDur / 30))
                 const cEndEffective = cStart + (cDurBlocks * 30 * 60000)
@@ -495,7 +495,7 @@ export const CitaCard = memo(function CitaCard({
             if (ocupadoPorCita) return 'ocupado'
 
             // 3. Past check
-            const esFechaHoy = getHermosilloDateStr(new Date(cita.timestamp_inicio_local)) === getHermosilloDateStr(ahora)
+            const esFechaHoy = getHermosilloDateStr(parseLocalTimestamp(cita.timestamp_inicio_local)) === getHermosilloDateStr(ahora)
             if (start < ahora && esFechaHoy) return 'past'
 
             // 4. Bloqueos manuales
@@ -1122,7 +1122,7 @@ export const CitaCard = memo(function CitaCard({
                                         {(() => {
                                             const mins = cita.duracion_real_minutos
                                                 ?? (cita.timestamp_inicio_servicio && cita.timestamp_fin_servicio
-                                                    ? Math.round((new Date(cita.timestamp_fin_servicio).getTime() - new Date(cita.timestamp_inicio_servicio).getTime()) / 60000)
+                                                    ? Math.round((parseLocalTimestamp(cita.timestamp_fin_servicio!).getTime() - parseLocalTimestamp(cita.timestamp_inicio_servicio!).getTime()) / 60000)
                                                     : null)
                                             return mins != null ? (
                                                 <>

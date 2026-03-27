@@ -1,3 +1,4 @@
+'use client'
 import { useMemo, useEffect, useRef, useState, memo } from 'react'
 import { motion, useDragControls } from 'framer-motion'
 import {
@@ -43,7 +44,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO } from "@/lib/utils"
+import { cn, getHermosilloMins, getHermosilloDateStr, formatToHermosilloISO, parseLocalTimestamp } from "@/lib/utils"
 
 interface AgendaTimelineProps {
     citas: CitaDesdeVista[]
@@ -526,8 +527,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
         // 2. Process Bloqueos (uses fecha_inicio/fecha_fin per actual DB schema)
         bloqueos.forEach(b => {
-            const bStart = new Date(b.fecha_inicio).getTime()
-            const bEnd = new Date(b.fecha_fin).getTime()
+            const bStart = parseLocalTimestamp(b.fecha_inicio).getTime()
+            const bEnd = parseLocalTimestamp(b.fecha_fin).getTime()
 
             slotData.forEach(sd => {
                 if (bStart < sd.timestampEnd && bEnd > sd.timestamp) {
@@ -540,7 +541,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         citas.forEach(cita => {
             if (['cancelada', 'no_show'].includes(cita.estado)) return
 
-            const st = new Date(cita.timestamp_inicio_local)
+            const st = parseLocalTimestamp(cita.timestamp_inicio_local)
             const ampm = st.getHours() >= 12 ? 'PM' : 'AM'
             const h12 = st.getHours() % 12 || 12
             const m = st.getMinutes() < 30 ? '00' : '30'
@@ -582,11 +583,11 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                 payload.timestamp_fin_servicio = now.toISOString()
 
                 if (cita.timestamp_inicio_servicio) {
-                    const start = new Date(cita.timestamp_inicio_servicio)
+                    const start = parseLocalTimestamp(cita.timestamp_inicio_servicio!)
                     const diffMs = now.getTime() - start.getTime()
                     payload.duracion_real_minutos = Math.round(diffMs / 60000)
                 } else {
-                    const scheduledStart = new Date(cita.timestamp_inicio_local)
+                    const scheduledStart = parseLocalTimestamp(cita.timestamp_inicio_local)
                     const diffMs = now.getTime() - scheduledStart.getTime()
                     payload.duracion_real_minutos = Math.max(0, Math.round(diffMs / 60000))
                 }
@@ -621,7 +622,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             return
         }
 
-        const citaStartTime = new Date(cita.timestamp_inicio_local)
+        const citaStartTime = parseLocalTimestamp(cita.timestamp_inicio_local)
         const minutosDiferencia = Math.floor((currentTime.getTime() - citaStartTime.getTime()) / 60000)
         const minHastaCita = -minutosDiferencia
 
@@ -728,8 +729,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         }
 
         // Snap to half-hour grid and normalize using relative timestamp manipulation
-        const originalStart = new Date(cita.timestamp_inicio_local)
-        const originalEnd = new Date(cita.timestamp_fin_local)
+        const originalStart = parseLocalTimestamp(cita.timestamp_inicio_local)
+        const originalEnd = parseLocalTimestamp(cita.timestamp_fin_local)
         const durationMs = originalEnd.getTime() - originalStart.getTime()
 
         // Mover el inicio sumando minutos (30 min por slot)
@@ -752,8 +753,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             const estadosProhibidos = ['en_proceso', 'por_cobrar', 'finalizada', 'completada', 'confirmada', 'en_espera']
             if (!estadosProhibidos.includes(c.estado)) return false
 
-            const cStart = new Date(c.timestamp_inicio_local).getTime()
-            const cEndOriginal = new Date(c.timestamp_fin_local).getTime()
+            const cStart = parseLocalTimestamp(c.timestamp_inicio_local).getTime()
+            const cEndOriginal = parseLocalTimestamp(c.timestamp_fin_local).getTime()
             const cDur = Math.round((cEndOriginal - cStart) / 60000)
             const cDurBlocks = Math.max(1, Math.floor(cDur / 30))
             const cEndEffective = cStart + (cDurBlocks * 30 * 60000)
@@ -783,7 +784,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
         const enAlmuerzo = (() => {
             if (!almuerzoBarbero || !almuerzoBarbero.inicio || !almuerzoBarbero.fin) return false
-            const dateStr = getHermosilloDateStr(new Date(cita.timestamp_inicio_local))
+            const dateStr = getHermosilloDateStr(parseLocalTimestamp(cita.timestamp_inicio_local))
             const aStart = new Date(`${dateStr}T${almuerzoBarbero.inicio}:00-07:00`).getTime()
             const aEnd = new Date(`${dateStr}T${almuerzoBarbero.fin}:00-07:00`).getTime()
             return (nStartMs < aEnd && nEndMs > aStart)
@@ -800,8 +801,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         }
 
         const enBloqueo = bloqueos.some(b => {
-            const bStart = new Date(b.fecha_inicio).getTime()
-            const bEnd = new Date(b.fecha_fin).getTime()
+            const bStart = parseLocalTimestamp(b.fecha_inicio).getTime()
+            const bEnd = parseLocalTimestamp(b.fecha_fin).getTime()
             return (nStartMs < bEnd && nEndMs > bStart)
         })
 
@@ -824,8 +825,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
         try {
             // Preserve original duration
-            const originalStart = new Date(cita.timestamp_inicio_local)
-            const originalEnd = new Date(cita.timestamp_fin_local)
+            const originalStart = parseLocalTimestamp(cita.timestamp_inicio_local)
+            const originalEnd = parseLocalTimestamp(cita.timestamp_fin_local)
             const durationMs = originalEnd.getTime() - originalStart.getTime()
 
             const newStart = new Date(newStartTime)
@@ -1149,7 +1150,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                     <div className="text-center flex-1">
                                         <p className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-widest mb-1">De</p>
                                         <p className="text-lg font-black text-muted-foreground/40 line-through">
-                                            {new Date(displayMove.cita.timestamp_inicio_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                            {parseLocalTimestamp(displayMove.cita.timestamp_inicio_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                         </p>
                                     </div>
                                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { cn, getHermosilloMins, getMinsFromHermosilloString } from '@/lib/utils'
+import { cn, getHermosilloMins, getMinsFromHermosilloString, parseLocalTimestamp } from '@/lib/utils'
 import { 
     Clock, 
     User, 
@@ -111,8 +111,8 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
     }
 
     const renderCitaBlock = (cita: CitaDesdeVista) => {
-        const start = new Date(cita.timestamp_inicio_local)
-        const end = new Date(cita.timestamp_fin_local)
+        const start = parseLocalTimestamp(cita.timestamp_inicio_local)
+        const end = parseLocalTimestamp(cita.timestamp_fin_local)
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return null
 
         const startMins = getMinsFromHermosilloString(cita.timestamp_inicio_local)
@@ -125,7 +125,7 @@ export function AdminDailyCalendar({ citas, barberos, currentTime, sucursal, blo
 
         let activeTimer = null
         if (isEnProceso && cita.timestamp_inicio_servicio) {
-            const minTrasncurridos = Math.floor((new Date().getTime() - new Date(cita.timestamp_inicio_servicio).getTime()) / 60000)
+            const minTrasncurridos = Math.floor((new Date().getTime() - parseLocalTimestamp(cita.timestamp_inicio_servicio!).getTime()) / 60000)
             const horas = Math.floor(minTrasncurridos / 60)
             const mins = minTrasncurridos % 60
             activeTimer = horas > 0 ? `${horas}h ${mins}m` : `${mins}m`

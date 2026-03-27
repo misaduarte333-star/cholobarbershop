@@ -53,6 +53,18 @@ export function formatToHermosilloISO(d: Date): string {
 }
 
 /**
+ * Parses a local timestamp string from Supabase/PostgreSQL safely across all browsers.
+ * Safari does not support space-separated date strings ("YYYY-MM-DD HH:mm:ss").
+ * This normalizes them to ISO 8601 ("YYYY-MM-DDTHH:mm:ss") before parsing.
+ */
+export function parseLocalTimestamp(s: string): Date {
+    if (s && s.length >= 11 && s[10] === ' ') {
+        return new Date(s.slice(0, 10) + 'T' + s.slice(11))
+    }
+    return new Date(s)
+}
+
+/**
  * Extracts total minutes from a Hermosillo local timestamp string (YYYY-MM-DD HH:mm:ss)
  * bypassing browser timezone shifts.
  */
