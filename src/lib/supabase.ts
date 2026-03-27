@@ -74,16 +74,29 @@ export function createClient(): ReturnType<typeof createBrowserClient<Database>>
     if (isBrowser && browserClient) return browserClient
 
     try {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+             throw new Error('Supabase URL or Anon Key is missing from environment variables.')
+        }
+
         if (isBrowser) console.log('✅ BARBERIA-APP VERSION: 1.1.0 - Usando Supabase Real')
         const client = createBrowserClient<Database>(
-            SUPABASE_URL!,
-            SUPABASE_ANON_KEY!
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY
         )
 
         if (isBrowser) browserClient = client
         return client
-    } catch (e) {
-        if (isBrowser) console.error('❌ Error Supabase Init:', e)
+    } catch (e: any) {
+        if (isBrowser) {
+            console.error('❌ Error Supabase Init:', e?.message || e)
+            // Diagnostic for Easy Panel / Production environment
+            console.log('DIAGNOSTICO AMBIENTE:', {
+                url_type: typeof SUPABASE_URL,
+                url_present: !!SUPABASE_URL,
+                key_present: !!SUPABASE_ANON_KEY,
+                origin: window.location.origin
+            })
+        }
         return createFallbackMock() as any
     }
 }

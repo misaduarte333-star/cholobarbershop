@@ -39,6 +39,8 @@ export default function RootLayout({
     return (
         <html lang="es" className={cn(inter.variable, montserrat.variable, "font-sans", geist.variable)} suppressHydrationWarning>
             <head>
+                <link rel="icon" href="/logo-cholo.jpg" type="image/jpeg" />
+                <link rel="apple-touch-icon" href="/logo-cholo.jpg" />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap" rel="stylesheet" />

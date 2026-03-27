@@ -39,7 +39,7 @@ import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
 import { FinanzasBarbero } from '@/components/FinanzasBarbero'
-import type { CitaDesdeVista } from '@/lib/types'
+import type { CitaDesdeVista, Barbero } from '@/lib/types'
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -289,10 +289,10 @@ export default function TabletDashboard() {
             console.log('🔄 Initializing session sync...')
 
             // 1. Initial hydration (browser only)
-            const sessionStr = localStorage.getItem('barbero_session')
-            let currentBarbero = barbero
+            const sessionStr = typeof window !== 'undefined' ? localStorage.getItem('barbero_session') : null
+            let currentBarbero: Barbero | null = null
 
-            if (sessionStr && !currentBarbero) {
+            if (sessionStr) {
                 try {
                     currentBarbero = JSON.parse(sessionStr)
                     console.log('📦 Hydrated session from localStorage:', currentBarbero?.nombre)
@@ -304,39 +304,42 @@ export default function TabletDashboard() {
             }
 
             // Also hydrate citas and dates
-            const cachedCitas = localStorage.getItem('cached_dashboard_citas')
-            if (cachedCitas) setCitas(JSON.parse(cachedCitas))
+            if (typeof window !== 'undefined') {
+                const cachedCitas = localStorage.getItem('cached_dashboard_citas')
+                if (cachedCitas) setCitas(JSON.parse(cachedCitas))
+            }
 
             const hoy = new Intl.DateTimeFormat('en-CA', {
                 timeZone: 'America/Hermosillo',
                 year: 'numeric', month: '2-digit', day: '2-digit'
             }).format(new Date())
+
             setFechaAgenda(hoy)
             setCurrentTime(new Date())
             setIsMounted(true)
 
-            // 2. Auth Check: If NO session in state OR localStorage -> REDIRECT
+            // 2. Auth Check: If NO session found -> REDIRECT
             if (!currentBarbero?.id) {
                 console.warn('⚠️ No barbero ID found after hydration. Expelling...')
+                setIsCheckingAuth(false) // Unblock render before redirecting
                 router.replace('/tablet/login')
                 return
             }
 
             // 3. SWR: Validate against Supabase
             try {
-                console.log('📡 Validating session with Supabase...', currentBarbero.id)
-                const { data, error } = await supabase
+                const bId = currentBarbero.id
+                console.log('📡 Validating session with Supabase...', bId)
+                const { data, error } = await (supabase
                     .from('barberos')
                     .select('*')
-                    .eq('id', currentBarbero.id)
-                    .single() as { data: any, error: any }
+                    .eq('id', bId)
+                    .single() as any)
 
                 if (error || !data) {
-                    console.error('❌ Session validation failed (Network or Not Found):', error)
-                    // If it's a "Not Found" error (406 or similar), expel. 
-                    // If it's a network error, maybe allow temporary offline access?
-                    // For now, if we can't find the barbero, we expel for security.
-                    if (error?.code !== 'PGRST116') { // PGRST116 is single() not found
+                    console.error('❌ Session validation failed:', error?.message || 'Not found')
+                    // If it's a real 406 (Not Found), expel. Network errors are handled more gracefully.
+                    if (error?.code === 'PGRST116') {
                         localStorage.removeItem('barbero_session')
                         router.replace('/tablet/login')
                         return
@@ -367,32 +370,29 @@ export default function TabletDashboard() {
                 // SUCCESS: Only now we allow the dashboard to show
                 console.log('✅ Session verified. Welcome!')
 
-                // Fetch sucursal data if available
-                if (currentBarbero.sucursal_id) {
+                // Fetch sucursal and other data in parallel
+                if (currentBarbero.sucursal_id || (data && (data as any).sucursal_id)) {
+                    const sId = ((data as any)?.sucursal_id || currentBarbero.sucursal_id) as string
                     const [sucursalRes, serviciosRes, barberosRes] = await Promise.all([
-                        supabase.from('sucursales').select('*').eq('id', currentBarbero.sucursal_id).single(),
+                        supabase.from('sucursales').select('*').eq('id', sId).single() as any,
                         supabase.from('servicios').select('*').eq('activo', true),
                         supabase.from('barberos').select('*').eq('activo', true),
                     ])
-                    if ((sucursalRes as any).data) setSucursal((sucursalRes as any).data)
-                    if (serviciosRes.data) setAllServicios(serviciosRes.data)
-                    if (barberosRes.data) setAllBarberos(barberosRes.data)
+                    if (sucursalRes.data) setSucursal(sucursalRes.data)
+                    if (serviciosRes.data) setAllServicios(serviciosRes.data || [])
+                    if (barberosRes.data) setAllBarberos(barberosRes.data || [])
                 } else {
-                    // Still fetch servicios/barberos even without sucursal
                     const [serviciosRes, barberosRes] = await Promise.all([
                         supabase.from('servicios').select('*').eq('activo', true),
                         supabase.from('barberos').select('*').eq('activo', true),
                     ])
-                    if (serviciosRes.data) setAllServicios(serviciosRes.data)
-                    if (barberosRes.data) setAllBarberos(barberosRes.data)
+                    setAllServicios(serviciosRes.data || [])
+                    setAllBarberos(barberosRes.data || [])
                 }
-
-                setIsCheckingAuth(false)
 
             } catch (err) {
                 console.error('🔥 Critical auth sync error:', err)
-                // In case of unknown error, we stay in loading or expel depending on severity.
-                // For mobile robustness, if we already have a session, we'll try to let them in.
+            } finally {
                 setIsCheckingAuth(false)
             }
         }
@@ -401,20 +401,26 @@ export default function TabletDashboard() {
     }, [router, supabase])
 
     const checkPastPending = useCallback(async (barberoId: string) => {
-        const hoy = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'America/Hermosillo',
-            year: 'numeric', month: '2-digit', day: '2-digit'
-        }).format(new Date())
-        
-        const { count, error } = await supabase
-            .from('citas')
-            .select('*', { count: 'exact', head: true })
-            .eq('barbero_id', barberoId)
-            .lt('fecha_cita_local', hoy)
-            .not('estado', 'in', '("finalizada","cancelada","no_show")')
+        try {
+            const hoy = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Hermosillo',
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(new Date())
             
-        if (!error && count !== null) {
-            setCitasPasadasPendientes(count)
+            // FIX: PostgREST `in` filter with arrays is safer and correct for Supabase
+            const { count, error } = await supabase
+                .from('citas')
+                .select('*', { count: 'exact', head: true })
+                .eq('barbero_id', barberoId)
+                .lt('fecha_cita_local', hoy)
+                .not('estado', 'in', ['finalizada', 'cancelada', 'no_show'])
+                
+            if (error) throw error;
+            if (count !== null) {
+                setCitasPasadasPendientes(count)
+            }
+        } catch (err) {
+            console.error('⚠️ Error checking past pending appointments:', err)
         }
     }, [supabase])
 
