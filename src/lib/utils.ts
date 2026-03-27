@@ -6,35 +6,50 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getHermosilloMins(date: Date): number {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'America/Hermosillo',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    }).formatToParts(date);
-    const h = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-    const m = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
-    return h * 60 + m;
+    try {
+        const parts = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'America/Hermosillo',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        }).formatToParts(date);
+        const h = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+        const m = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+        return h * 60 + m;
+    } catch {
+        // Fallback: use device local time (for browsers without named timezone support)
+        return date.getHours() * 60 + date.getMinutes();
+    }
 }
 
 export function getHermosilloDateStr(date: Date): string {
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Hermosillo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).format(date);
+    try {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Hermosillo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(date);
+    } catch {
+        // Fallback: use ISO date string
+        return date.toISOString().split('T')[0];
+    }
 }
 
 export function formatToHermosilloISO(d: Date): string {
-    const dateStr = getHermosilloDateStr(d)
-    const timeStr = new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'America/Hermosillo',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    }).format(d)
-    return `${dateStr}T${timeStr}-07:00`
+    try {
+        const dateStr = getHermosilloDateStr(d)
+        const timeStr = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'America/Hermosillo',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        }).format(d)
+        return `${dateStr}T${timeStr}-07:00`
+    } catch {
+        // Fallback: use ISO string with UTC offset approximation
+        return d.toISOString().replace('Z', '-07:00')
+    }
 }
 
 /**
