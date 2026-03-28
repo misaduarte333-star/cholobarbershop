@@ -108,8 +108,7 @@ export default function TabletDashboard() {
             }
         }
 
-        // Try immediately on mount
-        requestFs()
+        // Fullscreen requested ONLY on user interaction or visibility change to avoid security errors on mount
 
         // KEY: re-enter when screen is unlocked (visibility: hidden → visible)
         const onVisibilityChange = () => {
@@ -141,11 +140,6 @@ export default function TabletDashboard() {
             window.removeEventListener('click', onFirstInteraction, { capture: true })
         }
     }, [])
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            // Check performance but apply optimizations globally
-        }
-    }, [])
     const [showSettings, setShowSettings] = useState(false)
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
     const [showMoreActions, setShowMoreActions] = useState(false)
@@ -170,47 +164,54 @@ export default function TabletDashboard() {
     useEffect(() => { citasRef.current = citas }, [citas])
 
     const shiftFechaAgenda = (days: number) => {
+        if (!fechaAgenda) return
         const d = new Date(`${fechaAgenda}T12:00:00-07:00`)
+        if (isNaN(d.getTime())) return
         const step = vistaAgenda === 'semana' ? days * 7 : days
         d.setDate(d.getDate() + step)
         setFechaAgenda(d.toLocaleDateString('en-CA'))
     }
 
     const getRelativeDateLabel = (dateStr: string) => {
-        const hoy = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'America/Hermosillo',
-            year: 'numeric', month: '2-digit', day: '2-digit'
-        }).format(new Date())
+        if (!isMounted || !dateStr) return '...'
+        
+        try {
+            const hoy = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Hermosillo',
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(new Date())
 
-        const target = new Date(`${dateStr}T12:00:00-07:00`)
+            const target = new Date(`${dateStr}T12:00:00-07:00`)
+            if (isNaN(target.getTime())) return dateStr
 
-        if (vistaAgenda === 'semana') {
-            // Calculate start and end of the week (Monday to Sunday)
-            const dayOfWeek = target.getDay() // 0 is Sunday, 1 is Monday
-            const startOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-            const endOffset = startOffset + 6
-            
-            const startD = new Date(target)
-            startD.setDate(target.getDate() + startOffset)
-            const endD = new Date(target)
-            endD.setDate(target.getDate() + endOffset)
+            if (vistaAgenda === 'semana') {
+                const dayOfWeek = target.getDay() 
+                const startOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+                const endOffset = startOffset + 6
+                
+                const startD = new Date(target)
+                startD.setDate(target.getDate() + startOffset)
+                const endD = new Date(target)
+                endD.setDate(target.getDate() + endOffset)
 
-            const startStr = startD.getDate()
-            const endStr = `${endD.getDate()} ${endD.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')}`
-            return `${startStr} - ${endStr}`
+                const startStr = startD.getDate()
+                const endStr = `${endD.getDate()} ${endD.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')}`
+                return `${startStr} - ${endStr}`
+            }
+
+            if (dateStr === hoy) return 'Hoy'
+
+            const hoyObj = new Date(`${hoy}T12:00:00-07:00`)
+            const diffTime = target.getTime() - hoyObj.getTime()
+            const diffDays = Math.round(diffTime / (1000 * 3600 * 24))
+
+            if (diffDays === 1) return 'Mañana'
+            if (diffDays === -1) return 'Ayer'
+
+            return target.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).replace('.', '').replace(',', '')
+        } catch (e) {
+            return dateStr
         }
-
-        if (dateStr === hoy) return 'Hoy'
-
-        const hoyObj = new Date(`${hoy}T12:00:00-07:00`)
-        const diffTime = target.getTime() - hoyObj.getTime()
-        const diffDays = Math.round(diffTime / (1000 * 3600 * 24))
-
-        if (diffDays === 1) return 'Mañana'
-        if (diffDays === -1) return 'Ayer'
-
-        // Formato: "Jueves 12 mar"
-        return target.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).replace('.', '').replace(',', '')
     }
 
     const handleDoubleTapAgenda = () => {
@@ -270,13 +271,12 @@ export default function TabletDashboard() {
 
     // Persist sound preference to localStorage
     useEffect(() => {
+        setIsMounted(true)
         const saved = localStorage.getItem('sound_enabled')
         if (saved !== null) setSoundEnabled(saved === 'true')
 
-        // Try to init audio silently on mount
         initializeAudio()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [initializeAudio])
 
     const toggleSound = useCallback((val: boolean) => {
         setSoundEnabled(val)
@@ -286,7 +286,6 @@ export default function TabletDashboard() {
     // Unified Hydration & Auth/SWR Sync
     useEffect(() => {
         const syncSessionAndData = async () => {
-            console.log('🔄 Initializing session sync...')
 
             // 1. Initial hydration (browser only)
             const sessionStr = typeof window !== 'undefined' ? localStorage.getItem('barbero_session') : null
@@ -295,7 +294,6 @@ export default function TabletDashboard() {
             if (sessionStr) {
                 try {
                     currentBarbero = JSON.parse(sessionStr)
-                    console.log('📦 Hydrated session from localStorage:', currentBarbero?.nombre)
                     setBarbero(currentBarbero)
                 } catch (e) {
                     console.error('❌ Failed to parse session:', e)
@@ -316,7 +314,6 @@ export default function TabletDashboard() {
 
             setFechaAgenda(hoy)
             setCurrentTime(new Date())
-            setIsMounted(true)
 
             // 2. Auth Check: If NO session found -> REDIRECT
             if (!currentBarbero?.id) {
@@ -329,7 +326,6 @@ export default function TabletDashboard() {
             // 3. SWR: Validate against Supabase
             try {
                 const bId = currentBarbero.id
-                console.log('📡 Validating session with Supabase...', bId)
                 const { data, error } = await (supabase
                     .from('barberos')
                     .select('*')
@@ -363,12 +359,10 @@ export default function TabletDashboard() {
                         const mergedBarbero = { ...currentBarbero, ...data }
                         setBarbero(mergedBarbero)
                         localStorage.setItem('barbero_session', JSON.stringify(mergedBarbero))
-                        console.log('✨ Session cache updated with fresh DB data')
                     }
                 }
 
                 // SUCCESS: Only now we allow the dashboard to show
-                console.log('✅ Session verified. Welcome!')
 
                 // Fetch sucursal and other data in parallel
                 if (currentBarbero.sucursal_id || (data && (data as any).sucursal_id)) {
@@ -472,7 +466,6 @@ export default function TabletDashboard() {
         }
 
         try {
-            console.log(`📡 Fetching agenda: [${syncVista}] range: ${startStr} to ${endStr}`)
             const [citasRes, bloqueosRes] = await Promise.all([
                 supabase
                     .from('vista_citas_app')
@@ -508,7 +501,9 @@ export default function TabletDashboard() {
                     : citasData.filter(c => c.fecha_cita_local === hoy)
 
                 // Only update if actually different to prevent unnecessary re-renders (SWR)
-                if (JSON.stringify(totalHoy) !== JSON.stringify(citasRef.current)) {
+                const prevIds = citasRef.current.map((c: any) => c.id + c.estado).join(',')
+                const nextIds = totalHoy.map((c: any) => c.id + c.estado).join(',')
+                if (prevIds !== nextIds) {
                     setCitas(totalHoy)
                     localStorage.setItem('cached_dashboard_citas', JSON.stringify(totalHoy))
                 }

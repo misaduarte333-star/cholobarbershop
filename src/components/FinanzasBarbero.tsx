@@ -63,7 +63,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
     // Form state
     const [descripcion, setDescripcion] = useState('')
     const [monto, setMonto] = useState('')
-    const [fechaPago, setFechaPago] = useState<Date>(new Date())
+    const [fechaPago, setFechaPago] = useState<Date | null>(null)
     const [esRecurrente, setEsRecurrente] = useState(false)
     const [pagado, setPagado] = useState(false)
     const [frecuencia, setFrecuencia] = useState<'mensual' | 'semanal' | 'diario' | 'anual'>('mensual')
@@ -160,7 +160,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
             sucursal_id: barbero.sucursal_id,
             descripcion,
             monto: parseFloat(monto),
-            fecha_pago: fechaPago.toISOString(),
+            fecha_pago: fechaPago?.toISOString() || new Date().toISOString(),
             es_recurrente: esRecurrente,
             frecuencia: esRecurrente ? frecuencia : null,
             pagado: pagado
@@ -245,6 +245,14 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
 
         return { totalExpenses, totalPaid, allPaid, remaining, profit, progress, cutsNeeded, incomePerCut }
     }, [gastos, income, barbero])
+
+    const [isMounted, setIsMounted] = useState(false)
+    useEffect(() => { 
+        setIsMounted(true)
+        setFechaPago(new Date())
+    }, [])
+
+    if (!isMounted) return null
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -364,7 +372,7 @@ export function FinanzasBarbero({ barbero, onBack }: FinanzasBarberoProps) {
                                             <div className="relative">
                                                 <Input 
                                                     type="date"
-                                                    value={format(fechaPago, 'yyyy-MM-dd')}
+                                                    value={fechaPago ? format(fechaPago, 'yyyy-MM-dd') : ''}
                                                     onChange={(e) => setFechaPago(new Date(e.target.value + 'T12:00:00'))}
                                                     className="bg-muted border-border text-xs"
                                                     required

@@ -105,20 +105,21 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             setIsRefreshing(true)
             const supabase = createClient()
 
-            // Citas: Intentar obtener las más frescas del servidor al abrir el modal
-            try {
-                const { data: citasData } = await supabase.from('vista_citas_app')
-                    .select('*')
-                    .eq('fecha_cita_local', fecha)
-                    .neq('estado', 'cancelada')
-                
-                if (citasData) {
-                    const filtered = barberoId ? citasData.filter((c: any) => String(c.barbero_id) === String(barberoId)) : citasData
-                    console.log(`📡 [TabletNuevaCitaModal] Sync exitoso (${fecha}):`, filtered.length)
-                    setCitasParaFecha(filtered)
+            // Citas: Solo hacer fetch si el padre no proporcionó datos pre-cargados
+            if (citasDelDia.length === 0) {
+                try {
+                    const { data: citasData } = await supabase.from('vista_citas_app')
+                        .select('*')
+                        .eq('fecha_cita_local', fecha)
+                        .neq('estado', 'cancelada')
+
+                    if (citasData) {
+                        const filtered = barberoId ? citasData.filter((c: any) => String(c.barbero_id) === String(barberoId)) : citasData
+                        setCitasParaFecha(filtered)
+                    }
+                } catch (err) {
+                    console.error("Error refreshing appointments:", err)
                 }
-            } catch (err) {
-                console.error("Error refreshing appointments:", err)
             }
 
             // Only fetch bloqueos/almuerzo if not pre-loaded from parent (optimization)

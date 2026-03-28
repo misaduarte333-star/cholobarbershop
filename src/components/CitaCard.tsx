@@ -422,8 +422,8 @@ export const CitaCard = memo(function CitaCard({
         return start > citaStartTime && (start.getTime() - currentTime.getTime()) < 30 * 60 * 1000
     })
 
-    const horaInicio = citaStartTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
-    const horaFin = parseLocalTimestamp(cita.timestamp_fin_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true })
+    const horaInicio = mounted ? citaStartTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }) : '--:--'
+    const horaFin = mounted ? new Date(cita.timestamp_fin_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }) : '--:--'
 
     // Horarios para generar botones (ajustado al horario de la sucursal) - MEMOIZED for parity with Nueva Cita
     const slotsParaCita = useMemo(() => {

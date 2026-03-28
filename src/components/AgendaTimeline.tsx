@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useEffect, useRef, useState, memo } from 'react'
+import { useMemo, useEffect, useRef, useState, memo, useCallback } from 'react'
 import { motion, useDragControls } from 'framer-motion'
 import {
     Play,
@@ -110,7 +110,7 @@ const TimelineAppointmentCard = memo(({
         initial: { opacity: 0, scale: 0.98 },
         animate: {
             opacity: 1,
-            scale: isThisLongPress ? 1.02 : (isThisHighlighted ? [1, 1.03, 1] : 1),
+            scale: isThisLongPress ? 1.02 : 1,
             boxShadow: isThisLongPress
                 ? '0 10px 25px -5px hsl(var(--foreground) / 0.1), 0 8px 10px -6px hsl(var(--foreground) / 0.1)'
                 : 'none',
@@ -234,16 +234,37 @@ const TimelineAppointmentCard = memo(({
     )
 })
 
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+
 export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, barbero, onUpdate }: AgendaTimelineProps) {
-    // Determinar día de la semana para el horario de sucursal
-    const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
-    const todayLocalStr = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Hermosillo',
-        year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(new Date())
+    const [isMounted, setIsMounted] = useState(false)
+    useEffect(() => { setIsMounted(true) }, [])
+    
+    const todayLocalStr = useMemo(() => {
+        if (!isMounted) return ""
+        try {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Hermosillo',
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(new Date())
+        } catch (e) {
+            // Fallback for devices without timezone support
+            return new Date().toISOString().split('T')[0]
+        }
+    }, [isMounted])
+
     const viewDate = fechaBase || todayLocalStr
-    const targetDate = new Date(`${viewDate}T12:00:00-07:00`)
-    const nombreDia = dias[targetDate.getDay()]
+    
+    const { nombreDia } = useMemo(() => {
+        if (!viewDate) return { nombreDia: DIAS_SEMANA[new Date().getDay()] }
+        try {
+            const targetDate = new Date(`${viewDate}T12:00:00-07:00`)
+            if (isNaN(targetDate.getTime())) throw new Error("Invalid Date")
+            return { nombreDia: DIAS_SEMANA[targetDate.getDay()] }
+        } catch (e) {
+            return { nombreDia: DIAS_SEMANA[new Date().getDay()] }
+        }
+    }, [viewDate])
 
     const { horaInicio, horaFin } = useMemo(() => {
         let inicio = 8
@@ -283,7 +304,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
     const [isManualScroll, setIsManualScroll] = useState(false)
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const [activeModal, setActiveModal] = useState<'move' | 'cancel' | 'details' | 'checkout' | null>(null)
     const [showEarlyWarning, setShowEarlyWarning] = useState(false)
@@ -388,11 +409,17 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
     }, [citas, fechaBase, barbero])
 
     // Auto-center: only scroll to current time when viewing TODAY
-    const todayLocal = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Hermosillo',
-        year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(new Date())
-    const isViewingToday = !fechaBase || fechaBase === todayLocal
+    const isViewingToday = useMemo(() => {
+        try {
+            const todayLocal = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Hermosillo',
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(new Date())
+            return !fechaBase || fechaBase === todayLocal
+        } catch {
+            return !fechaBase
+        }
+    }, [fechaBase])
 
     useEffect(() => {
         if (!isManualScroll && isViewingToday && scrollContainerRef.current) {
@@ -570,7 +597,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         }
     }
 
-    const actualizarEstadoDirecto = async (cita: CitaDesdeVista, nuevoEstado: EstadoCita) => {
+    const actualizarEstadoDirecto = useCallback(async (cita: CitaDesdeVista, nuevoEstado: EstadoCita) => {
         try {
             const payload: any = { estado: nuevoEstado, updated_at: new Date().toISOString() }
 
@@ -609,9 +636,9 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             console.error('Error updating state:', err)
             alert(`Error al actualizar: ${err.message || 'Error desconocido'}`)
         }
-    }
+    }, [onUpdate, citas])
 
-    const handleAtenderClick = (e: React.MouseEvent, cita: CitaDesdeVista) => {
+    const handleAtenderClick = useCallback((e: React.MouseEvent, cita: CitaDesdeVista) => {
         e.stopPropagation()
 
         // VALIDACIÓN: ¿Hay otra cita en proceso?
@@ -632,7 +659,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         } else {
             actualizarEstadoDirecto(cita, 'en_proceso')
         }
-    }
+    }, [citas, currentTime, actualizarEstadoDirecto])
 
     const confirmarAtencionTemprana = () => {
         if (pendingCitaAction) {
@@ -651,14 +678,14 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         }
     }
 
-    const handleDragStart = (citaId: string) => {
+    const handleDragStart = useCallback((citaId: string) => {
         isDraggingRef.current = true
         setLongPressActive(citaId)
         // Lock body to prevent Chrome pull-to-refresh (but NOT scroll container — needed for edge scroll)
         document.body.style.overflow = 'hidden'
         document.body.style.touchAction = 'none'
         document.body.style.overscrollBehavior = 'none'
-    }
+    }, [])
 
     const handlePointerDown = (e: React.PointerEvent, cita: CitaDesdeVista, controls: any) => {
         // Evitar que el clic se propague al slot o a citas que se solapen visualmente
@@ -856,6 +883,11 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
 
     const dentroHorario = currentHour >= horaInicio && currentHour < horaFin
 
+    const handleDetailsClick = useCallback((e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('details'); }, [])
+    const handleMoveClick = useCallback((e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('move'); }, [])
+    const handleCancelClick = useCallback((e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('cancel'); }, [])
+    const handleCheckoutClick = useCallback((e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('checkout'); }, [])
+
     return (
         <div className="absolute inset-0 flex flex-col">
             <div
@@ -955,10 +987,10 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                             cardBorder={cardBorder}
                                                             getStatusColor={getStatusColor}
                                                             handleAtenderClick={handleAtenderClick}
-                                                            handleDetailsClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('details'); }}
-                                                            handleMoveClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('move'); }}
-                                                            handleCancelClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('cancel'); }}
-                                                            handleCheckoutClick={(e: any, c: any) => { e.stopPropagation(); setSelectedCita(c); setActiveModal('checkout'); }}
+                                                            handleDetailsClick={handleDetailsClick}
+                                                            handleMoveClick={handleMoveClick}
+                                                            handleCancelClick={handleCancelClick}
+                                                            handleCheckoutClick={handleCheckoutClick}
                                                             actualizarEstadoDirecto={actualizarEstadoDirecto}
                                                             onUpdate={onUpdate}
                                                         />
