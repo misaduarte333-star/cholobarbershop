@@ -81,6 +81,7 @@ const TimelineAppointmentCard = memo(({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handlePointerCancel,
     activeTimer,
     isEnProceso,
     isPorCobrar,
@@ -126,6 +127,7 @@ const TimelineAppointmentCard = memo(({
             onPointerDown={(e: any) => item.tipo === 'cita' && handlePointerDown(e, item.data, controls)}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
             {...(motionProps as any)}
             className={cn(
                 "absolute inset-x-0 h-[calc(100%-4px)] flex items-center justify-between gap-1 px-2.5 py-1 rounded-xl border transition-colors group/card overflow-hidden cursor-pointer select-none",
@@ -687,8 +689,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         document.body.style.overscrollBehavior = 'none'
     }, [])
 
-    const handlePointerDown = (e: React.PointerEvent, cita: CitaDesdeVista, controls: any) => {
-        // Evitar que el clic se propague al slot o a citas que se solapen visualmente
+    const handlePointerDown = useCallback((e: React.PointerEvent, cita: CitaDesdeVista, controls: any) => {
         e.stopPropagation()
         if (cita.estado !== 'confirmada' && cita.estado !== 'finalizada') return
 
@@ -696,7 +697,6 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
         activePointerId.current = e.pointerId
 
         timerRef.current = setTimeout(() => {
-            // Set isDraggingRef immediately so edge-scroll activates without waiting for onDragStart
             isDraggingRef.current = true
             const target = e.target as HTMLElement
             if (target?.setPointerCapture && activePointerId.current !== null) {
@@ -706,37 +706,63 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             controls.start(e)
             if (window.navigator?.vibrate) window.navigator.vibrate(50)
         }, 600)
-    }
+    }, [])
 
-    const handlePointerMove = (e: React.PointerEvent) => {
-        // Track pointer Y for edge auto-scroll (always, not just pre-drag)
+    const handlePointerMove = useCallback((e: React.PointerEvent) => {
         dragPointerY.current = e.clientY
 
-        if (!touchStartPos.current || !timerRef.current) return
+        if (!touchStartPos.current) return
 
         const deltaX = Math.abs(e.clientX - touchStartPos.current.x)
         const deltaY = Math.abs(e.clientY - touchStartPos.current.y)
 
-        // If finger moves >10px before 2s, it's a scroll — cancel long press
-        if (deltaX > 10 || deltaY > 10) {
-            clearTimeout(timerRef.current)
-            timerRef.current = null
+        // Threshold de 18px para tablet — evita cancelar por micro-movimientos al presionar
+        if (deltaX > 18 || deltaY > 18) {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current)
+                timerRef.current = null
+            }
             touchStartPos.current = null
+            // Si el timer ya había disparado (drag activo), limpiar todo
+            if (isDraggingRef.current) {
+                isDraggingRef.current = false
+                setLongPressActive(null)
+                document.body.style.overflow = ''
+                document.body.style.touchAction = ''
+                document.body.style.overscrollBehavior = ''
+            }
         }
-    }
+    }, [])
 
-    const handlePointerUp = () => {
+    const handlePointerUp = useCallback(() => {
         if (timerRef.current) {
             clearTimeout(timerRef.current)
             timerRef.current = null
         }
         touchStartPos.current = null
         activePointerId.current = null
-        dragPointerY.current = 0 // Reset edge-scroll tracker
+        dragPointerY.current = 0
         if (!isDraggingRef.current) {
             setLongPressActive(null)
         }
-    }
+    }, [])
+
+    // Limpia TODO cuando el browser toma control del scroll (pointercancel)
+    // Sin esto, la tarjeta queda "clavada" en modo drag al deslizar la agenda
+    const handlePointerCancel = useCallback(() => {
+        if (timerRef.current) {
+            clearTimeout(timerRef.current)
+            timerRef.current = null
+        }
+        touchStartPos.current = null
+        activePointerId.current = null
+        dragPointerY.current = 0
+        isDraggingRef.current = false
+        setLongPressActive(null)
+        document.body.style.overflow = ''
+        document.body.style.touchAction = ''
+        document.body.style.overscrollBehavior = ''
+    }, [])
 
     const handleDragEnd = (event: any, info: any, cita: CitaDesdeVista) => {
         isDraggingRef.current = false
@@ -981,6 +1007,7 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                                                             handlePointerDown={handlePointerDown}
                                                             handlePointerMove={handlePointerMove}
                                                             handlePointerUp={handlePointerUp}
+                                                            handlePointerCancel={handlePointerCancel}
                                                             activeTimer={activeTimer}
                                                             isEnProceso={isEnProceso}
                                                             isPorCobrar={isPorCobrar}
