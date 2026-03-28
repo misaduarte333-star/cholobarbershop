@@ -52,6 +52,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import type { Servicio, Barbero } from '@/lib/types'
 
+// Fuera del componente: evita recrear el objeto en cada render
+const ESTADO_CONFIG: Record<string, { bg: string; border: string; accent: string; badgeVariant: 'outline'; label: string; badgeClass: string }> = {
+    confirmada:  { bg: 'bg-card', border: 'border-border', accent: 'border-l-yellow-500',  badgeVariant: 'outline', label: 'Confirmada',   badgeClass: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/30' },
+    en_espera:   { bg: 'bg-card', border: 'border-border', accent: 'border-l-yellow-500',  badgeVariant: 'outline', label: 'En Sucursal',  badgeClass: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/30' },
+    en_proceso:  { bg: 'bg-card', border: 'border-border', accent: 'border-l-emerald-500', badgeVariant: 'outline', label: 'En Proceso',   badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
+    por_cobrar:  { bg: 'bg-card', border: 'border-border', accent: 'border-l-blue-500',    badgeVariant: 'outline', label: 'Por Cobrar',   badgeClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30' },
+    finalizada:  { bg: 'bg-card', border: 'border-border', accent: 'border-l-zinc-400',    badgeVariant: 'outline', label: 'Finalizada',   badgeClass: 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 border-zinc-500/20' },
+    cancelada:   { bg: 'bg-card', border: 'border-border', accent: 'border-l-red-500',     badgeVariant: 'outline', label: 'Cancelada',    badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30' },
+    no_show:     { bg: 'bg-card', border: 'border-border', accent: 'border-l-red-500',     badgeVariant: 'outline', label: 'No Show',      badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30' },
+}
+const ESTADO_CONFIG_FALLBACK = { bg: 'bg-card', border: 'border-border', accent: 'border-l-slate-500', badgeVariant: 'outline' as const, label: '', badgeClass: 'bg-slate-500/10 text-slate-500 dark:text-slate-400' }
+
+const DIAS_CITA = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+
 interface CitaCardProps {
     cita: CitaDesdeVista
     onUpdate?: () => void
@@ -134,7 +148,7 @@ export const CitaCard = memo(function CitaCard({
     const [allServicios, setAllServicios] = useState<Servicio[]>(serviciosProp)
     const [allBarberos, setAllBarberos] = useState<Barbero[]>(barberosProp)
 
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     // Sync state when cita prop changes (important due to parent synchronization)
     useEffect(() => {
@@ -185,7 +199,6 @@ export const CitaCard = memo(function CitaCard({
             }
         }
 
-        console.log(`🚀 INICIO ACTUALIZACION: ${nuevoEstado} para ${cita.cliente_nombre}`)
         setLoading(true)
 
         // Close all modals immediately for UI responsiveness
@@ -195,8 +208,6 @@ export const CitaCard = memo(function CitaCard({
         setShowMove(false)
 
         try {
-            console.log('🛰️ Enviando a Supabase...', { id: cita.id, estado: nuevoEstado })
-
             const payload: any = { estado: nuevoEstado }
 
             // Set timestamp_inicio_servicio when Atender is clicked
@@ -226,8 +237,6 @@ export const CitaCard = memo(function CitaCard({
                 body: JSON.stringify(payload),
             })
 
-            console.log('📡 Response API:', res.status)
-
             if (!res.ok) {
                 const body = await res.json()
                 console.error('❌ Error API:', body)
@@ -235,8 +244,6 @@ export const CitaCard = memo(function CitaCard({
                 setLoading(false)
                 return
             }
-
-            console.log('✅ ACTUALIZACION EXITOSA:', nuevoEstado)
 
             if (onUpdate) {
                 onUpdate()
@@ -395,15 +402,7 @@ export const CitaCard = memo(function CitaCard({
 
 
 
-    const config = {
-        confirmada: { bg: 'bg-card', border: 'border-border', accent: 'border-l-yellow-500', badgeVariant: 'outline' as const, label: 'Confirmada', badgeClass: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/30' },
-        en_espera: { bg: 'bg-card', border: 'border-border', accent: 'border-l-yellow-500', badgeVariant: 'outline' as const, label: 'En Sucursal', badgeClass: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/30' },
-        en_proceso: { bg: 'bg-card', border: 'border-border', accent: 'border-l-emerald-500', badgeVariant: 'outline' as const, label: 'En Proceso', badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
-        por_cobrar: { bg: 'bg-card', border: 'border-border', accent: 'border-l-blue-500', badgeVariant: 'outline' as const, label: 'Por Cobrar', badgeClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30' },
-        finalizada: { bg: 'bg-card', border: 'border-border', accent: 'border-l-zinc-400', badgeVariant: 'outline' as const, label: 'Finalizada', badgeClass: 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 border-zinc-500/20' },
-        cancelada: { bg: 'bg-card', border: 'border-border', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'Cancelada', badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30' },
-        no_show: { bg: 'bg-card', border: 'border-border', accent: 'border-l-red-500', badgeVariant: 'outline' as const, label: 'No Show', badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30' }
-    }[cita.estado] || { bg: 'bg-card', border: 'border-border', accent: 'border-l-slate-500', badgeVariant: 'outline' as const, label: cita.estado, badgeClass: 'bg-slate-500/10 text-slate-500 dark:text-slate-400' }
+    const config = ESTADO_CONFIG[cita.estado] || { ...ESTADO_CONFIG_FALLBACK, label: cita.estado }
 
     const citaStartTime = parseLocalTimestamp(cita.timestamp_inicio_local)
     const minutosDiferencia = Math.floor((currentTime.getTime() - citaStartTime.getTime()) / 60000)
@@ -416,11 +415,11 @@ export const CitaCard = memo(function CitaCard({
     const hasUpdatedAt = cita.updated_at && cita.created_at && new Date(cita.updated_at).getTime() > new Date(cita.created_at).getTime() + 60000
     const isReprogramada = hasUpdatedAt && cita.estado === 'confirmada'
 
-    const hasNextSoon = allCitas.some(c => {
+    const hasNextSoon = useMemo(() => allCitas.some(c => {
         if (c.id === cita.id || c.estado === 'cancelada' || c.estado === 'finalizada') return false
         const start = parseLocalTimestamp(c.timestamp_inicio_local)
         return start > citaStartTime && (start.getTime() - currentTime.getTime()) < 30 * 60 * 1000
-    })
+    }), [allCitas, cita.id, citaStartTime, currentTime])
 
     const horaInicio = mounted ? citaStartTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }) : '--:--'
     const horaFin = mounted ? new Date(cita.timestamp_fin_local).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }) : '--:--'
@@ -431,10 +430,9 @@ export const CitaCard = memo(function CitaCard({
         const fechaCita = parseLocalTimestamp(cita.timestamp_inicio_local).toLocaleDateString('en-CA')
 
         // Determinar día de la semana para el horario de sucursal
-        const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
         const targetDate = new Date(`${fechaCita}T12:00:00-07:00`)
         const indiceDia = targetDate.getDay()
-        const nombreDia = dias[indiceDia]
+        const nombreDia = DIAS_CITA[indiceDia]
 
         let horaApertura = 8
         let horaCierre = 20

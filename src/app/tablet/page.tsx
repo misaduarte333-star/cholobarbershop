@@ -984,7 +984,8 @@ export default function TabletDashboard() {
                                                 fechaBase={fechaAgenda}
                                                 barbero={barbero}
                                                 onUpdate={() => cargarAgenda()}
-                                                // Standard performance props
+                                                allServicios={allServicios}
+                                                allBarberos={allBarberos}
                                             />
                                         ) : (
                                             <div className="p-4 pt-6 h-full overflow-y-auto custom-scrollbar">

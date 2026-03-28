@@ -55,6 +55,10 @@ interface AgendaTimelineProps {
     currentTime: Date
     barbero?: any
     onUpdate?: () => void
+    /** Pre-loaded from parent to avoid fetch on every modal open */
+    allServicios?: any[]
+    /** Pre-loaded from parent to avoid fetch on every modal open */
+    allBarberos?: any[]
 }
 
 
@@ -238,7 +242,7 @@ const TimelineAppointmentCard = memo(({
 
 const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
 
-export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, barbero, onUpdate }: AgendaTimelineProps) {
+export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [], almuerzoBarbero = null, horarioSucursal, fechaBase, currentTime, barbero, onUpdate, allServicios = [], allBarberos = [] }: AgendaTimelineProps) {
     const [isMounted, setIsMounted] = useState(false)
     useEffect(() => { setIsMounted(true) }, [])
     
@@ -1108,6 +1112,8 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
                         bloqueos={bloqueos}
                         almuerzoBarbero={almuerzoBarbero}
                         horarioSucursal={horarioSucursal}
+                        servicios={allServicios}
+                        barberos={allBarberos}
                     />
                 </div>
             )}
