@@ -73,6 +73,7 @@ export default function TabletDashboard() {
     const [barbero, setBarbero] = useState<any>(null)
     const [citas, setCitas] = useState<any[]>([])
     const citasRef = useRef<any[]>([]) // Stable ref to avoid stale closure in cargarAgenda
+    const agendaReloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null) // Debounce para evitar doble recarga
     const [loading, setLoading] = useState(false)
     const [currentTime, setCurrentTime] = useState<Date | null>(null)
     const [isCheckingAuth, setIsCheckingAuth] = useState(true)
@@ -439,6 +440,15 @@ export default function TabletDashboard() {
 
     const cargarAgenda = useCallback(async (isInitialLoad = false) => {
         if (!barbero?.id) return
+
+        // Debounce: si ya hay una recarga pendiente en <400ms, cancelarla y reprogramar
+        // Evita el doble fetch cuando onCitaCreada + realtime subscription disparan simultáneamente
+        if (!isInitialLoad) {
+            if (agendaReloadTimerRef.current) clearTimeout(agendaReloadTimerRef.current)
+            await new Promise<void>(resolve => {
+                agendaReloadTimerRef.current = setTimeout(resolve, 400)
+            })
+        }
 
         if (isInitialLoad) setLoading(true)
         if (isInitialLoad) setLoadingAgenda(true)
@@ -1147,6 +1157,7 @@ export default function TabletDashboard() {
                 onCitaCreada={() => cargarAgenda()}
                 bloqueosDelDia={bloqueosAgenda}
                 almuerzoBarberoProps={almuerzoBarbero}
+                serviciosProp={allServicios}
             />
 
             <Dialog open={showSettings} onOpenChange={setShowSettings}>

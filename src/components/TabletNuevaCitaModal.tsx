@@ -51,11 +51,13 @@ interface TabletNuevaCitaModalProps {
     bloqueosDelDia?: any[]
     /** Pre-loaded from parent to skip sub-fetch on open */
     almuerzoBarberoProps?: any
+    /** Pre-loaded from parent to skip fetch on open */
+    serviciosProp?: Servicio[]
 }
 
-export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, horarioSucursalProps, citasDelDia, onCitaCreada, bloqueosDelDia = [], almuerzoBarberoProps = null }: TabletNuevaCitaModalProps) {
+export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, horarioSucursalProps, citasDelDia, onCitaCreada, bloqueosDelDia = [], almuerzoBarberoProps = null, serviciosProp = [] }: TabletNuevaCitaModalProps) {
     const [loading, setLoading] = useState(false)
-    const [servicios, setServicios] = useState<Servicio[]>([])
+    const [servicios, setServicios] = useState<Servicio[]>(serviciosProp)
     const [error, setError] = useState('')
     const [showPastConfirm, setShowPastConfirm] = useState(false)
 
@@ -205,25 +207,26 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
     useEffect(() => {
         if (!isOpen) return
 
+        // Prellenar hora inicial a la próxima media hora
+        const ahora = new Date()
+        ahora.setMinutes(ahora.getMinutes() >= 30 ? 60 : 30)
+        const horaStr = ahora.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+        setHoraInicio(horaStr)
+
+        // Solo hacer fetch si el padre no proporcionó los servicios pre-cargados
+        if (servicios.length > 0) return
+
         const fetchServicios = async () => {
             try {
                 const res = await fetch('/api/servicios')
                 if (!res.ok) throw new Error('Error al cargar servicios')
                 const data = await res.json()
-                if (data.ok) {
-                    setServicios(data.data)
-                }
+                if (data.ok) setServicios(data.data)
             } catch (err) {
                 console.error(err)
                 setError('No se pudieron cargar los servicios. Usa Supabase directo en fallback.')
             }
         }
-
-        // Si la hora inicial está vacía, prellenarla a la próxima hora media en punto
-        const ahora = new Date()
-        ahora.setMinutes(ahora.getMinutes() >= 30 ? 60 : 30)
-        const horaStr = ahora.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) // HH:MM (24h)
-        setHoraInicio(horaStr)
 
         fetchServicios()
     }, [isOpen])
