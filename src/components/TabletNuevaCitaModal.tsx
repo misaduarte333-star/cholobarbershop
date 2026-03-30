@@ -404,12 +404,12 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             const hA = horarioSucursal[nombreDia].apertura
             const hC = horarioSucursal[nombreDia].cierre
             if (hA) {
-                horaApertura = parseInt(hA.split(':')[0], 10) - 1
+                horaApertura = parseInt(hA.split(':')[0], 10) - 2
                 if (horaApertura < 0) horaApertura = 0
             }
             if (hC) {
                 const parts = hC.split(':')
-                horaCierre = parseInt(parts[0], 10) + 1
+                horaCierre = parseInt(parts[0], 10) + 2
                 if (parseInt(parts[1], 10) === 0) {
                     // Si cierra a las 19:00, la horaCierre base era 19, extendida es 20.
                     // Pero queremos permitir citas QUE EMPIECEN a las 19:30 si extendemos 1 hora?
@@ -492,7 +492,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, barberoId, sucursalId, h
             if (horarioSucursal && horarioSucursal[nombreDia]) {
                 const hC = horarioSucursal[nombreDia].cierre
                 const [cierreH, cierreM] = hC.split(':').map(Number)
-                const extendedCierreH = cierreH + 1
+                const extendedCierreH = cierreH + 2
                 // Permitimos slot de :30 si la hora es menor al cierre extendido, 
                 // o si es igual al cierre extendido y tiene al menos 30min de margen (aunque 30 es el final)
                 if (h > extendedCierreH || (h === extendedCierreH && cierreM < 30 && cierreH === extendedCierreH)) isWithinClosing = false

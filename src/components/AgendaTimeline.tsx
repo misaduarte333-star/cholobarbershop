@@ -281,13 +281,12 @@ export const AgendaTimeline = memo(function AgendaTimeline({ citas, bloqueos = [
             const hC = horarioSucursal[nombreDia].cierre
             if (hA) {
                 const parts = hA.split(':')
-                inicio = parseInt(parts[0], 10) - 1
+                inicio = parseInt(parts[0], 10) - 2
                 if (inicio < 0) inicio = 0
             }
             if (hC) {
                 const parts = hC.split(':')
-                fin = parseInt(parts[0], 10) + 1
-                if (parseInt(parts[1], 10) > 0) fin += 1
+                fin = parseInt(parts[0], 10) + 3
                 if (fin > 24) fin = 24
             }
         }
