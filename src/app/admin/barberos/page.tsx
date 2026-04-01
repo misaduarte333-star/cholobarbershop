@@ -321,10 +321,10 @@ export default function BarberosPage() {
                                                         setEditingBarbero(barbero)
                                                         setShowScheduleModal(true)
                                                     }}
-                                                    className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20"
+                                                    className="h-8 w-8 rounded-full bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30"
                                                     title="Configurar Horario"
                                                 >
-                                                    <Clock className="w-3.5 h-3.5" />
+                                                    <Clock className="w-4 h-4" />
                                                 </Button>
                                                 <Button
                                                     size="icon"

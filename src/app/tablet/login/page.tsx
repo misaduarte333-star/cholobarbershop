@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase'
 
 // Iconos SVG de barberia para el fondo
 const ScissorsIcon = ({ className }: { className?: string }) => (
@@ -38,7 +37,6 @@ export default function TabletLoginPage() {
     const [error, setError] = useState('')
     const [focusedField, setFocusedField] = useState<string | null>(null)
 
-    const supabase = createClient()
 
     useEffect(() => {
         const session = localStorage.getItem('barbero_session')
@@ -64,21 +62,22 @@ export default function TabletLoginPage() {
         setError('')
 
         try {
-            const { data: barberos, error: dbError } = await supabase
-                .from('barberos')
-                .select('*')
-                .eq('usuario_tablet', usuario)
-                .limit(1)
+            const res = await fetch('/api/auth/login-barbero', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usuario, password })
+            })
 
-            if (dbError) throw dbError
+            const data = await res.json()
 
-            const barbero = barberos?.[0] as any
+            if (!res.ok) {
+                setError(data.error || 'Usuario o contraseña incorrectos')
+                return
+            }
 
-            if (barbero && barbero.password_hash === password) {
-                localStorage.setItem('barbero_session', JSON.stringify(barbero))
+            if (data.success && data.user) {
+                localStorage.setItem('barbero_session', JSON.stringify(data.user))
                 router.replace('/tablet')
-            } else {
-                setError('Usuario o contraseña incorrectos')
             }
         } catch (err) {
             console.error('Login error:', err)
