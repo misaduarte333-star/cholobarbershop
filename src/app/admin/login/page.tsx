@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import bcrypt from 'bcryptjs'
 
 // Iconos SVG de barberia para el fondo
 const ScissorsIcon = ({ className }: { className?: string }) => (
@@ -74,7 +75,11 @@ export default function AdminLoginPage() {
 
             const admin = admins?.[0] as any
 
-            if (admin && admin.password_hash === password) {
+            const isPasswordValid = admin && admin.password_hash 
+                ? await bcrypt.compare(password, admin.password_hash) 
+                : false;
+
+            if (admin && isPasswordValid) {
                 localStorage.setItem('admin_session', JSON.stringify(admin))
                 router.push('/admin')
             } else {
