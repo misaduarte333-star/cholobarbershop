@@ -97,7 +97,6 @@ export default function FinanzasPage() {
     const [fechaPago, setFechaPago] = useState<Date | undefined>(new Date())
     const [esRecurrente, setEsRecurrente] = useState(false)
     const [pagado, setPagado] = useState(false)
-    const [sucursalId, setSucursalId] = useState<string | null>(null)
     
     // Recurrence details
     const [frecuencia, setFrecuencia] = useState<'mensual' | 'semanal' | 'diario' | 'anual'>('mensual')
