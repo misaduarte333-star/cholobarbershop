@@ -53,8 +53,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { Loader2 } from 'lucide-react'
 
+import { useAuth } from '@/context/AuthContext'
+
 function CitasContent() {
-    // ... (rest of the state remains the same)
+    const { sucursalId } = useAuth()
     const [mounted, setMounted] = useState(false)
     const [citas, setCitas] = useState<CitaDesdeVista[]>([])
     const [loading, setLoading] = useState(true)
@@ -151,6 +153,7 @@ function CitasContent() {
             let query = (supabase
                 .from('vista_citas_app') as any)
                 .select('*')
+                .eq('sucursal_id', sucursalId)
                 .eq('fecha_cita_local', filtroFecha)
                 .order('timestamp_inicio_local', { ascending: true })
 
@@ -180,7 +183,7 @@ function CitasContent() {
         } finally {
             if (isInitialLoad) setLoading(false)
         }
-    }, [supabase, filtroFecha, filtroEstado])
+    }, [supabase, filtroFecha, filtroEstado, sucursalId])
 
     useEffect(() => {
         if (mounted && filtroFecha) {
@@ -189,7 +192,12 @@ function CitasContent() {
             const channel = supabase.channel('citas-page-changes')
                 .on(
                     'postgres_changes' as any,
-                    { event: '*', schema: 'public', table: 'citas' },
+                    { 
+                        event: '*', 
+                        schema: 'public', 
+                        table: 'citas',
+                        filter: `sucursal_id=eq.${sucursalId}`
+                    },
                     () => {
                         console.log('Realtime update received on CitasPage')
                         cargarCitas() 
@@ -606,6 +614,7 @@ function CitaModal({ cita, allCitas, onClose, onSave, initialOrigen }: {
     onSave: () => void
     initialOrigen?: 'whatsapp' | 'walkin'
 }) {
+    const { sucursalId } = useAuth()
     const [loading, setLoading] = useState(false)
     const [servicios, setServicios] = useState<Servicio[]>([])
     const [barberos, setBarberos] = useState<Barbero[]>([])
@@ -646,21 +655,25 @@ function CitaModal({ cita, allCitas, onClose, onSave, initialOrigen }: {
     })
 
     const supabase = createClient()
-    const [sucursalId, setSucursalId] = useState<string | null>(null)
 
     useEffect(() => {
         const loadDeps = async () => {
-            const { data: servs } = await supabase.from('servicios').select('*').eq('activo', true)
+            if (!sucursalId) return
+
+            const { data: servs } = await supabase.from('servicios')
+                .select('*')
+                .eq('sucursal_id', sucursalId)
+                .eq('activo', true)
             if (servs) setServicios(servs)
 
-            const { data: barbs } = await supabase.from('barberos').select('*').eq('activo', true)
+            const { data: barbs } = await supabase.from('barberos')
+                .select('*')
+                .eq('sucursal_id', sucursalId)
+                .eq('activo', true)
             if (barbs) setBarberos(barbs)
-
-            const { data: suc } = await (supabase.from('sucursales').select('id') as any).limit(1).single()
-            if (suc) setSucursalId(suc.id)
         }
         loadDeps()
-    }, [])
+    }, [sucursalId])
 
     useEffect(() => {
         if (formData.servicio_id && formData.hora) {

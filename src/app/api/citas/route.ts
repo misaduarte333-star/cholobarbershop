@@ -38,8 +38,15 @@ export async function GET(req: NextRequest) {
         if (error) throw error
         return ok(data)
     } catch (e: any) {
-        console.error('[GET /api/citas]', e)
-        return err('FetchError', e.message, 500)
+        console.error('[GET /api/citas] Full Error:', {
+            message: e.message,
+            details: e.details,
+            hint: e.hint,
+            code: e.code,
+            stack: e.stack
+        })
+        const errorMessage = e.details || e.message || 'Error desconocido al obtener citas'
+        return err('FetchError', errorMessage, 500)
     }
 }
 
@@ -116,7 +123,14 @@ export async function POST(req: NextRequest) {
 
         return ok(data, 201)
     } catch (e: any) {
-        console.error('[POST /api/citas]', e)
-        return err('InsertError', e.message, 500)
+        console.error('[POST /api/citas] Full Error:', {
+            message: e.message,
+            details: e.details,
+            hint: e.hint,
+            code: e.code,
+            stack: e.stack
+        })
+        const errorMessage = e.details || e.message || 'Error desconocido al insertar cita'
+        return err('InsertError', errorMessage, 500)
     }
 }

@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 import { 
     Settings, 
     Save, 
@@ -26,6 +27,7 @@ import {
 import { toast } from 'sonner'
 
 export default function ConfiguracionPage() {
+    const { sucursalId } = useAuth()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date())
@@ -50,26 +52,24 @@ export default function ConfiguracionPage() {
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-        cargarConfiguracion()
+        if (sucursalId) {
+            cargarConfiguracion()
+        }
         return () => clearInterval(timer)
-    }, [])
+    }, [sucursalId])
 
     const cargarConfiguracion = async () => {
+        if (!sucursalId) return
+        
         try {
             const { data, error } = await (supabase
                 .from('sucursales') as any)
                 .select('*')
-                .limit(1)
+                .eq('id', sucursalId)
                 .single()
 
             if (error) {
                 console.error('Error loading config:', error)
-                setFormData({
-                    nombre: 'Cholo Barbershop',
-                    direccion: 'Av. Principal #123, Hermosillo, Sonora',
-                    telefono_whatsapp: '5216621234567',
-                    activa: true
-                })
             } else if (data) {
                 setSucursal(data)
                 setFormData({

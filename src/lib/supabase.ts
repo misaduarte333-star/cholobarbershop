@@ -87,15 +87,19 @@ export function createClient(): ReturnType<typeof createBrowserClient<Database>>
         if (isBrowser) browserClient = client
         return client
     } catch (e: any) {
+        const errorDetails = {
+            message: e?.message || e,
+            stack: e?.stack,
+            isBrowser,
+            url_present: !!SUPABASE_URL,
+            key_present: !!SUPABASE_ANON_KEY,
+        }
+
         if (isBrowser) {
-            console.error('❌ Error Supabase Init:', e?.message || e)
-            // Diagnostic for Easy Panel / Production environment
-            console.log('DIAGNOSTICO AMBIENTE:', {
-                url_type: typeof SUPABASE_URL,
-                url_present: !!SUPABASE_URL,
-                key_present: !!SUPABASE_ANON_KEY,
-                origin: window.location.origin
-            })
+            console.error('❌ Error Supabase Init:', errorDetails)
+        } else {
+            // This will show up in server logs
+            console.error('[SERVER] Supabase Init Error:', JSON.stringify(errorDetails, null, 2))
         }
         return createFallbackMock() as any
     }

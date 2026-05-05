@@ -24,7 +24,10 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { KPICard } from '@/components/KPICard'
 
+import { useAuth } from '@/context/AuthContext'
+
 export default function ReportesPage() {
+    const { sucursalId } = useAuth()
     const [loading, setLoading] = useState(true)
     const [dateRange, setDateRange] = useState({
         start: new Date().toISOString().split('T')[0],
@@ -46,18 +49,21 @@ export default function ReportesPage() {
     const supabase = createClient()
 
     const cargarReportes = useCallback(async () => {
+        if (!sucursalId) return
         setLoading(true)
         try {
             const [citasRes, cortesRes] = await Promise.all([
                 supabase
                     .from('vista_citas_app')
                     .select('*')
+                    .eq('sucursal_id', sucursalId)
                     .gte('fecha_cita_local', dateRange.start)
                     .lte('fecha_cita_local', dateRange.end)
                     .in('estado', ['finalizada', 'confirmada', 'en_proceso']),
                 supabase
                     .from('cortes_turno')
                     .select('fecha_corte')
+                    .eq('sucursal_id', sucursalId)
                     .gte('fecha_corte', dateRange.start)
                     .lte('fecha_corte', dateRange.end)
                     .eq('tipo', 'diario')
@@ -135,7 +141,7 @@ export default function ReportesPage() {
         } finally {
             setLoading(false)
         }
-    }, [supabase, dateRange])
+    }, [supabase, dateRange, sucursalId])
 
     useEffect(() => {
         cargarReportes()

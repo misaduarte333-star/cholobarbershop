@@ -43,7 +43,10 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 
+import { useAuth } from '@/context/AuthContext'
+
 export default function BarberosPage() {
+    const { sucursalId } = useAuth()
     const [barberos, setBarberos] = useState<BarberoConSucursal[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
@@ -63,10 +66,13 @@ export default function BarberosPage() {
     }, [])
 
     const cargarBarberos = useCallback(async () => {
+        if (!sucursalId) return
+
         try {
             const { data, error } = await (supabase
                 .from('barberos') as any)
                 .select('*, sucursal:sucursales(*)')
+                .eq('sucursal_id', sucursalId)
                 .order('estacion_id', { ascending: true })
 
             if (error) {
@@ -76,6 +82,10 @@ export default function BarberosPage() {
                 setBarberos(data || [])
                 if (data && data.length > 0 && data[0].sucursal) {
                     setSucursalData(data[0].sucursal)
+                } else {
+                    // Si no hay barberos, al menos intentamos traer la sucursal actual
+                    const { data: suc } = await supabase.from('sucursales').select('*').eq('id', sucursalId).single()
+                    if (suc) setSucursalData(suc)
                 }
             }
         } catch (err) {
@@ -84,7 +94,7 @@ export default function BarberosPage() {
         } finally {
             setLoading(false)
         }
-    }, [supabase])
+    }, [supabase, sucursalId])
 
     useEffect(() => {
         cargarBarberos()
@@ -472,20 +482,7 @@ function BarberoModal({
     })
 
     const supabase = createClient()
-    const [sucursalId, setSucursalId] = useState<string | null>(null)
-
-    useEffect(() => {
-        const fetchSucursal = async () => {
-            const { data } = await (supabase
-                .from('sucursales') as any)
-                .select('id')
-                .limit(1)
-                .single()
-
-            if (data) setSucursalId(data.id)
-        }
-        fetchSucursal()
-    }, [])
+    const { sucursalId } = useAuth()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

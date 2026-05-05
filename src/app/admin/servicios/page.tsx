@@ -27,7 +27,10 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
+import { useAuth } from '@/context/AuthContext'
+
 export default function ServiciosPage() {
+    const { sucursalId } = useAuth()
     const [servicios, setServicios] = useState<Servicio[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
@@ -37,10 +40,13 @@ export default function ServiciosPage() {
     const supabase = createClient()
 
     const cargarServicios = useCallback(async () => {
+        if (!sucursalId) return
+
         try {
             const { data, error } = await supabase
                 .from('servicios')
                 .select('*')
+                .eq('sucursal_id', sucursalId)
                 .order('precio', { ascending: true })
 
             if (error) {
@@ -55,7 +61,7 @@ export default function ServiciosPage() {
         } finally {
             setLoading(false)
         }
-    }, [supabase])
+    }, [supabase, sucursalId])
 
     useEffect(() => {
         cargarServicios()
@@ -314,6 +320,7 @@ function ServicioModal({
         precio: servicio?.precio?.toString() || '',
         activo: servicio?.activo ?? true
     })
+    const { sucursalId } = useAuth()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -324,7 +331,8 @@ function ServicioModal({
                 nombre: formData.nombre,
                 duracion_minutos: parseInt(formData.duracion_minutos),
                 precio: parseFloat(formData.precio),
-                activo: formData.activo
+                activo: formData.activo,
+                sucursal_id: sucursalId
             }
 
             const url = servicio ? `/api/servicios/${servicio.id}` : '/api/servicios'

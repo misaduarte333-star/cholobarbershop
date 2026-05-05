@@ -21,9 +21,11 @@ import {
     FileText,
     Activity
 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 import type { KPIs, CitaDesdeVista, Barbero, Sucursal, Bloqueo } from '@/lib/types'
 
 export default function AdminDashboard() {
+    const { sucursalId } = useAuth()
     const [kpis, setKpis] = useState<KPIs>({
         citasHoy: 0,
         completadas: 0,
@@ -42,6 +44,8 @@ export default function AdminDashboard() {
     const [barberStatuses, setBarberStatuses] = useState<any[]>([])
 
     const fetchDashboardData = useCallback(async () => {
+        if (!sucursalId) return
+
         try {
             const today = getHermosilloDateStr(new Date())
             
@@ -49,7 +53,7 @@ export default function AdminDashboard() {
             const { data: sucData } = await supabase
                 .from('sucursales')
                 .select('*')
-                .limit(1)
+                .eq('id', sucursalId)
                 .single()
             setSucursal(sucData)
 
@@ -57,6 +61,7 @@ export default function AdminDashboard() {
             const { data: barbData } = await supabase
                 .from('barberos')
                 .select('*')
+                .eq('sucursal_id', sucursalId)
                 .order('nombre')
             const barberos = (barbData || []) as Barbero[]
             setAllBarberos(barberos)
@@ -64,15 +69,20 @@ export default function AdminDashboard() {
             // Fetch Bloqueos
             const { data: bloqData } = await supabase
                 .from('bloqueos')
-                .select('*')
+                .select('*, barberos!inner(sucursal_id)')
+                .eq('barberos.sucursal_id', sucursalId)
                 .gte('fecha_inicio', `${today}T00:00:00-07:00`)
                 .lte('fecha_inicio', `${today}T23:59:59-07:00`)
-            setBloqueos((bloqData || []) as Bloqueo[])
+            
+            // Clean the joined data for state
+            const cleanBloqueos = (bloqData || []).map(({ barberos, ...rest }: any) => rest)
+            setBloqueos(cleanBloqueos as Bloqueo[])
 
             // Fetch Citas Hoy
             const { data: citasData } = await supabase
                 .from('vista_citas_app')
                 .select('*')
+                .eq('sucursal_id', sucursalId)
                 .eq('fecha_cita_local', today)
             
             const citas = (citasData || []) as CitaDesdeVista[]
@@ -97,7 +107,7 @@ export default function AdminDashboard() {
         } finally {
             setLoading(false)
         }
-    }, [supabase])
+    }, [supabase, sucursalId])
 
     useEffect(() => {
         fetchDashboardData()
@@ -106,7 +116,12 @@ export default function AdminDashboard() {
         // Real-time subscription
         const channel = supabase
             .channel('dashboard-updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'citas' }, () => {
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'citas',
+                filter: `sucursal_id=eq.${sucursalId}`
+            }, () => {
                 fetchDashboardData()
             })
             .subscribe()
@@ -115,7 +130,7 @@ export default function AdminDashboard() {
             clearInterval(interval)
             supabase.removeChannel(channel)
         }
-    }, [fetchDashboardData, supabase])
+    }, [fetchDashboardData, supabase, sucursalId])
 
     // Derived State: Barber Status Monitor
     const derivedBarberStatuses = useMemo(() => {

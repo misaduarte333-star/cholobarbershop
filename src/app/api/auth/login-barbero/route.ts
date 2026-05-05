@@ -67,9 +67,16 @@ export async function POST(request: Request) {
         })
 
     } catch (err: any) {
-        console.error('Login backend error:', err)
+        console.error('[POST /api/auth/login-barbero] Full Error:', {
+            message: err.message,
+            details: err.details,
+            hint: err.hint,
+            code: err.code,
+            stack: err.stack
+        })
+        const errorMessage = err.details || err.message || 'Error interno del servidor durante el login'
         return NextResponse.json(
-            { error: 'Ocurrió un error inesperado al iniciar sesión' },
+            { error: 'ServerError', message: errorMessage },
             { status: 500 }
         )
     }

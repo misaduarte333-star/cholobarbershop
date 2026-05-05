@@ -80,7 +80,10 @@ import { es } from 'date-fns/locale'
 import { Progress } from '@/components/ui/progress'
 import type { Barbero, CitaDesdeVista, Gasto } from '@/lib/types'
 
+import { useAuth } from '@/context/AuthContext'
+
 export default function FinanzasPage() {
+    const { sucursalId } = useAuth()
     const [gastos, setGastos] = useState<Gasto[]>([])
     const [loading, setLoading] = useState(true)
     const [date, setDate] = useState<Date | undefined>(new Date())
@@ -121,12 +124,14 @@ export default function FinanzasPage() {
     const supabase = createClient()
 
     const fetchGastos = async () => {
+        if (!sucursalId) return
         setLoading(true)
         try {
             // Fetch ALL business expenses (where barbero_id is null)
             const { data, error } = await supabase
                 .from('gastos')
                 .select('*')
+                .eq('sucursal_id', sucursalId)
                 .is('barbero_id', null)
                 .order('fecha_pago', { ascending: true })
             
@@ -143,6 +148,7 @@ export default function FinanzasPage() {
     }
 
     const fetchBusinessMetrics = async () => {
+        if (!sucursalId) return
         setLoadingIncome(true)
         try {
             const startStr = format(startOfMonth(new Date()), 'yyyy-MM-dd')
@@ -152,6 +158,7 @@ export default function FinanzasPage() {
             const { data: citas, error: citasError } = await supabase
                 .from('vista_citas_app')
                 .select('*')
+                .eq('sucursal_id', sucursalId)
                 .eq('estado', 'finalizada')
                 .gte('fecha_cita_local', startStr)
                 .lte('fecha_cita_local', endStr)
@@ -162,6 +169,7 @@ export default function FinanzasPage() {
             const { data: businessGastos, error: gastosError } = await supabase
                 .from('gastos')
                 .select('monto')
+                .eq('sucursal_id', sucursalId)
                 .is('barbero_id', null)
                 .gte('fecha_pago', startStr)
                 .lte('fecha_pago', endStr)
@@ -207,11 +215,13 @@ export default function FinanzasPage() {
     }
 
     useEffect(() => {
-        fetchGastos()
-        fetchBusinessMetrics()
+        if (sucursalId) {
+            fetchGastos()
+            fetchBusinessMetrics()
+        }
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
         return () => clearInterval(timer)
-    }, [])
+    }, [sucursalId])
 
     const formattedDate = currentTime.toLocaleDateString('es-MX', { 
         weekday: 'long', 
@@ -280,10 +290,7 @@ export default function FinanzasPage() {
         }
         try {
             if (!sucursalId && !editingGasto) {
-                console.warn('No sucursalId found, trying to fetch before saving...')
-                const { data } = await supabase.from('sucursales').select('id').limit(1).maybeSingle() as { data: { id: string } | null }
-                if (data) setSucursalId(data.id)
-                else throw new Error('No se encontró una sucursal para asociar el gasto. Por favor crea una sucursal primero.')
+                throw new Error('No se pudo identificar la sucursal. Por favor, inicia sesión nuevamente.')
             }
 
             if (editingGasto) {
