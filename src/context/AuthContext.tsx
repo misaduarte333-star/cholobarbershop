@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     .from('usuarios_admin')
                     .select('rol, sucursal_id')
                     .eq('email', currentUser.email)
-                    .maybeSingle()
+                    .maybeSingle() as { data: any }
 
                 if (data) {
                     setIsAdmin(true)
@@ -57,10 +57,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             
             // Re-check admin if user changed
             if (newUser?.email) {
-                const { data } = await supabase.from('usuarios_admin')
+                const { data } = await supabase
+                    .from('usuarios_admin')
                     .select('rol, sucursal_id')
                     .eq('email', newUser.email)
-                    .maybeSingle()
+                    .maybeSingle() as { data: any }
                 
                 if (data) {
                     setIsAdmin(true)
