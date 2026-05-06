@@ -30,7 +30,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
 
 export default function ServiciosPage() {
-    const { sucursalId } = useAuth()
+    const { sucursalId, authLoading } = useAuth()
     const [servicios, setServicios] = useState<Servicio[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
@@ -40,7 +40,11 @@ export default function ServiciosPage() {
     const supabase = createClient()
 
     const cargarServicios = useCallback(async () => {
-        if (!sucursalId) return
+        if (authLoading) return  // wait for auth to resolve
+        if (!sucursalId) {
+            setLoading(false)
+            return
+        }
 
         try {
             const { data, error } = await supabase

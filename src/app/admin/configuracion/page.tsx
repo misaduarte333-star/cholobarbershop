@@ -27,7 +27,7 @@ import {
 import { toast } from 'sonner'
 
 export default function ConfiguracionPage() {
-    const { sucursalId } = useAuth()
+    const { sucursalId, authLoading } = useAuth()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date())
@@ -52,14 +52,18 @@ export default function ConfiguracionPage() {
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-        if (sucursalId) {
+        if (!authLoading && sucursalId) {
             cargarConfiguracion()
         }
         return () => clearInterval(timer)
-    }, [sucursalId])
+    }, [sucursalId, authLoading])
 
     const cargarConfiguracion = async () => {
-        if (!sucursalId) return
+        if (authLoading) return  // wait for auth to resolve
+        if (!sucursalId) {
+            setLoading(false)
+            return
+        }
         
         try {
             const { data, error } = await (supabase

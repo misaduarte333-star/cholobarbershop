@@ -83,7 +83,7 @@ import type { Barbero, CitaDesdeVista, Gasto } from '@/lib/types'
 import { useAuth } from '@/context/AuthContext'
 
 export default function FinanzasPage() {
-    const { sucursalId } = useAuth()
+    const { sucursalId, authLoading } = useAuth()
     const [gastos, setGastos] = useState<Gasto[]>([])
     const [loading, setLoading] = useState(true)
     const [date, setDate] = useState<Date | undefined>(new Date())
@@ -123,7 +123,11 @@ export default function FinanzasPage() {
     const supabase = createClient()
 
     const fetchGastos = async () => {
-        if (!sucursalId) return
+        if (authLoading) return  // wait for auth to resolve
+        if (!sucursalId) {
+            setLoading(false)
+            return
+        }
         setLoading(true)
         try {
             // Fetch ALL business expenses (where barbero_id is null)
@@ -147,7 +151,11 @@ export default function FinanzasPage() {
     }
 
     const fetchBusinessMetrics = async () => {
-        if (!sucursalId) return
+        if (authLoading) return  // wait for auth to resolve
+        if (!sucursalId) {
+            setLoadingIncome(false)
+            return
+        }
         setLoadingIncome(true)
         try {
             const startStr = format(startOfMonth(new Date()), 'yyyy-MM-dd')
@@ -214,13 +222,13 @@ export default function FinanzasPage() {
     }
 
     useEffect(() => {
-        if (sucursalId) {
+        if (!authLoading && sucursalId) {
             fetchGastos()
             fetchBusinessMetrics()
         }
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
         return () => clearInterval(timer)
-    }, [sucursalId])
+    }, [sucursalId, authLoading])
 
     const formattedDate = currentTime.toLocaleDateString('es-MX', { 
         weekday: 'long', 

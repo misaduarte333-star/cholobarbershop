@@ -46,7 +46,7 @@ import { toast } from "sonner"
 import { useAuth } from '@/context/AuthContext'
 
 export default function BarberosPage() {
-    const { sucursalId } = useAuth()
+    const { sucursalId, authLoading } = useAuth()
     const [barberos, setBarberos] = useState<BarberoConSucursal[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
@@ -66,7 +66,11 @@ export default function BarberosPage() {
     }, [])
 
     const cargarBarberos = useCallback(async () => {
-        if (!sucursalId) return
+        if (authLoading) return  // wait for auth to resolve
+        if (!sucursalId) {
+            setLoading(false)
+            return
+        }
 
         try {
             const { data, error } = await (supabase

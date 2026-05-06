@@ -27,7 +27,7 @@ import { KPICard } from '@/components/KPICard'
 import { useAuth } from '@/context/AuthContext'
 
 export default function ReportesPage() {
-    const { sucursalId } = useAuth()
+    const { sucursalId, authLoading } = useAuth()
     const [loading, setLoading] = useState(true)
     const [dateRange, setDateRange] = useState({
         start: new Date().toISOString().split('T')[0],
@@ -49,7 +49,11 @@ export default function ReportesPage() {
     const supabase = createClient()
 
     const cargarReportes = useCallback(async () => {
-        if (!sucursalId) return
+        if (authLoading) return  // wait for auth to resolve
+        if (!sucursalId) {
+            setLoading(false)
+            return
+        }
         setLoading(true)
         try {
             const [citasRes, cortesRes] = await Promise.all([

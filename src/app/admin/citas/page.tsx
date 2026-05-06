@@ -56,7 +56,7 @@ import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
 function CitasContent() {
-    const { sucursalId } = useAuth()
+    const { sucursalId, authLoading } = useAuth()
     const [mounted, setMounted] = useState(false)
     const [citas, setCitas] = useState<CitaDesdeVista[]>([])
     const [loading, setLoading] = useState(true)
@@ -145,7 +145,11 @@ function CitasContent() {
     }, [])
 
     const cargarCitas = useCallback(async (isInitialLoad = false) => {
-        if (!filtroFecha) return
+        if (authLoading) return  // wait for auth to resolve
+        if (!filtroFecha || !sucursalId) {
+            if (isInitialLoad) setLoading(false)
+            return
+        }
 
         if (isInitialLoad) setLoading(true)
         setDebugMsg('Cargando...')
@@ -196,7 +200,7 @@ function CitasContent() {
                         event: '*', 
                         schema: 'public', 
                         table: 'citas',
-                        filter: `sucursal_id=eq.${sucursalId}`
+                        filter: (sucursalId && !authLoading) ? `sucursal_id=eq.${sucursalId}` : undefined
                     },
                     () => {
                         console.log('Realtime update received on CitasPage')

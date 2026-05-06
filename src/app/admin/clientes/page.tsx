@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { Cliente } from '@/lib/types'
+import { useAuth } from '@/context/AuthContext'
 import {
     Search,
     UserPlus,
@@ -56,6 +57,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 export default function ClientesPage() {
+    const { sucursalId, authLoading } = useAuth()
     const [clientes, setClientes] = useState<Cliente[]>([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
@@ -71,6 +73,12 @@ export default function ClientesPage() {
     const supabase = createClient()
 
     const cargarClientes = useCallback(async () => {
+        if (authLoading) return  // wait for auth to resolve
+        if (!sucursalId) {
+            setLoading(false)
+            return
+        }
+
         setLoading(true)
         try {
             const { data, error } = await supabase
@@ -85,7 +93,7 @@ export default function ClientesPage() {
         } finally {
             setLoading(false)
         }
-    }, [supabase])
+    }, [supabase, sucursalId])
 
     useEffect(() => {
         cargarClientes()

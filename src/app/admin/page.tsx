@@ -25,7 +25,7 @@ import { useAuth } from '@/context/AuthContext'
 import type { KPIs, CitaDesdeVista, Barbero, Sucursal, Bloqueo } from '@/lib/types'
 
 export default function AdminDashboard() {
-    const { sucursalId } = useAuth()
+    const { sucursalId, authLoading } = useAuth()
     const [kpis, setKpis] = useState<KPIs>({
         citasHoy: 0,
         completadas: 0,
@@ -44,7 +44,11 @@ export default function AdminDashboard() {
     const [barberStatuses, setBarberStatuses] = useState<any[]>([])
 
     const fetchDashboardData = useCallback(async () => {
-        if (!sucursalId) return
+        if (authLoading) return  // wait for auth to resolve
+        if (!sucursalId) {
+            setLoading(false)
+            return
+        }
 
         try {
             const today = getHermosilloDateStr(new Date())
@@ -120,7 +124,7 @@ export default function AdminDashboard() {
                 event: '*', 
                 schema: 'public', 
                 table: 'citas',
-                filter: `sucursal_id=eq.${sucursalId}`
+                filter: (sucursalId && !authLoading) ? `sucursal_id=eq.${sucursalId}` : undefined
             }, () => {
                 fetchDashboardData()
             })

@@ -7,6 +7,7 @@ import type { User } from '@supabase/supabase-js'
 interface AuthContextType {
     user: User | null
     loading: boolean
+    authLoading: boolean   // true while session + sucursalId are being resolved
     sucursalId: string
     isAdmin: boolean
 }
@@ -14,39 +15,47 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
-    sucursalId: '1',
+    authLoading: true,
+    sucursalId: '',
     isAdmin: false
 })
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
+    const [authLoading, setAuthLoading] = useState(true) // true until sucursalId is resolved
     const [isAdmin, setIsAdmin] = useState(false)
-    const [sucursalId, setSucursalId] = useState<string>('1') // Default to '1' as fallback
+    const [sucursalId, setSucursalId] = useState<string>('')
 
     const supabase = createClient()
 
     useEffect(() => {
         const initAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
-            const currentUser = session?.user ?? null
-            setUser(currentUser)
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                const currentUser = session?.user ?? null
+                setUser(currentUser)
 
-            if (currentUser?.email) {
-                const { data } = await supabase
-                    .from('usuarios_admin')
-                    .select('rol, sucursal_id')
-                    .eq('email', currentUser.email)
-                    .maybeSingle() as { data: any }
+                if (currentUser?.email) {
+                    const { data } = await supabase
+                        .from('usuarios_admin')
+                        .select('rol, sucursal_id')
+                        .eq('email', currentUser.email)
+                        .maybeSingle() as { data: any }
 
-                if (data) {
-                    setIsAdmin(true)
-                    if (data.sucursal_id) {
-                        setSucursalId(data.sucursal_id)
+                    if (data) {
+                        setIsAdmin(true)
+                        if (data.sucursal_id) {
+                            setSucursalId(data.sucursal_id)
+                        }
                     }
                 }
+            } catch (err) {
+                console.error('AuthContext initAuth error:', err)
+            } finally {
+                setLoading(false)
+                setAuthLoading(false)
             }
-            setLoading(false)
         }
 
         initAuth()
@@ -54,15 +63,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             const newUser = session?.user ?? null
             setUser(newUser)
-            
-            // Re-check admin if user changed
-            if (newUser?.email) {
+
+            if (!newUser?.email) {
+                setIsAdmin(false)
+                setSucursalId('')
+                setLoading(false)
+                setAuthLoading(false)
+                return
+            }
+
+            try {
                 const { data } = await supabase
                     .from('usuarios_admin')
                     .select('rol, sucursal_id')
                     .eq('email', newUser.email)
                     .maybeSingle() as { data: any }
-                
+
                 if (data) {
                     setIsAdmin(true)
                     if (data.sucursal_id) {
@@ -70,19 +86,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     }
                 } else {
                     setIsAdmin(false)
+                    setSucursalId('')
                 }
-            } else {
-                setIsAdmin(false)
+            } catch (err) {
+                console.error('AuthContext onAuthStateChange error:', err)
+            } finally {
+                setLoading(false)
+                setAuthLoading(false)
             }
-            
-            setLoading(false)
         })
 
         return () => subscription.unsubscribe()
     }, [supabase])
 
     return (
-        <AuthContext.Provider value={{ user, loading, sucursalId, isAdmin }}>
+        <AuthContext.Provider value={{ user, loading, authLoading, sucursalId, isAdmin }}>
             {children}
         </AuthContext.Provider>
     )
