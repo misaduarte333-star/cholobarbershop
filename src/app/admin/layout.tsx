@@ -8,8 +8,10 @@ import { ConnectionStatus } from '@/components/ConnectionStatus'
 import { cn } from '@/lib/utils'
 import { isLowEndDevice } from '@/lib/performance'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useAuth } from '@/context/AuthContext'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    const { authLoading } = useAuth()
     const [isCheckingAuth, setIsCheckingAuth] = useState(true)
     const router = useRouter()
     const pathname = usePathname()
@@ -23,10 +25,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         const session = localStorage.getItem('admin_session')
         if (!session) {
             router.push('/admin/login')
-        } else {
+        } else if (!authLoading) {
             setIsCheckingAuth(false)
         }
-    }, [pathname, router])
+    }, [pathname, router, authLoading])
 
     const isLinkActive = (href: string) => {
         if (href === '/admin') return pathname === '/admin'

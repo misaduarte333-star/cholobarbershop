@@ -67,7 +67,8 @@ export default function BarberosPage() {
 
     const cargarBarberos = useCallback(async () => {
         if (authLoading) return  // wait for auth to resolve
-        if (!sucursalId) {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sucursalId)
+        if (!sucursalId || !isUUID) {
             setLoading(false)
             return
         }

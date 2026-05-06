@@ -146,7 +146,8 @@ function CitasContent() {
 
     const cargarCitas = useCallback(async (isInitialLoad = false) => {
         if (authLoading) return  // wait for auth to resolve
-        if (!filtroFecha || !sucursalId) {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sucursalId)
+        if (!filtroFecha || !sucursalId || !isUUID) {
             if (isInitialLoad) setLoading(false)
             return
         }

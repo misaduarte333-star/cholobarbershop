@@ -32,6 +32,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const initAuth = async () => {
             try {
+                // 1. Try Supabase Session
                 const { data: { session } } = await supabase.auth.getSession()
                 const currentUser = session?.user ?? null
                 setUser(currentUser)
@@ -47,7 +48,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         setIsAdmin(true)
                         if (data.sucursal_id) {
                             setSucursalId(data.sucursal_id)
+                            setAuthLoading(false)
+                            setLoading(false)
+                            return
                         }
+                    }
+                }
+
+                // 2. Fallback to LocalStorage (for custom admin login)
+                const localSession = localStorage.getItem('admin_session')
+                if (localSession) {
+                    try {
+                        const parsed = JSON.parse(localSession)
+                        if (parsed?.sucursal_id) {
+                            setSucursalId(parsed.sucursal_id)
+                            setIsAdmin(true)
+                        }
+                    } catch (e) {
+                        console.error('Error parsing admin_session from localStorage', e)
                     }
                 }
             } catch (err) {
@@ -65,6 +83,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setUser(newUser)
 
             if (!newUser?.email) {
+                // Try local storage fallback again on auth change
+                const localSession = localStorage.getItem('admin_session')
+                if (localSession) {
+                    try {
+                        const parsed = JSON.parse(localSession)
+                        if (parsed?.sucursal_id) {
+                            setSucursalId(parsed.sucursal_id)
+                            setIsAdmin(true)
+                            setLoading(false)
+                            setAuthLoading(false)
+                            return
+                        }
+                    } catch (e) {}
+                }
+
                 setIsAdmin(false)
                 setSucursalId('')
                 setLoading(false)
